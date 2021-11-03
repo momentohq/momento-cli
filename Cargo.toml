@@ -1,0 +1,13 @@
+[package]
+name = "momento"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = "^0.3.22"
+log = { version = "^0.4.14" }
+env_logger = { version = "^0.9.0" }
+tracing-subscriber = { version = "0.2.16", features = ["fmt"] }
+tokio = { version = "1", features = ["full"] }
