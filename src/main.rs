@@ -6,11 +6,11 @@ mod commands;
 #[derive(StructOpt)]
 #[structopt(about = "CLI for Momento APIs")]
 struct Momento {
-    #[structopt(name = "verbose", global = true, long, short)]
+    #[structopt(name = "verbose", global = true, long)]
     verbose: bool,
 
     // TODO: Read from profile
-    #[structopt()]
+    #[structopt(name="token", long)]
     auth_token: String,
 
     #[structopt(subcommand)]
@@ -30,35 +30,35 @@ enum Subcommand {
 enum CacheCommand {
     #[structopt(about = "Creates a Momento Cache")]
     Create {
-        #[structopt()]
+        #[structopt(name="name", long, short)]
         cache_name: String,
     },
 
     #[structopt(about = "Stores a given item in cache")]
     Set {
-        #[structopt()]
+        #[structopt(name="name", long, short)]
         cache_name: String,
         // TODO: Add support for non-string key-value
-        #[structopt()]
+        #[structopt(long, short)]
         key: String,
-        #[structopt()]
+        #[structopt(long, short)]
         value: String,
-        #[structopt()]
+        #[structopt(long="ttl_seconds", short="ttl")]
         ttl_seconds: u32,
     },
 
     #[structopt(about = "Gets item from the cache")]
     Get {
-        #[structopt()]
+        #[structopt(name="name", long, short)]
         cache_name: String,
         // TODO: Add support for non-string key-value
-        #[structopt()]
+        #[structopt(long, short)]
         key: String,
     },
 
     #[structopt(about = "Deletes the cache")]
     Delete {
-        #[structopt(long)]
+        #[structopt(name="name", long, short)]
         cache_name: String,
     },
 
