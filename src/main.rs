@@ -9,6 +9,10 @@ struct Momento {
     #[structopt(name = "verbose", global = true, long, short)]
     verbose: bool,
 
+    // TODO: Read from profile
+    #[structopt()]
+    auth_token: String,
+
     #[structopt(subcommand)]
     command: Subcommand,
 }
@@ -19,9 +23,6 @@ enum Subcommand {
     Cache {
         #[structopt(subcommand)]
         operation: CacheCommand,
-        // TODO: Read from profile
-        #[structopt()]
-        auth_token: String,
     },
 }
 
@@ -77,20 +78,20 @@ async fn main() {
         .init();
 
     match args.command {
-        Subcommand::Cache { operation, auth_token } => match operation {
+        Subcommand::Cache { operation } => match operation {
             CacheCommand::Create {
                 cache_name,
             } => {
-                commands::cache::cache::create_cache(cache_name, auth_token).await
+                commands::cache::cache::create_cache(cache_name, args.auth_token).await
             }
             CacheCommand::Set { cache_name, key, value, ttl_seconds } => {
-                commands::cache::cache::set(cache_name, auth_token, key, value, ttl_seconds).await
+                commands::cache::cache::set(cache_name, args.auth_token, key, value, ttl_seconds).await
             }
             CacheCommand::Get { cache_name, key } => {
-                commands::cache::cache::get(cache_name, auth_token, key).await
+                commands::cache::cache::get(cache_name, args.auth_token, key).await
             }
             CacheCommand::Delete { cache_name } => {
-                commands::cache::cache::delete_cache(cache_name, auth_token).await
+                commands::cache::cache::delete_cache(cache_name, args.auth_token).await
             }
         },
     }
