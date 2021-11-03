@@ -1,5 +1,6 @@
 use env_logger::Env;
 use structopt::StructOpt;
+use std::env;
 
 mod commands;
 
@@ -8,10 +9,6 @@ mod commands;
 struct Momento {
     #[structopt(name = "verbose", global = true, long)]
     verbose: bool,
-
-    // TODO: Read from profile
-    #[structopt(name="token", long)]
-    auth_token: String,
 
     #[structopt(subcommand)]
     command: Subcommand,
@@ -74,24 +71,27 @@ async fn main() {
         Env::default()
             .default_filter_or(log_level)
             .default_write_style_or("always"),
-    )
-        .init();
+    ).init();
+
+    // TODO: Make this more robust, read from profile etc.
+    let auth_token = env::var("MOMENTO_AUTH_TOKEN")
+        .expect("MOMENTO_AUTH_TOKEN must be set");
 
     match args.command {
         Subcommand::Cache { operation } => match operation {
             CacheCommand::Create {
                 cache_name,
             } => {
-                commands::cache::cache::create_cache(cache_name, args.auth_token).await
+                commands::cache::cache::create_cache(cache_name, auth_token).await
             }
             CacheCommand::Set { cache_name, key, value, ttl_seconds } => {
-                commands::cache::cache::set(cache_name, args.auth_token, key, value, ttl_seconds).await
+                commands::cache::cache::set(cache_name, auth_token, key, value, ttl_seconds).await
             }
             CacheCommand::Get { cache_name, key } => {
-                commands::cache::cache::get(cache_name, args.auth_token, key).await
+                commands::cache::cache::get(cache_name, auth_token, key).await
             }
             CacheCommand::Delete { cache_name } => {
-                commands::cache::cache::delete_cache(cache_name, args.auth_token).await
+                commands::cache::cache::delete_cache(cache_name, auth_token).await
             }
         },
     }
