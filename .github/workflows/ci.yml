@@ -19,7 +19,7 @@ jobs:
           submodules: true
           token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - name: List file
-        run: ls -lah .
+        run: ls -lah ./client-sdk-rust
       - name: Build
         run: cargo build --verbose
       - name: Rustfmt
