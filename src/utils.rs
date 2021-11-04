@@ -43,6 +43,6 @@ pub async fn read_toml_file<T: de::DeserializeOwned>(path: &str) -> Result<T, &s
     };
     match toml::from_str::<T>(&toml_str) {
         Ok(c) => Ok(c),
-        Err(e) => Err("failed to deserialize toml file"),
+        Err(_) => Err("failed to deserialize toml file"),
     }
 }

@@ -1,13 +1,5 @@
 use env_logger::Env;
-use std::{
-    env::{self},
-    path::Path,
-};
 use structopt::StructOpt;
-use tokio::{
-    fs::{self, File},
-    io::{self, stdin, stdout, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
-};
 use utils::get_creds_for_profile;
 
 mod commands;
