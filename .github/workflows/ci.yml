@@ -17,6 +17,8 @@ jobs:
         with:
           # 🤮
           submodules: true
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+
       - name: Build
         run: cargo build --verbose
       - name: Rustfmt
