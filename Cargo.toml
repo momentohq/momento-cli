@@ -1,5 +1,5 @@
 [package]
-name = "momento"
+name = "momento-cli"
 version = "0.1.0"
 edition = "2018"
 
@@ -15,3 +15,8 @@ home = "0.5.3"
 toml = "0.5.8"
 serde = {version = "1.0", features = ["derive"] }
 maplit = "1.0.2"
+momento = { path = "../client-sdk-rust" }
+
+[[bin]]
+name = "momento"
+path = "src/main.rs"

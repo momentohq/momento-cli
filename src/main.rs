@@ -1,4 +1,9 @@
+#![feature(panic_info_message)]
+
+use std::{panic};
+
 use env_logger::Env;
+use log::{error};
 use structopt::StructOpt;
 use utils::get_creds_for_profile;
 
@@ -44,7 +49,7 @@ enum CacheCommand {
         key: String,
         #[structopt(long, short)]
         value: String,
-        #[structopt(long = "ttl_seconds", short = "ttl")]
+        #[structopt(long = "ttl", short = "ttl", default_value = "300", help = "Max time, in seconds, that the item will be stored in cache")]
         ttl_seconds: u32,
     },
 
@@ -66,6 +71,9 @@ enum CacheCommand {
 
 #[tokio::main]
 async fn main() {
+    panic::set_hook(Box::new(|_info| {
+        error!("{:#?}", _info.message().unwrap());
+    }));
     let args = Momento::from_args();
 
     let log_level = if args.verbose { "debug" } else { "info" };
@@ -94,7 +102,7 @@ async fn main() {
             }
             CacheCommand::Get { cache_name, key } => {
                 let creds = get_creds_for_profile(None).await;
-                commands::cache::cache::get(cache_name, creds.token, key).await
+                commands::cache::cache::get(cache_name, creds.token, key).await;
             }
             CacheCommand::Delete { cache_name } => {
                 let creds = get_creds_for_profile(None).await;
