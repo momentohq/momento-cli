@@ -1,5 +1,3 @@
-
-
 name: CI
 
 on:
@@ -19,6 +17,6 @@ jobs:
       - name: Build
         run: cargo build --verbose
       - name: Rustfmt
-        run: cargo fmt
+        run: cargo fmt -- --check
       - name: Run tests
         run: cargo test --verbose
