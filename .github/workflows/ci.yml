@@ -8,8 +8,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # this is temporary until we publish the rust sdk
+          submodules: true
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+      - name: rustfmt
+        run: cargo fmt -- --check
 
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +36,5 @@ jobs:
           override: true
       - name: Build
         run: cargo build --verbose
-      - name: Rustfmt
-        run: cargo fmt -- --check
       - name: Run tests
         run: cargo test --verbose
