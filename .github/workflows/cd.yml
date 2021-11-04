@@ -48,8 +48,8 @@ jobs:
 
       - name: Update Cargo Version
         run: |
-          chmod +x update_cargo_script.sh
-          ./update_cargo_script.sh ${{ steps.semrel.outputs.version }}
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
         shell: bash
 
       - name: Build
