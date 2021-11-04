@@ -1,10 +1,6 @@
 use log::info;
 
-use crate::utils::get_creds_for_profile;
-
 pub async fn create_cache(cache_name: String, auth_token: String) {
-    let creds = get_creds_for_profile(None).await;
-    info!("got credentials for profile: {}", creds.token);
     info!("create cache called");
 }
 

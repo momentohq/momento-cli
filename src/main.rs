@@ -1,5 +1,4 @@
 use env_logger::Env;
-use home::home_dir;
 use std::{
     env::{self},
     path::Path,
@@ -9,6 +8,7 @@ use tokio::{
     fs::{self, File},
     io::{self, stdin, stdout, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
 };
+use utils::get_creds_for_profile;
 
 mod commands;
 mod credentials;
@@ -85,25 +85,28 @@ async fn main() {
     )
     .init();
 
-    // TODO: Make this more robust, read from profile etc.
-    let auth_token = env::var("MOMENTO_AUTH_TOKEN").expect("MOMENTO_AUTH_TOKEN must be set");
-
     match args.command {
         Subcommand::Cache { operation } => match operation {
             CacheCommand::Create { cache_name } => {
-                commands::cache::cache::create_cache(cache_name, auth_token).await
+                let creds = get_creds_for_profile(None).await;
+                commands::cache::cache::create_cache(cache_name, creds.token).await
             }
             CacheCommand::Set {
                 cache_name,
                 key,
                 value,
                 ttl_seconds,
-            } => commands::cache::cache::set(cache_name, auth_token, key, value, ttl_seconds).await,
+            } => {
+                let creds = get_creds_for_profile(None).await;
+                commands::cache::cache::set(cache_name, creds.token, key, value, ttl_seconds).await
+            }
             CacheCommand::Get { cache_name, key } => {
-                commands::cache::cache::get(cache_name, auth_token, key).await
+                let creds = get_creds_for_profile(None).await;
+                commands::cache::cache::get(cache_name, creds.token, key).await
             }
             CacheCommand::Delete { cache_name } => {
-                commands::cache::cache::delete_cache(cache_name, auth_token).await
+                let creds = get_creds_for_profile(None).await;
+                commands::cache::cache::delete_cache(cache_name, creds.token).await
             }
         },
         Subcommand::Configure {} => commands::configure::configure::configure_momento().await,
