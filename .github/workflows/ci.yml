@@ -18,6 +18,11 @@ jobs:
           # 🤮
           submodules: true
           token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt
+          override: true
       - name: Build
         run: cargo build --verbose
       - name: Rustfmt
