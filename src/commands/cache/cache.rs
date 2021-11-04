@@ -6,7 +6,7 @@ use momento::{cache::CacheClient, sdk::Momento};
 async fn get_momento_instance(auth_token: String) -> Momento {
     match Momento::new(auth_token).await {
         Ok(m) => m,
-        Err(e) => panic!("{}", e)    
+        Err(e) => panic!("{}", e),
     }
 }
 
@@ -57,12 +57,15 @@ pub async fn get(cache_name: String, auth_token: String, key: String) {
 
     match cache.get(key).await {
         Ok(r) => {
-            if matches!(r.result, momento::response::cache_get_response::MomentoGetStatus::HIT) {
+            if matches!(
+                r.result,
+                momento::response::cache_get_response::MomentoGetStatus::HIT
+            ) {
                 println!("{}", r.as_string());
             } else {
                 info!("cache miss");
             }
-        },
+        }
         Err(e) => panic!("failed to get from cache, error: {}", e),
     };
 }

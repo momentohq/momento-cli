@@ -1,9 +1,9 @@
 #![feature(panic_info_message)]
 
-use std::{panic};
+use std::panic;
 
 use env_logger::Env;
-use log::{error};
+use log::error;
 use structopt::StructOpt;
 use utils::get_creds_for_profile;
 
@@ -49,7 +49,12 @@ enum CacheCommand {
         key: String,
         #[structopt(long, short)]
         value: String,
-        #[structopt(long = "ttl", short = "ttl", default_value = "300", help = "Max time, in seconds, that the item will be stored in cache")]
+        #[structopt(
+            long = "ttl",
+            short = "ttl",
+            default_value = "300",
+            help = "Max time, in seconds, that the item will be stored in cache"
+        )]
         ttl_seconds: u32,
     },
 
