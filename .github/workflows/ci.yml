@@ -18,8 +18,8 @@ jobs:
           # 🤮
           submodules: true
           token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
-      - name: List file
-        run: git submodule update --init --recursive
+      - name: Pwd
+        run: pwd
       - name: Build
         run: cargo build --verbose
       - name: Rustfmt
