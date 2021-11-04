@@ -1,0 +1,74 @@
+name: CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**/Cargo.toml'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # 🤮
+          submodules: true
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+      - uses: actions-rs/toolchain@v1
+      - name: rustfmt
+        run: cargo fmt -- --check
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with: 
+          # 🤮
+          submodules: true
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt
+          override: true
+          
+      - name: Set release
+        id: semrel
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
+
+      - name: Update Cargo Version
+        run: |
+          chmod +x update_cargo_script.sh
+          ./update_cargo_script.sh ${{ steps.semrel.outputs.version }}
+        shell: bash
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Build tar.gz
+        run: |
+          STASH_SHA=$(git stash create)
+          VERSION=${{ steps.semrel.outputs.version }}
+          ARCHIVE_FILE=archive-$VERSION.tar.gz
+          echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
+          git archive --format tar $STASH_SHA | gzip > $ARCHIVE_FILE
+          SHA=$(openssl sha256 < ${ARCHIVE_FILE} | sed 's/.* //')
+          echo "SHA="$SHA >> $GITHUB_ENV
+          echo "sha is: ${SHA}"
+          AUTH="Authorization: token ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${ARCHIVE_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+        shell: bash
