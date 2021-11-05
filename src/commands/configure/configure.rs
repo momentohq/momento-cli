@@ -30,7 +30,7 @@ async fn add_credentials(profile: &str, creds: Credentials) {
     let mut credentials_toml = match read_toml_file::<CredentialsConfig>(&path).await {
         Ok(t) => t,
         Err(_) => {
-            debug!("credentials file is invalid, most likely we are creating it for the first time. Overwriting it with new profile.");
+            debug!("credentials file is invalid, most likely we are creating it for the first time. Overwriting it with new profile");
             CredentialsConfig {
                 profile: hashmap! {},
             }
