@@ -1,3 +1,4 @@
 /target
 .idea/
 client-cli.iml
+.DS_Store
