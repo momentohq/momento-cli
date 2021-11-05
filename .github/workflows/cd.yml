@@ -65,6 +65,7 @@ jobs:
           VERSION=0.0.1
           ARCHIVE_FILE=archive-$VERSION.tar.gz
           echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
+          git submodule update --init
           pip install git-archive-all
           git-archive-all --force-submodules $ARCHIVE_FILE
           ls -lah
