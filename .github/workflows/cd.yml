@@ -37,6 +37,11 @@ jobs:
           components: rustfmt
           override: true
           
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+          
       - name: Set release
         id: semrel
         uses: go-semantic-release/action@v1
@@ -60,7 +65,8 @@ jobs:
           VERSION=${{ steps.semrel.outputs.version }}
           ARCHIVE_FILE=archive-$VERSION.tar.gz
           echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
-          git archive --format tar $STASH_SHA | gzip > $ARCHIVE_FILE
+          pip install git-archive-all
+          git-archive-all --force-submodules $ARCHIVE_FILE
           SHA=$(openssl sha256 < ${ARCHIVE_FILE} | sed 's/.* //')
           echo "SHA="$SHA >> $GITHUB_ENV
           echo "sha is: ${SHA}"
