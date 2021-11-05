@@ -2,7 +2,7 @@ name: CD
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     branches: [ main ]
     paths-ignore:
       - '**/Cargo.toml'
@@ -67,13 +67,5 @@ jobs:
           echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
           pip install git-archive-all
           git-archive-all $ARCHIVE_FILE
-          SHA=$(openssl sha256 < ${ARCHIVE_FILE} | sed 's/.* //')
-          echo "SHA="$SHA >> $GITHUB_ENV
-          echo "sha is: ${SHA}"
-          AUTH="Authorization: token ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
-          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
-          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
-          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${ARCHIVE_FILE}"
-          echo $GH_ASSET
-          curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+          ls -lah
         shell: bash
