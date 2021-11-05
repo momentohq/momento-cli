@@ -2,7 +2,7 @@ name: CD
 
 on:
   workflow_dispatch:
-  pull_request:
+  push:
     branches: [ main ]
     paths-ignore:
       - '**/Cargo.toml'
@@ -53,7 +53,7 @@ jobs:
       - name: Update Cargo Version
         run: |
           chmod +x set_cargo_version.sh
-          ./set_cargo_version.sh 0.0.1
+          ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
         shell: bash
 
       - name: Build
@@ -62,11 +62,18 @@ jobs:
       - name: Build tar.gz
         run: |
           STASH_SHA=$(git stash create)
-          VERSION=0.0.1
+          VERSION=${{ steps.semrel.outputs.version }}
           ARCHIVE_FILE=archive-$VERSION.tar.gz
           echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
-          git submodule update --init
           pip install git-archive-all
           git-archive-all --force-submodules $ARCHIVE_FILE
-          ls -lah
+          SHA=$(openssl sha256 < ${ARCHIVE_FILE} | sed 's/.* //')
+          echo "SHA="$SHA >> $GITHUB_ENV
+          echo "sha is: ${SHA}"
+          AUTH="Authorization: token ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${ARCHIVE_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
         shell: bash
