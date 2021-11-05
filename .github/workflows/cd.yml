@@ -53,7 +53,7 @@ jobs:
       - name: Update Cargo Version
         run: |
           chmod +x set_cargo_version.sh
-          ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
+          ./set_cargo_version.sh 0.0.1
         shell: bash
 
       - name: Build
@@ -62,7 +62,7 @@ jobs:
       - name: Build tar.gz
         run: |
           STASH_SHA=$(git stash create)
-          VERSION=${{ steps.semrel.outputs.version }}
+          VERSION=0.0.1
           ARCHIVE_FILE=archive-$VERSION.tar.gz
           echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
           pip install git-archive-all
