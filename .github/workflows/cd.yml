@@ -66,6 +66,6 @@ jobs:
           ARCHIVE_FILE=archive-$VERSION.tar.gz
           echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
           pip install git-archive-all
-          git-archive-all $ARCHIVE_FILE
+          git-archive-all --force-submodules $ARCHIVE_FILE
           ls -lah
         shell: bash
