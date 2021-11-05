@@ -74,10 +74,10 @@ enum CacheCommand {
 
 #[tokio::main]
 async fn main() {
-//     TODO: this feature is only available in the nightly builds for now :sad:
-//     panic::set_hook(Box::new(|_info| {
-//         error!("{:#?}", _info.message().unwrap());
-//     }));
+    //     TODO: this feature is only available in the nightly builds for now :sad:
+    //     panic::set_hook(Box::new(|_info| {
+    //         error!("{:#?}", _info.message().unwrap());
+    //     }));
     let args = Momento::from_args();
 
     let log_level = if args.verbose { "debug" } else { "info" };
