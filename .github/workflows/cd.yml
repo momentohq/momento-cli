@@ -79,23 +79,20 @@ jobs:
       - name: Check out homebrew-tap
         uses: actions/checkout@v2
         with:
+          fetch-depth: 0
           repository: momentohq/homebrew-tap
           token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
 
       - name: update homebrew formulae
         run: |
+          git checkout -b formula/momento-cli/v${{ steps.semrel.outputs.version }}
           pushd Formula
             sed -i 's/sha256 ".*"/sha256 "${{ env.SHA }}"/g' momento-cli.rb
             sed -i 's/version ".*"/version "${{ steps.semrel.outputs.version }}"/g' momento-cli.rb
             sed -i 's/releases\/download\/.*\/archive-.*.tar.gz/releases\/download\/v${{ steps.semrel.outputs.version }}\/${{ env.ARCHIVE_FILE }}/g' momento-cli.rb
           popd
-
-      - name: Push to homebrew-tap
-        uses: cpina/github-action-push-to-another-repository@v1.3
-        env:
-            API_TOKEN_GITHUB: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
-        with:
-          source-directory: '.'
-          destination-github-username: 'momentohq'
-          destination-repository-name: 'homebrew-tap'
-          target-branch: formula/momento-cli/v${{ steps.semrel.outputs.version }}
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add .
+          git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
+          git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
