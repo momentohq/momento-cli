@@ -98,4 +98,4 @@ jobs:
           source-directory: '.'
           destination-github-username: 'momentohq'
           destination-repository-name: 'homebrew-tap'
-          target-branch: formula/${{ steps.semrel.outputs.version }}
+          target-branch: formula/momento-cli/v${{ steps.semrel.outputs.version }}
