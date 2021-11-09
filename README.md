@@ -1,5 +1,5 @@
 ## Prerequisites
-- MacOSX or Linux
+- MacOS or Linux
 - [Homebrew](https://brew.sh/)
 
 ## Installation
