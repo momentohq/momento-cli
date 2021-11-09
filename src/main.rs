@@ -1,4 +1,4 @@
-use std::{panic};
+use std::panic;
 
 use env_logger::Env;
 use log::error;
