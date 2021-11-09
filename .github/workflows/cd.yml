@@ -17,7 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          # 🤮
           submodules: true
           token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - name: rustfmt
@@ -28,7 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with: 
-          # 🤮
           submodules: true
           token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - uses: actions-rs/toolchain@v1
@@ -77,3 +75,27 @@ jobs:
           echo $GH_ASSET
           curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
         shell: bash
+        
+      - name: Check out homebrew-tap
+        uses: actions/checkout@v2
+        with:
+          repository: momentohq/homebrew-tap
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+
+      - name: update homebrew formulae
+        run: |
+          pushd Formula
+            sed -i 's/sha256 ".*"/sha256 "${{ env.SHA }}"/g' momento-cli.rb
+            sed -i 's/version ".*"/version "${{ steps.semrel.outputs.version }}"/g' momento-cli.rb
+            sed -i 's/releases\/download\/.*\/archive-.*.tar.gz/releases\/download\/v${{ steps.semrel.outputs.version }}\/${{ env.ARCHIVE_FILE }}/g' momento-cli.rb
+          popd
+
+      - name: Push to homebrew-tap
+        uses: cpina/github-action-push-to-another-repository@v1.3
+        env:
+            API_TOKEN_GITHUB: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+        with:
+          source-directory: '.'
+          destination-github-username: 'momentohq'
+          destination-repository-name: 'homebrew-tap'
+          target-branch: formula/momento-cli/v${{ steps.semrel.outputs.version }}
