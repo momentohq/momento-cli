@@ -1,18 +1,25 @@
-Momento Client CLI
+## Prerequisites
+- MacOS or Linux
+- [Homebrew](https://brew.sh/)
 
-## Prerequisite
-1. [Homebrew](https://brew.sh/)
+## Install
+```bash
+brew tap momentohq/tap
+brew install momento-cli
+```
 
-## Installation
-1. brew tap momentohq/tap
-1. brew install momento-cli
+## Configure
+```
+momento configure
+```
+This will prompt you for your Momento Auth Token, and save it to be reused. Need a token? Send us an email at support@momentohq.com.
 
-## Instructions
-1. after installation, run the command `momento configure`. This will prompt you for
-your momento auth token, and save it to be reused.
+## Use CLI
+```
+momento cache create --name example-cache
+momento cache set --key key --value value --ttl 100 --name example-cache
+momento cache get --key key --name example-cache
+```
 
-## Using Momento Cache
-1. momento cache create --name example-cache
-1. momento cache set --key key --value value --ttl 100 --name example-cache
-1. momento cache get --key key --name example-cache
-1. momento cache delete --name example-cache
+## Use Momento in Your Project
+Check out our [SDKs](https://github.com/momentohq/client-sdk-examples) to integrate Momento into your project!
