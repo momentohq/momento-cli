@@ -612,7 +612,6 @@ dependencies = [
  "momento",
  "reqwest",
  "serde",
- "serde_json",
  "structopt",
  "tokio",
  "toml",
