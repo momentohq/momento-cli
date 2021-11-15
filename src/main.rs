@@ -3,10 +3,10 @@ use std::panic;
 use env_logger::Env;
 use log::error;
 use structopt::StructOpt;
-use utils::get_creds_for_profile;
+use utils::user::get_creds_and_config;
 
 mod commands;
-mod credentials;
+mod config;
 mod utils;
 
 #[derive(StructOpt)]
@@ -27,7 +27,10 @@ enum Subcommand {
         operation: CacheCommand,
     },
     #[structopt(about = "Configure Momento Credentials")]
-    Configure {},
+    Configure {
+        #[structopt(name = "profile", long, short, default_value = "default")]
+        profile: String,
+    },
 }
 
 #[derive(StructOpt)]
@@ -41,7 +44,7 @@ enum CacheCommand {
     #[structopt(about = "Stores a given item in cache")]
     Set {
         #[structopt(name = "name", long, short)]
-        cache_name: String,
+        cache_name: Option<String>,
         // TODO: Add support for non-string key-value
         #[structopt(long, short)]
         key: String,
@@ -50,16 +53,15 @@ enum CacheCommand {
         #[structopt(
             long = "ttl",
             short = "ttl",
-            default_value = "300",
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
-        ttl_seconds: u32,
+        ttl_seconds: Option<u32>,
     },
 
     #[structopt(about = "Gets item from the cache")]
     Get {
         #[structopt(name = "name", long, short)]
-        cache_name: String,
+        cache_name: Option<String>,
         // TODO: Add support for non-string key-value
         #[structopt(long, short)]
         key: String,
@@ -92,7 +94,7 @@ async fn main() {
     match args.command {
         Subcommand::Cache { operation } => match operation {
             CacheCommand::Create { cache_name } => {
-                let creds = get_creds_for_profile(None).await;
+                let (creds, _config) = get_creds_and_config().await;
                 commands::cache::cache::create_cache(cache_name, creds.token).await
             }
             CacheCommand::Set {
@@ -101,18 +103,28 @@ async fn main() {
                 value,
                 ttl_seconds,
             } => {
-                let creds = get_creds_for_profile(None).await;
-                commands::cache::cache::set(cache_name, creds.token, key, value, ttl_seconds).await
+                let (creds, config) = get_creds_and_config().await;
+                commands::cache::cache::set(
+                    cache_name.unwrap_or(config.cache),
+                    creds.token,
+                    key,
+                    value,
+                    ttl_seconds.unwrap_or(config.ttl),
+                )
+                .await
             }
             CacheCommand::Get { cache_name, key } => {
-                let creds = get_creds_for_profile(None).await;
-                commands::cache::cache::get(cache_name, creds.token, key).await;
+                let (creds, config) = get_creds_and_config().await;
+                commands::cache::cache::get(cache_name.unwrap_or(config.cache), creds.token, key)
+                    .await;
             }
             CacheCommand::Delete { cache_name } => {
-                let creds = get_creds_for_profile(None).await;
+                let (creds, _config) = get_creds_and_config().await;
                 commands::cache::cache::delete_cache(cache_name, creds.token).await
             }
         },
-        Subcommand::Configure {} => commands::configure::configure::configure_momento().await,
+        Subcommand::Configure { profile } => {
+            commands::configure::configure::configure_momento(&profile).await
+        }
     }
 }

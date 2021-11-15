@@ -1,77 +1,102 @@
 use log::debug;
-use std::path::Path;
+use serde::{de::DeserializeOwned, Serialize};
 
-use maplit::hashmap;
-use tokio::{
-    fs::{self, File},
-    io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
-};
+use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use crate::{
-    credentials::{Credentials, CredentialsConfig},
-    utils::{get_credentials_file_path, get_momento_dir, read_toml_file},
+    config::{Config, Credentials, Profiles},
+    utils::{
+        file::{
+            create_dir_if_not_exists, create_file_if_not_exists, get_config_file_path,
+            get_credentials_file_path, get_momento_dir, read_toml_file, set_file_read_write,
+            set_file_readonly, write_to_existing_file,
+        },
+        user::{get_config_for_profile, get_creds_for_profile},
+    },
 };
 
-pub async fn configure_momento() {
-    let token = prompt_user_for_input("Token: ").await;
+pub async fn configure_momento(profile_name: &str) {
+    let credentials = prompt_user_for_creds(profile_name).await;
+    let config = prompt_user_for_config(profile_name).await;
+
     let momento_dir = get_momento_dir();
     let credentials_file_path = get_credentials_file_path();
+    let config_file_path = get_config_file_path();
 
     create_dir_if_not_exists(&momento_dir).await;
     create_file_if_not_exists(&credentials_file_path).await;
+    create_file_if_not_exists(&config_file_path).await;
 
-    let default_credentials = Credentials { token: token };
-    add_credentials("default", default_credentials).await;
+    // explicitly allowing read/write access to the credentials file
+    set_file_read_write(&credentials_file_path).await.unwrap();
+    add_profile(profile_name, credentials, &credentials_file_path).await;
+    // explicitly revoking that access
+    set_file_readonly(&credentials_file_path).await.unwrap();
+
+    add_profile(profile_name, config, &config_file_path).await;
 }
 
-async fn add_credentials(profile: &str, creds: Credentials) {
-    let path = get_credentials_file_path();
+async fn prompt_user_for_creds(profile_name: &str) -> Credentials {
+    let current_credentials = get_creds_for_profile(profile_name)
+        .await
+        .unwrap_or_default();
 
-    let mut credentials_toml = match read_toml_file::<CredentialsConfig>(&path).await {
+    let token = prompt_user_for_input("Token", current_credentials.token.as_str(), true).await;
+
+    return Credentials { token };
+}
+
+async fn prompt_user_for_config(profile_name: &str) -> Config {
+    let current_config = get_config_for_profile(profile_name)
+        .await
+        .unwrap_or_default();
+
+    let cache_name =
+        prompt_user_for_input("Default Cache", current_config.cache.as_str(), false).await;
+    let ttl = prompt_user_for_input(
+        "Default Ttl Seconds",
+        current_config.ttl.to_string().as_str(),
+        false,
+    )
+    .await
+    .parse::<u32>()
+    .unwrap();
+
+    return Config {
+        cache: cache_name,
+        ttl,
+    };
+}
+
+async fn add_profile<T>(profile_name: &str, config: T, config_file_path: &str)
+where
+    T: DeserializeOwned + Default + Serialize,
+{
+    let mut toml = match read_toml_file::<Profiles<T>>(config_file_path).await {
         Ok(t) => t,
         Err(_) => {
-            debug!("credentials file is invalid, most likely we are creating it for the first time. Overwriting it with new profile");
-            CredentialsConfig {
-                profile: hashmap! {},
-            }
+            debug!("config file is invalid, most likely we are creating it for the first time. Overwriting it with new profile");
+            Profiles::<T>::default()
         }
     };
-    credentials_toml.profile.insert(profile.to_string(), creds);
-    let new_creds_string = toml::to_string(&credentials_toml).unwrap();
-    write_to_existing_file(&path, &new_creds_string).await;
+    toml.profile.insert(profile_name.to_string(), config);
+    let new_profile_string = toml::to_string(&toml).unwrap();
+    write_to_existing_file(config_file_path, &new_profile_string).await;
 }
 
-async fn write_to_existing_file(filepath: &str, buffer: &str) {
-    match tokio::fs::write(filepath, buffer).await {
-        Ok(_) => debug!("wrote buffer to file {}", filepath),
-        Err(e) => panic!("failed to write to file {}, error: {}", filepath, e),
-    };
-}
-
-async fn create_file_if_not_exists(path: &str) {
-    if !Path::new(path).exists() {
-        let res = File::create(path).await;
-        match res {
-            Ok(_) => debug!("created file {}", path),
-            Err(e) => panic!("failed to create file {}, error: {}", path, e),
-        }
-    };
-}
-
-async fn create_dir_if_not_exists(path: &str) {
-    if !Path::new(path).exists() {
-        let res = fs::create_dir_all(path).await;
-        match res {
-            Ok(_) => debug!("created directory {}", path),
-            Err(e) => panic!("failed to created directory {}, error: {}", path, e),
-        }
-    }
-}
-
-async fn prompt_user_for_input(prompt: &str) -> String {
+async fn prompt_user_for_input(prompt: &str, default_value: &str, is_secret: bool) -> String {
     let mut stdout = io::stdout();
-    match stdout.write(prompt.as_bytes()).await {
-        Ok(_) => debug!("wrote prompt '{}' to stdout", prompt),
+
+    let formatted_prompt = if default_value.is_empty() {
+        format!("{}: ", prompt)
+    } else if is_secret {
+        format!("{} [****]: ", prompt)
+    } else {
+        format!("{} [{}]: ", prompt, default_value)
+    };
+
+    match stdout.write(formatted_prompt.as_bytes()).await {
+        Ok(_) => debug!("wrote prompt '{}' to stdout", formatted_prompt),
         Err(e) => panic!("failed to write prompt to stdout: {}", e),
     };
     match stdout.flush().await {
@@ -85,5 +110,10 @@ async fn prompt_user_for_input(prompt: &str) -> String {
         Ok(_) => debug!("read line from stdin"),
         Err(e) => panic!("failed to read line from stdin: {}", e),
     };
-    return buffer.as_str().trim_end().to_string();
+
+    let input = buffer.as_str().trim_end().to_string();
+    if input.is_empty() {
+        return default_value.to_string();
+    }
+    return input;
 }
