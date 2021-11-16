@@ -28,6 +28,20 @@ enum Subcommand {
     },
     #[structopt(about = "Configure Momento Credentials")]
     Configure {},
+    #[structopt(about = "Manage Accounts")]
+    Account {
+        #[structopt(subcommand)]
+        operation: AccountCommand,
+    },
+}
+
+#[derive(StructOpt)]
+enum AccountCommand {
+    #[structopt(about = "Sign up for Momento")]
+    Signup {
+        #[structopt(name = "email", long, short)]
+        email: String,
+    },
 }
 
 #[derive(StructOpt)]
@@ -114,5 +128,10 @@ async fn main() {
             }
         },
         Subcommand::Configure {} => commands::configure::configure::configure_momento().await,
+        Subcommand::Account { operation } => match operation {
+            AccountCommand::Signup { email } => {
+                commands::account::signup_user(email).await;
+            }
+        },
     }
 }
