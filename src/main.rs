@@ -31,6 +31,20 @@ enum Subcommand {
         #[structopt(name = "profile", long, short, default_value = "default")]
         profile: String,
     },
+    #[structopt(about = "Manage Accounts")]
+    Account {
+        #[structopt(subcommand)]
+        operation: AccountCommand,
+    },
+}
+
+#[derive(StructOpt)]
+enum AccountCommand {
+    #[structopt(about = "Sign up for Momento")]
+    Signup {
+        #[structopt(name = "email", long, short)]
+        email: String,
+    },
 }
 
 #[derive(StructOpt)]
@@ -126,5 +140,10 @@ async fn main() {
         Subcommand::Configure { profile } => {
             commands::configure::configure::configure_momento(&profile).await
         }
+        Subcommand::Account { operation } => match operation {
+            AccountCommand::Signup { email } => {
+                commands::account::signup_user(email).await;
+            }
+        },
     }
 }
