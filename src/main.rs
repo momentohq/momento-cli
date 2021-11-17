@@ -66,7 +66,7 @@ enum CacheCommand {
         value: String,
         #[structopt(
             long = "ttl",
-            short = "ttl",
+            short = "t",
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
         ttl_seconds: Option<u32>,
