@@ -80,6 +80,9 @@ pub async fn create_dir_if_not_exists(str_path: &str) {
             Err(e) => panic!("failed to created directory {}, error: {}", str_path, e),
         }
     } else if !path.is_dir() {
-        panic!("failed to create directory, file already exists at {}", str_path)
+        panic!(
+            "failed to create directory, file already exists at {}",
+            str_path
+        )
     }
 }
