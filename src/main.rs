@@ -5,7 +5,7 @@ use log::error;
 use structopt::StructOpt;
 use utils::user::get_creds_and_config;
 
-mod commands;
+pub mod commands;
 mod config;
 mod utils;
 
