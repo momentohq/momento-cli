@@ -1,13 +1,13 @@
 use log::debug;
 use serde::{de::DeserializeOwned, Serialize};
 
-use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::{fs, io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader}};
 
 use crate::{
     config::{Config, Credentials, Profiles},
     utils::{
         file::{
-            create_dir_if_not_exists, create_file_if_not_exists, get_config_file_path,
+            create_file_if_not_exists, get_config_file_path,
             get_credentials_file_path, get_momento_dir, read_toml_file, set_file_read_write,
             set_file_readonly, write_to_existing_file,
         },
@@ -23,7 +23,7 @@ pub async fn configure_momento(profile_name: &str) {
     let credentials_file_path = get_credentials_file_path();
     let config_file_path = get_config_file_path();
 
-    create_dir_if_not_exists(&momento_dir).await;
+    fs::create_dir_all(momento_dir).await.unwrap();
     create_file_if_not_exists(&credentials_file_path).await;
     create_file_if_not_exists(&config_file_path).await;
 

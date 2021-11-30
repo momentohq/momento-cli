@@ -70,19 +70,3 @@ pub async fn set_file_read_write(path: &str) -> std::io::Result<()> {
     fs::set_permissions(path, perms).await?;
     Ok(())
 }
-
-pub async fn create_dir_if_not_exists(str_path: &str) {
-    let path = Path::new(str_path);
-    if !path.exists() {
-        let res = fs::create_dir_all(path).await;
-        match res {
-            Ok(_) => debug!("created directory {}", str_path),
-            Err(e) => panic!("failed to created directory {}, error: {}", str_path, e),
-        }
-    } else if !path.is_dir() {
-        panic!(
-            "failed to create directory, file already exists at {}",
-            str_path
-        )
-    }
-}
