@@ -24,11 +24,11 @@ pub fn get_momento_dir() -> String {
 pub async fn read_toml_file<T: de::DeserializeOwned>(path: &str) -> Result<T, String> {
     let toml_str = match fs::read_to_string(&path).await {
         Ok(s) => s,
-        Err(e) => return Err(format!("failed to read toml file: {}", e)),
+        Err(e) => return Err(format!("failed to read file: {}", e)),
     };
     match toml::from_str::<T>(&toml_str) {
         Ok(c) => Ok(c),
-        Err(e) => Err(format!("failed to parse toml file: {}", e)),
+        Err(e) => Err(format!("failed to parse file: {}", e)),
     }
 }
 
