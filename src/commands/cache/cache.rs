@@ -36,6 +36,19 @@ pub async fn delete_cache(cache_name: String, auth_token: String) {
     }
 }
 
+pub async fn list_caches(auth_token: String) {
+    info!("list cache called");
+    let mut momento = get_momento_instance(auth_token).await;
+    match momento.list_caches(None).await {
+        Ok(res) => {
+            res.caches
+                .into_iter()
+                .for_each(|cache| println!("{}", cache.cache_name));
+        }
+        Err(e) => panic!("{}", e),
+    }
+}
+
 pub async fn set(
     cache_name: String,
     auth_token: String,
