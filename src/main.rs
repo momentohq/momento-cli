@@ -86,6 +86,9 @@ enum CacheCommand {
         #[structopt(name = "name", long, short)]
         cache_name: String,
     },
+
+    #[structopt(about = "Lists all momento caches")]
+    List {},
 }
 
 #[tokio::main]
@@ -135,6 +138,10 @@ async fn main() {
             CacheCommand::Delete { cache_name } => {
                 let (creds, _config) = get_creds_and_config().await;
                 commands::cache::cache::delete_cache(cache_name, creds.token).await
+            }
+            CacheCommand::List {} => {
+                let (creds, _config) = get_creds_and_config().await;
+                commands::cache::cache::list_caches(creds.token).await
             }
         },
         Subcommand::Configure { profile } => {
