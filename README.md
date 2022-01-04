@@ -28,3 +28,6 @@ momento cache get --key key --name example-cache
 
 ## Use Momento in Your Project
 Check out our [SDKs](https://github.com/momentohq/client-sdk-examples) to integrate Momento into your project!
+
+## Contributing
+If you would like to contribute to the Momento Cli, please read out [Contributing Guide](./CONTRIBUTING.md)
