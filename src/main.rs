@@ -44,6 +44,8 @@ enum AccountCommand {
     Signup {
         #[structopt(name = "email", long, short)]
         email: String,
+        #[structopt(name = "region", long, short, default_value = "us-west-2", possible_values = &["us-west-2", "us-east-1"])]
+        region: String,
     },
 }
 
@@ -148,8 +150,8 @@ async fn main() {
             commands::configure::configure::configure_momento(&profile).await
         }
         Subcommand::Account { operation } => match operation {
-            AccountCommand::Signup { email } => {
-                commands::account::signup_user(email).await;
+            AccountCommand::Signup { email, region } => {
+                commands::account::signup_user(email, region).await;
             }
         },
     }
