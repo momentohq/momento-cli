@@ -25,7 +25,7 @@ impl Default for CreateTokenResponse {
 pub async fn signup_user(email: String, region: String) {
     // This is a temporarily solution until we have figured out how we want to handle
     // auth across multiple cells. This solution will not work once we have more than one
-    // cell per region. Our cellular design supports this, and we most definetly will
+    // cell per region. Our cellular design supports this, and we most definitely will
     // run into this issue in the future.
     let region_to_cell_name_map: HashMap<&str, &str> = [
         ("us-west-2", "cell-external-beta"),
