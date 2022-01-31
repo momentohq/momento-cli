@@ -56,7 +56,11 @@ async fn prompt_user_for_config(profile_name: &str) -> Config {
 
     let cache_name =
         prompt_user_for_input("Default Cache", current_config.cache.as_str(), false).await;
-    let prompt_ttl = if current_config.ttl == 0 { 600 } else { current_config.ttl };
+    let prompt_ttl = if current_config.ttl == 0 {
+        600
+    } else {
+        current_config.ttl
+    };
     let ttl = prompt_user_for_input(
         "Default Ttl Seconds",
         prompt_ttl.to_string().as_str(),
