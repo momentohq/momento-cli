@@ -55,7 +55,7 @@ pub async fn signup_user(email: String, region: String) {
         cell_name, env
     );
     let hook = String::from(
-        "https://hooks.slack.com/services/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",
+        "https://hooks.slack.com/services/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",
     );
     let channel = "C031S3VLJF2";
 
