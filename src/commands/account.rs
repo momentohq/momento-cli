@@ -68,8 +68,8 @@ pub async fn signup_user(email: String, region: String) {
         "https://identity.{}-{}.prod.a.momentohq.com/token/create",
         cell_name, env
     );
-    let hook = String::from("https://hooks.slack.com/services/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");
-    let channel = "C0311D2ARNF";
+    let hook = String::from("https://hooks.slack.com/services/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");
+    let channel = "C031S3VLJF2";
 
     let body = &CreateTokenBody { email };
     let token_payload =&CreatePayload {
@@ -85,6 +85,17 @@ pub async fn signup_user(email: String, region: String) {
         Ok(resp) => {
             if resp.status().is_success() {
                 info!("Success! Your access token will be emailed to you shortly.");
+                match Client::new().post(hook).json(token_payload).send().await {
+                    Ok(resp) => {
+                        if resp.status().is_success() {
+                        }
+                        else {
+                            let response_json: CreateSlackResponse = resp.json().await.unwrap_or_default();
+                                panic!("Failed to send Slack request: {}", response_json.message)
+                        }
+                    }
+                    Err(e) => panic!("{}", e),
+                }
             } else {
                 let response_json: CreateTokenResponse = resp.json().await.unwrap_or_default();
                 match Client::new().post(hook).json(token_payload).send().await {
