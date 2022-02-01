@@ -4,14 +4,14 @@ use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Debug)]
-struct CreateTokenResponse {
-    message: String,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 struct CreateTokenBody {
     email: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct CreateTokenResponse {
+    message: String,
 }
 
 impl Default for CreateTokenResponse {
@@ -22,25 +22,11 @@ impl Default for CreateTokenResponse {
     }
 }
 
-#[derive(Deserialize, Debug)]
-struct CreateSlackResponse {
-    message: String,
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 struct CreatePayload {
     text: String,
-    channel: String
+    channel: String,
 }
-
-impl Default for CreateSlackResponse {
-    fn default() -> Self {
-        Self {
-            message: "Unable to send Slack request".to_string(),
-        }
-    }
-}
-
 
 pub async fn signup_user(email: String, region: String) {
     // This is a temporarily solution until we have figured out how we want to handle
@@ -68,63 +54,57 @@ pub async fn signup_user(email: String, region: String) {
         "https://identity.{}-{}.prod.a.momentohq.com/token/create",
         cell_name, env
     );
-    let hook = String::from("https://hooks.slack.com/services/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");
+    let hook = String::from(
+        "https://hooks.slack.com/services/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",
+    );
     let channel = "C031S3VLJF2";
 
     let body = &CreateTokenBody { email };
-    let token_payload =&CreatePayload {
-        text: String::from(format!("<!here> \n{} failed to create Momento token in {} :meow-sad-life:", body.email, region)),
-        channel: channel.to_string()
+    let token_payload = &CreatePayload {
+        text: String::from(format!(
+            "<!here> \n{} failed to create Momento token in {} :meow-sad-life:",
+            body.email, region
+        )),
+        channel: channel.to_string(),
     };
-    let sign_up_payload =&CreatePayload {
-        text: String::from(format!("<!here> \nSomething went wrong during sign up for {} in {} :meow-sad-life:", body.email, region)),
-        channel: channel.to_string()
+    let sign_up_payload = &CreatePayload {
+        text: String::from(format!(
+            "<!here> \nSomething went wrong during sign up for {} in {} :meow-sad-life:",
+            body.email, region
+        )),
+        channel: channel.to_string(),
     };
     info!("Signing up for Momento...");
     match Client::new().post(url).json(body).send().await {
         Ok(resp) => {
             if resp.status().is_success() {
                 info!("Success! Your access token will be emailed to you shortly.");
-                match Client::new().post(hook).json(token_payload).send().await {
-                    Ok(resp) => {
-                        if resp.status().is_success() {
-                        }
-                        else {
-                            let response_json: CreateSlackResponse = resp.json().await.unwrap_or_default();
-                                panic!("Failed to send Slack request: {}", response_json.message)
-                        }
-                    }
-                    Err(e) => panic!("{}", e),
-                }
             } else {
-                let response_json: CreateTokenResponse = resp.json().await.unwrap_or_default();
                 match Client::new().post(hook).json(token_payload).send().await {
-                    Ok(resp) => {
-                        if resp.status().is_success() {
-                        }
-                        else {
-                            let response_json: CreateSlackResponse = resp.json().await.unwrap_or_default();
-                                panic!("Failed to send Slack request: {}", response_json.message)
-                        }
+                    Ok(_resp) => {}
+                    Err(_e) => {
+                        // Displays this error message when both the lambda and sending Slack notification request fail
+                        panic!("Sorry, we were unable to create a token for you, please contact support@momentohq.com to get your token")
                     }
-                    Err(e) => panic!("{}", e),
                 }
-                panic!("Failed to create Momento token: {}", response_json.message)
+                let response_json: CreateTokenResponse = resp.json().await.unwrap_or_default();
+                // Displays this error message only when the lambda fails
+                panic!(
+                    "Sorry, we were unable to create Momento token: {}",
+                    response_json.message
+                )
             }
         }
-        Err(e) => {
-                match Client::new().post(hook).json(sign_up_payload).send().await {
-                    Ok(resp) => {
-                        if resp.status().is_success() {
-                        }
-                        else {
-                            let response_json: CreateSlackResponse = resp.json().await.unwrap_or_default();
-                                panic!("Failed to send Slack request: {}", response_json.message)
-                        }
-                    }
-                    Err(e) => panic!("{}", e),
+        Err(_e) => {
+            match Client::new().post(hook).json(sign_up_payload).send().await {
+                Ok(_resp) => {}
+                Err(_e) => {
+                    // Displays this error message when sign up request and sending Slack notification request fail
+                    panic!("Sorry, we were unable to sign you up, please contact support@momentohq.com to complete your signup")
                 }
-            panic!("{}", e)
-        },
+            }
+            // Displays this error message only when sign up request fails
+            panic!("Sorry, we were unable to sign you up, please contact support@momentohq.com to complete your signup")
+        }
     };
 }
