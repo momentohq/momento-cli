@@ -22,6 +22,26 @@ impl Default for CreateTokenResponse {
     }
 }
 
+#[derive(Deserialize, Debug)]
+struct CreateSlackResponse {
+    message: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct CreatePayload {
+    text: String,
+    channel: String
+}
+
+impl Default for CreateSlackResponse {
+    fn default() -> Self {
+        Self {
+            message: "Unable to send Slack request".to_string(),
+        }
+    }
+}
+
+
 pub async fn signup_user(email: String, region: String) {
     // This is a temporarily solution until we have figured out how we want to handle
     // auth across multiple cells. This solution will not work once we have more than one
@@ -48,18 +68,52 @@ pub async fn signup_user(email: String, region: String) {
         "https://identity.{}-{}.prod.a.momentohq.com/token/create",
         cell_name, env
     );
+    let hook = String::from("https://hooks.slack.com/services/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");
+    let channel = "C0311D2ARNF";
 
     let body = &CreateTokenBody { email };
+    let token_payload =&CreatePayload {
+        text: String::from(format!("<!here> \n{} failed to create Momento token in {} :meow-sad-life:", body.email, region)),
+        channel: channel.to_string()
+    };
+    let sign_up_payload =&CreatePayload {
+        text: String::from(format!("<!here> \nSomething went wrong during sign up for {} in {} :meow-sad-life:", body.email, region)),
+        channel: channel.to_string()
+    };
     info!("Signing up for Momento...");
     match Client::new().post(url).json(body).send().await {
         Ok(resp) => {
             if resp.status().is_success() {
-                info!("Success! Your access token will be emailed to you shortly.")
+                info!("Success! Your access token will be emailed to you shortly.");
             } else {
                 let response_json: CreateTokenResponse = resp.json().await.unwrap_or_default();
+                match Client::new().post(hook).json(token_payload).send().await {
+                    Ok(resp) => {
+                        if resp.status().is_success() {
+                        }
+                        else {
+                            let response_json: CreateSlackResponse = resp.json().await.unwrap_or_default();
+                                panic!("Failed to send Slack request: {}", response_json.message)
+                        }
+                    }
+                    Err(e) => panic!("{}", e),
+                }
                 panic!("Failed to create Momento token: {}", response_json.message)
             }
         }
-        Err(e) => panic!("{}", e),
+        Err(e) => {
+                match Client::new().post(hook).json(sign_up_payload).send().await {
+                    Ok(resp) => {
+                        if resp.status().is_success() {
+                        }
+                        else {
+                            let response_json: CreateSlackResponse = resp.json().await.unwrap_or_default();
+                                panic!("Failed to send Slack request: {}", response_json.message)
+                        }
+                    }
+                    Err(e) => panic!("{}", e),
+                }
+            panic!("{}", e)
+        },
     };
 }
