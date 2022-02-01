@@ -104,7 +104,7 @@ pub async fn signup_user(email: String, region: String) {
                 }
             }
             // Displays this error message only when sign up request fails
-            panic!("Sorry, we were unable to sign you up, please contact support@momentohq.com to complete your signup")
+            panic!("Sorry, we were unable to sign you up")
         }
     };
 }
