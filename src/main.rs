@@ -1,15 +1,17 @@
 use std::panic;
 
+use clap::StructOpt;
 use env_logger::Env;
+use error::CliError;
 use log::error;
-use structopt::StructOpt;
 use utils::user::get_creds_and_config;
 
 pub mod commands;
 mod config;
+pub mod error;
 mod utils;
 
-#[derive(StructOpt)]
+#[derive(Debug, StructOpt)]
 #[structopt(about = "CLI for Momento APIs")]
 struct Momento {
     #[structopt(name = "verbose", global = true, long)]
@@ -19,7 +21,7 @@ struct Momento {
     command: Subcommand,
 }
 
-#[derive(StructOpt)]
+#[derive(Debug, StructOpt)]
 enum Subcommand {
     #[structopt(about = "Cache Operations")]
     Cache {
@@ -38,7 +40,7 @@ enum Subcommand {
     },
 }
 
-#[derive(StructOpt)]
+#[derive(Debug, StructOpt)]
 enum AccountCommand {
     #[structopt(about = "Sign up for Momento")]
     Signup {
@@ -49,7 +51,7 @@ enum AccountCommand {
     },
 }
 
-#[derive(StructOpt)]
+#[derive(Debug, StructOpt)]
 enum CacheCommand {
     #[structopt(about = "Creates a Momento Cache")]
     Create {
@@ -68,7 +70,7 @@ enum CacheCommand {
         value: String,
         #[structopt(
             long = "ttl",
-            short = "t",
+            short = 't',
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
         ttl_seconds: Option<u32>,
@@ -93,12 +95,7 @@ enum CacheCommand {
     List {},
 }
 
-#[tokio::main]
-async fn main() {
-    panic::set_hook(Box::new(move |info| {
-        error!("{}", info);
-    }));
-
+async fn entrypoint() -> Result<(), CliError> {
     let args = Momento::from_args();
 
     let log_level = if args.verbose { "debug" } else { "info" };
@@ -113,8 +110,8 @@ async fn main() {
     match args.command {
         Subcommand::Cache { operation } => match operation {
             CacheCommand::Create { cache_name } => {
-                let (creds, _config) = get_creds_and_config().await;
-                commands::cache::cache::create_cache(cache_name, creds.token).await
+                let (creds, _config) = get_creds_and_config().await?;
+                commands::cache::cache::create_cache(cache_name, creds.token).await?
             }
             CacheCommand::Set {
                 cache_name,
@@ -122,7 +119,7 @@ async fn main() {
                 value,
                 ttl_seconds,
             } => {
-                let (creds, config) = get_creds_and_config().await;
+                let (creds, config) = get_creds_and_config().await?;
                 commands::cache::cache::set(
                     cache_name.unwrap_or(config.cache),
                     creds.token,
@@ -130,20 +127,20 @@ async fn main() {
                     value,
                     ttl_seconds.unwrap_or(config.ttl),
                 )
-                .await
+                .await?
             }
             CacheCommand::Get { cache_name, key } => {
-                let (creds, config) = get_creds_and_config().await;
+                let (creds, config) = get_creds_and_config().await?;
                 commands::cache::cache::get(cache_name.unwrap_or(config.cache), creds.token, key)
-                    .await;
+                    .await?;
             }
             CacheCommand::Delete { cache_name } => {
-                let (creds, _config) = get_creds_and_config().await;
-                commands::cache::cache::delete_cache(cache_name, creds.token).await
+                let (creds, _config) = get_creds_and_config().await?;
+                commands::cache::cache::delete_cache(cache_name, creds.token).await?
             }
             CacheCommand::List {} => {
-                let (creds, _config) = get_creds_and_config().await;
-                commands::cache::cache::list_caches(creds.token).await
+                let (creds, _config) = get_creds_and_config().await?;
+                commands::cache::cache::list_caches(creds.token).await?
             }
         },
         Subcommand::Configure { profile } => {
@@ -151,8 +148,20 @@ async fn main() {
         }
         Subcommand::Account { operation } => match operation {
             AccountCommand::Signup { email, region } => {
-                commands::account::signup_user(email, region).await;
+                commands::account::signup_user(email, region).await?;
             }
         },
+    }
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    panic::set_hook(Box::new(move |info| {
+        error!("{}", info);
+    }));
+
+    if let Err(e) = entrypoint().await {
+        eprintln!("{}", e)
     }
 }
