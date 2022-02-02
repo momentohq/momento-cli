@@ -165,5 +165,4 @@ async fn main() {
         eprintln!("{}", e);
         exit(1)
     }
-    exit(0)
 }
