@@ -8,6 +8,7 @@ use tokio::{
 
 use crate::{
     config::{Config, Credentials, Profiles},
+    error::CliError,
     utils::{
         file::{
             create_file_if_not_exists, get_config_file_path, get_credentials_file_path,
@@ -18,9 +19,9 @@ use crate::{
     },
 };
 
-pub async fn configure_momento(profile_name: &str) {
-    let credentials = prompt_user_for_creds(profile_name).await;
-    let config = prompt_user_for_config(profile_name).await;
+pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
+    let credentials = prompt_user_for_creds(profile_name).await?;
+    let config = prompt_user_for_config(profile_name).await?;
 
     let momento_dir = get_momento_dir();
     let credentials_file_path = get_credentials_file_path();
@@ -37,25 +38,26 @@ pub async fn configure_momento(profile_name: &str) {
     set_file_readonly(&credentials_file_path).await.unwrap();
 
     add_profile(profile_name, config, &config_file_path).await;
+    Ok(())
 }
 
-async fn prompt_user_for_creds(profile_name: &str) -> Credentials {
+async fn prompt_user_for_creds(profile_name: &str) -> Result<Credentials, CliError> {
     let current_credentials = get_creds_for_profile(profile_name)
         .await
         .unwrap_or_default();
 
-    let token = prompt_user_for_input("Token", current_credentials.token.as_str(), true).await;
+    let token = prompt_user_for_input("Token", current_credentials.token.as_str(), true).await?;
 
-    return Credentials { token };
+    return Ok(Credentials { token });
 }
 
-async fn prompt_user_for_config(profile_name: &str) -> Config {
+async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> {
     let current_config = get_config_for_profile(profile_name)
         .await
         .unwrap_or_default();
 
     let cache_name =
-        prompt_user_for_input("Default Cache", current_config.cache.as_str(), false).await;
+        prompt_user_for_input("Default Cache", current_config.cache.as_str(), false).await?;
     let prompt_ttl = if current_config.ttl == 0 {
         600
     } else {
@@ -67,13 +69,14 @@ async fn prompt_user_for_config(profile_name: &str) -> Config {
         false,
     )
     .await
+    .unwrap()
     .parse::<u32>()
     .unwrap();
 
-    return Config {
+    return Ok(Config {
         cache: cache_name,
         ttl,
-    };
+    });
 }
 
 async fn add_profile<T>(profile_name: &str, config: T, config_file_path: &str)
@@ -92,7 +95,11 @@ where
     write_to_existing_file(config_file_path, &new_profile_string).await;
 }
 
-async fn prompt_user_for_input(prompt: &str, default_value: &str, is_secret: bool) -> String {
+async fn prompt_user_for_input(
+    prompt: &str,
+    default_value: &str,
+    is_secret: bool,
+) -> Result<String, CliError> {
     let mut stdout = io::stdout();
 
     let formatted_prompt = if default_value.is_empty() {
@@ -105,23 +112,35 @@ async fn prompt_user_for_input(prompt: &str, default_value: &str, is_secret: boo
 
     match stdout.write(formatted_prompt.as_bytes()).await {
         Ok(_) => debug!("wrote prompt '{}' to stdout", formatted_prompt),
-        Err(e) => panic!("failed to write prompt to stdout: {}", e),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to write prompt to stdout: {}", e),
+            })
+        }
     };
     match stdout.flush().await {
         Ok(_) => debug!("flushed stdout"),
-        Err(e) => panic!("failed to flush stdout: {}", e),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to flush stdout: {}", e),
+            })
+        }
     };
     let stdin = io::stdin();
     let mut buffer = String::new();
     let mut reader = BufReader::new(stdin);
     match reader.read_line(&mut buffer).await {
         Ok(_) => debug!("read line from stdin"),
-        Err(e) => panic!("failed to read line from stdin: {}", e),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to read line from stdin: {}", e),
+            })
+        }
     };
 
     let input = buffer.as_str().trim_end().to_string();
     if input.is_empty() {
-        return default_value.to_string();
+        return Ok(default_value.to_string());
     }
-    return input;
+    return Ok(input);
 }

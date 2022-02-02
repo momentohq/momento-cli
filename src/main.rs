@@ -96,7 +96,7 @@ enum CacheCommand {
 }
 
 async fn entrypoint() -> Result<(), CliError> {
-    let args = Momento::from_args();
+    let args = Momento::parse();
 
     let log_level = if args.verbose { "debug" } else { "info" };
 
@@ -144,7 +144,7 @@ async fn entrypoint() -> Result<(), CliError> {
             }
         },
         Subcommand::Configure { profile } => {
-            commands::configure::configure::configure_momento(&profile).await
+            commands::configure::configure::configure_momento(&profile).await?
         }
         Subcommand::Account { operation } => match operation {
             AccountCommand::Signup { email, region } => {
