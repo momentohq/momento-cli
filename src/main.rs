@@ -1,4 +1,4 @@
-use std::panic;
+use std::{panic, process::exit};
 
 use clap::StructOpt;
 use env_logger::Env;
@@ -162,6 +162,8 @@ async fn main() {
     }));
 
     if let Err(e) = entrypoint().await {
-        eprintln!("{}", e)
+        eprintln!("{}", e);
+        exit(1)
     }
+    exit(0)
 }
