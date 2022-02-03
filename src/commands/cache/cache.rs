@@ -1,22 +1,11 @@
 use log::info;
-use momento::{cache::CacheClient, sdk::Momento};
+use momento::simple_cache_client::SimpleCacheClient;
 
 use crate::error::CliError;
 
-async fn get_momento_instance(auth_token: String) -> Result<Momento, CliError> {
-    match Momento::new(auth_token).await {
+async fn get_momento_instance(auth_token: String) -> Result<SimpleCacheClient, CliError> {
+    match SimpleCacheClient::new(auth_token, 10).await {
         Ok(m) => Ok(m),
-        Err(e) => Err(CliError { msg: e.to_string() }),
-    }
-}
-
-async fn get_momento_cache(
-    cache_name: String,
-    auth_token: String,
-) -> Result<CacheClient, CliError> {
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento.get_cache(&cache_name, 100).await {
-        Ok(c) => Ok(c),
         Err(e) => Err(CliError { msg: e.to_string() }),
     }
 }
@@ -63,8 +52,8 @@ pub async fn set(
     ttl_seconds: u32,
 ) -> Result<(), CliError> {
     info!("setting key: {} into cache: {}", key, cache_name);
-    let cache = get_momento_cache(cache_name, auth_token).await?;
-    match cache.set(key, value, Some(ttl_seconds)).await {
+    let mut cache = get_momento_instance(auth_token).await?;
+    match cache.set(cache_name, key, value, Some(ttl_seconds)).await {
         Ok(_) => info!("set success"),
         Err(e) => return Err(CliError { msg: e.to_string() }),
     };
@@ -73,9 +62,8 @@ pub async fn set(
 
 pub async fn get(cache_name: String, auth_token: String, key: String) -> Result<(), CliError> {
     info!("getting key: {} from cache: {}", key, cache_name);
-    let cache = get_momento_cache(cache_name, auth_token).await?;
-
-    match cache.get(key).await {
+    let mut cache = get_momento_instance(auth_token).await?;
+    match cache.get(cache_name, key).await {
         Ok(r) => {
             if matches!(
                 r.result,
