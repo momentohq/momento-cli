@@ -28,8 +28,8 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
     let config_file_path = get_config_file_path();
 
     fs::create_dir_all(momento_dir).await.unwrap();
-    create_file_if_not_exists(&credentials_file_path).await;
-    create_file_if_not_exists(&config_file_path).await;
+    create_file_if_not_exists(&credentials_file_path).await?;
+    create_file_if_not_exists(&config_file_path).await?;
 
     // explicitly allowing read/write access to the credentials file
     set_file_read_write(&credentials_file_path).await.unwrap();
@@ -138,7 +138,7 @@ async fn prompt_user_for_input(
         }
     };
 
-    let input = buffer.as_str().trim_end().to_string();
+    let input = buffer.as_str().trim().to_string();
     if input.is_empty() {
         return Ok(default_value.to_string());
     }
