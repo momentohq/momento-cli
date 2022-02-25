@@ -1,4 +1,4 @@
-_他言語バージョンの README もあります_: [English](README.md)
+_他言語バージョンもあります_: [English](README.md)
 
 <br>
 
