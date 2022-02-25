@@ -1,3 +1,7 @@
+_他言語バージョンの README もあります_: [English](README.md)
+
+<br>
+
 ## 必要条件
 
 - MacOS もしくは Linux

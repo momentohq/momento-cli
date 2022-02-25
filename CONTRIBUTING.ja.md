@@ -1,16 +1,22 @@
 ### 開始方法
 
-1. git submodule init
-1. git submodule sync
-1. git submodule update --recursive --remote
+```
+git submodule init
+git submodule sync
+git submodule update --recursive --remote
+```
 
 ## ビルド
 
-1. cargo build
+```
+cargo build
+```
 
 ## テスト
 
-1. cargo test
+```
+cargo test
+```
 
 ## デプロイ
 
