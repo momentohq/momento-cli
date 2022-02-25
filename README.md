@@ -1,4 +1,6 @@
-Read this in other languages: [日本語](README.ja.md)
+# Momento CLI
+
+_Read this in other languages_: [日本語](README.ja.md)
 
 ## Prerequisites
 
