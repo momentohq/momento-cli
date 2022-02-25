@@ -12,6 +12,8 @@ brew install momento-cli
 
 ## サインアップ方法
 
+現在の利用可能 AWS リージョン： `us-east-1` もしくは `us-west-2`
+
 ```
 momento account signup --region <ご希望のリージョン> --email <メールアドレス>
 ```

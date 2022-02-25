@@ -16,6 +16,8 @@ brew install momento-cli
 
 ## Sign up
 
+Currently supported AWS regions: `us-east-1` or `us-west-2`
+
 ```
 momento account signup --region <TYPE_DESIRED_REGION> --email <TYPE_YOUR_EMAIL_HERE>
 ```
