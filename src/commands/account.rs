@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::CliError;
 
+const SIGNUP_ENDPOINT: &str = "https://identity.prod.a.momentohq.com";
+
 #[derive(Deserialize, Debug)]
 struct CreateTokenResponse {
     message: String,
@@ -23,8 +25,8 @@ impl Default for CreateTokenResponse {
     }
 }
 
-pub async fn signup_user(email: String, region: String) -> Result<(), CliError> {
-    let url = "https://identity.prod.a.momentohq.com/token/create";
+pub async fn signup_user(email: String, region: String, signup_url: Option<String>) -> Result<(), CliError> {
+    let url = format!("{}/token/create", signup_url.unwrap_or(String::from(SIGNUP_ENDPOINT)));
 
     let body = &CreateTokenBody { email , region};
     info!("Signing up for Momento...");
