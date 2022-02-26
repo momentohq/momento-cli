@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -14,6 +12,7 @@ struct CreateTokenResponse {
 #[derive(Serialize, Deserialize, Debug)]
 struct CreateTokenBody {
     email: String,
+    region: String,
 }
 
 impl Default for CreateTokenResponse {
@@ -25,35 +24,9 @@ impl Default for CreateTokenResponse {
 }
 
 pub async fn signup_user(email: String, region: String) -> Result<(), CliError> {
-    // This is a temporarily solution until we have figured out how we want to handle
-    // auth across multiple cells. This solution will not work once we have more than one
-    // cell per region. Our cellular design supports this, and we most definitely will
-    // run into this issue in the future.
-    let region_to_cell_name_map: HashMap<&str, &str> = [
-        ("us-west-2", "cell-external-beta"),
-        ("us-east-1", "cell-us-east-1"),
-    ]
-    .iter()
-    .cloned()
-    .collect();
-    if !region_to_cell_name_map.contains_key(region.as_str()) {
-        return Err(CliError {
-            msg: format!(
-                "Unsupported region passed. Supported regions are {:#?}",
-                region_to_cell_name_map.keys()
-            ),
-        });
-    }
-    // All of our production envs are hardcoded to 1 as of right now. This is something
-    // that we also might have to revisit if it ever changes.
-    let env = "1";
-    let cell_name = region_to_cell_name_map.get(region.as_str()).unwrap();
-    let url = format!(
-        "https://identity.{}-{}.prod.a.momentohq.com/token/create",
-        cell_name, env
-    );
+    let url = "https://identity.prod.a.momentohq.com/token/create";
 
-    let body = &CreateTokenBody { email };
+    let body = &CreateTokenBody { email , region};
     info!("Signing up for Momento...");
     match Client::new().post(url).json(body).send().await {
         Ok(resp) => {
