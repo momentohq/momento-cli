@@ -4,7 +4,7 @@ use std::path::Path;
 use home::home_dir;
 use log::debug;
 use serde::de;
-use tokio::fs::{self, File};
+use tokio::{fs::{self, File}, io::{self, AsyncWriteExt, BufReader, AsyncBufReadExt}};
 
 use crate::error::CliError;
 
@@ -107,4 +107,54 @@ pub async fn set_file_read_write(path: &str) -> Result<(), CliError> {
             })
         }
     };
+}
+
+pub async fn prompt_user_for_input(
+    prompt: &str,
+    default_value: &str,
+    is_secret: bool,
+) -> Result<String, CliError> {
+    let mut stdout = io::stdout();
+
+    let formatted_prompt = if default_value.is_empty() {
+        format!("{}: ", prompt)
+    } else if is_secret {
+        format!("{} [****]: ", prompt)
+    } else {
+        format!("{} [{}]: ", prompt, default_value)
+    };
+
+    match stdout.write(formatted_prompt.as_bytes()).await {
+        Ok(_) => debug!("wrote prompt '{}' to stdout", formatted_prompt),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to write prompt to stdout: {}", e),
+            })
+        }
+    };
+    match stdout.flush().await {
+        Ok(_) => debug!("flushed stdout"),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to flush stdout: {}", e),
+            })
+        }
+    };
+    let stdin = io::stdin();
+    let mut buffer = String::new();
+    let mut reader = BufReader::new(stdin);
+    match reader.read_line(&mut buffer).await {
+        Ok(_) => debug!("read line from stdin"),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to read line from stdin: {}", e),
+            })
+        }
+    };
+
+    let input = buffer.as_str().trim().to_string();
+    if input.is_empty() {
+        return Ok(default_value.to_string());
+    }
+    return Ok(input);
 }
