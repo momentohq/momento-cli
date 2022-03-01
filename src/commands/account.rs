@@ -1,3 +1,4 @@
+use std::env;
 use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -25,8 +26,13 @@ impl Default for CreateTokenResponse {
     }
 }
 
-pub async fn signup_user(email: String, region: String, signup_url: Option<String>) -> Result<(), CliError> {
-    let url = format!("{}/token/create", signup_url.unwrap_or(String::from(SIGNUP_ENDPOINT)));
+fn get_signup_endpoint() -> String{
+    env::var("MOMENTO_SIGNUP_ENDPOINT").unwrap_or(String::from(SIGNUP_ENDPOINT))
+}
+
+pub async fn signup_user(email: String, region: String) -> Result<(), CliError> {
+    let endpoint = get_signup_endpoint();
+    let url = format!("{}/token/create", endpoint);
 
     let body = &CreateTokenBody { email , region};
     info!("Signing up for Momento...");
