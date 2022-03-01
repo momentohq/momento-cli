@@ -4,7 +4,10 @@ use std::path::Path;
 use home::home_dir;
 use log::debug;
 use serde::de;
-use tokio::{fs::{self, File}, io::{self, AsyncWriteExt, BufReader, AsyncBufReadExt}};
+use tokio::{
+    fs::{self, File},
+    io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
+};
 
 use crate::error::CliError;
 

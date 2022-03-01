@@ -1,21 +1,20 @@
 use log::debug;
 use serde::{de::DeserializeOwned, Serialize};
 
-use tokio::{
-    fs,
-};
+use tokio::fs;
 
 use crate::{
+    commands::cache::cache::create_cache,
     config::{Config, Credentials, Profiles},
     error::CliError,
     utils::{
         file::{
             create_file_if_not_exists, get_config_file_path, get_credentials_file_path,
-            get_momento_dir, read_toml_file, set_file_read_write, set_file_readonly,
-            write_to_existing_file, prompt_user_for_input,
+            get_momento_dir, prompt_user_for_input, read_toml_file, set_file_read_write,
+            set_file_readonly, write_to_existing_file,
         },
         user::{get_config_for_profile, get_creds_for_profile},
-    }, commands::cache::cache::create_cache,
+    },
 };
 
 pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
@@ -26,13 +25,13 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
     let credentials_file_path = get_credentials_file_path();
     let config_file_path = get_config_file_path();
 
-    match fs::create_dir_all(momento_dir).await{
+    match fs::create_dir_all(momento_dir).await {
         Ok(_) => (),
         Err(e) => {
             return Err(CliError {
                 msg: format!("failed to create directory: {}", e),
             })
-        },
+        }
     };
     create_file_if_not_exists(&credentials_file_path).await?;
     create_file_if_not_exists(&config_file_path).await?;
@@ -79,13 +78,15 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
         prompt_ttl.to_string().as_str(),
         false,
     )
-    .await?.parse::<u32>(){
+    .await?
+    .parse::<u32>()
+    {
         Ok(ttl) => ttl,
         Err(e) => {
             return Err(CliError {
                 msg: format!("failed to parse ttl: {}", e),
             })
-        },
+        }
     };
 
     return Ok(Config {
@@ -94,7 +95,11 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     });
 }
 
-async fn add_profile<T>(profile_name: &str, config: T, config_file_path: &str) -> Result<(), CliError>
+async fn add_profile<T>(
+    profile_name: &str,
+    config: T,
+    config_file_path: &str,
+) -> Result<(), CliError>
 where
     T: DeserializeOwned + Default + Serialize,
 {
