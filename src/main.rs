@@ -46,7 +46,7 @@ enum AccountCommand {
     Signup {
         #[structopt(name = "email", long, short)]
         email: String,
-        #[structopt(name = "region", long, short, default_value = "us-west-2", possible_values = &["us-west-2", "us-east-1"])]
+        #[structopt(name = "region", long, short, default_value = "us-west-2")]
         region: String,
     },
 }
