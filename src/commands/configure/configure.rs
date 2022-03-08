@@ -1,19 +1,18 @@
 use log::debug;
-use serde::{de::DeserializeOwned, Serialize};
 
+use configparser::ini::Ini;
 use tokio::{
     fs,
     io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
 };
 
 use crate::{
-    config::{Config, Credentials, Profiles},
+    config::{Config, Credentials},
     error::CliError,
     utils::{
         file::{
             create_file_if_not_exists, get_config_file_path, get_credentials_file_path,
-            get_momento_dir, read_toml_file, set_file_read_write, set_file_readonly,
-            write_to_existing_file,
+            get_momento_dir, set_file_read_write, set_file_readonly,
         },
         user::{get_config_for_profile, get_creds_for_profile},
     },
@@ -28,16 +27,41 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
     let config_file_path = get_config_file_path();
 
     fs::create_dir_all(momento_dir).await.unwrap();
-    create_file_if_not_exists(&credentials_file_path).await?;
-    create_file_if_not_exists(&config_file_path).await?;
+    match create_file_if_not_exists(&credentials_file_path, "credentials").await {
+        Ok(_) => {
+            // explicitly allowing read/write access to the credentials file
+            set_file_read_write(&credentials_file_path).await.unwrap();
+            add_profile_to_credentials(profile_name, credentials, &credentials_file_path).await;
+            // explicitly revoking that access
+            set_file_readonly(&credentials_file_path).await.unwrap();
 
-    // explicitly allowing read/write access to the credentials file
-    set_file_read_write(&credentials_file_path).await.unwrap();
-    add_profile(profile_name, credentials, &credentials_file_path).await;
-    // explicitly revoking that access
-    set_file_readonly(&credentials_file_path).await.unwrap();
-
-    add_profile(profile_name, config, &config_file_path).await;
+            match create_file_if_not_exists(&config_file_path, "config").await {
+                Ok(_) => {
+                    add_profile_to_config(profile_name, config, &config_file_path).await;
+                }
+                Err(e) => {
+                    return Err(CliError {
+                        msg: format!("{}", e),
+                    });
+                }
+            }
+        }
+        Err(e) => {
+            match create_file_if_not_exists(&config_file_path, "config").await {
+                Ok(_) => {
+                    add_profile_to_config(profile_name, config, &config_file_path).await;
+                }
+                Err(_) => {
+                    return Err(CliError {
+                        msg: format!("Existing credentials and config files detected.\nPlease edit $HOME/.momento/credentials and $HOME/.momento/config directly to add or modify profiles"),
+                    });
+                }
+            }
+            return Err(CliError {
+                msg: format!("{}", e),
+            });
+        }
+    };
     Ok(())
 }
 
@@ -79,20 +103,25 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     });
 }
 
-async fn add_profile<T>(profile_name: &str, config: T, config_file_path: &str)
-where
-    T: DeserializeOwned + Default + Serialize,
-{
-    let mut toml = match read_toml_file::<Profiles<T>>(config_file_path).await {
-        Ok(t) => t,
-        Err(_) => {
-            debug!("config file is invalid, most likely we are creating it for the first time. Overwriting it with new profile");
-            Profiles::<T>::default()
-        }
-    };
-    toml.profile.insert(profile_name.to_string(), config);
-    let new_profile_string = toml::to_string(&toml).unwrap();
-    write_to_existing_file(config_file_path, &new_profile_string).await;
+async fn add_profile_to_credentials(
+    profile_name: &str,
+    credentials: Credentials,
+    credentials_file_path: &str,
+) {
+    let mut ini_map = Ini::new_cs();
+    // Empty default_section for Ini instance so that "default" will be used as a section
+    ini_map.set_default_section("");
+    ini_map.set(profile_name, "token", Some(credentials.token));
+    ini_map.write(credentials_file_path);
+}
+
+async fn add_profile_to_config(profile_name: &str, config: Config, config_file_path: &str) {
+    let mut ini_map = Ini::new_cs();
+    // Empty default_section for Ini instance so that "default" will be used as a section
+    ini_map.set_default_section("");
+    ini_map.set(profile_name, "cache", Some(config.cache));
+    ini_map.set(profile_name, "ttl", Some(config.ttl.to_string()));
+    ini_map.write(config_file_path);
 }
 
 async fn prompt_user_for_input(
