@@ -3,7 +3,7 @@ use std::{panic, process::exit};
 use clap::StructOpt;
 use env_logger::Env;
 use error::CliError;
-use log::error;
+use log::{error, info};
 use utils::user::get_creds_and_config;
 
 pub mod commands;
@@ -125,7 +125,8 @@ async fn entrypoint() -> Result<(), CliError> {
                 profile,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache::create_cache(cache_name, creds.token).await?
+                commands::cache::cache::create_cache(cache_name.clone(), creds.token).await?;
+                info!("created cache {cache_name}")
             }
             CacheCommand::Set {
                 cache_name,
@@ -158,7 +159,8 @@ async fn entrypoint() -> Result<(), CliError> {
                 profile,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache::delete_cache(cache_name, creds.token).await?
+                commands::cache::cache::delete_cache(cache_name.clone(), creds.token).await?;
+                info!("deleted cache {}", cache_name)
             }
             CacheCommand::List { profile } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;

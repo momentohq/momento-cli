@@ -1,5 +1,3 @@
-use std::env;
-
 use crate::{
     config::{Config, Credentials},
     error::CliError,

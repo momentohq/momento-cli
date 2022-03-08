@@ -1,18 +1,15 @@
-use log::debug;
-
 use configparser::ini::Ini;
-use tokio::{
-    fs,
-    io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
-};
+use log::info;
+use tokio::fs;
 
 use crate::{
+    commands::cache::cache::create_cache,
     config::{Config, Credentials},
     error::CliError,
     utils::{
         file::{
             create_file_if_not_exists, get_config_file_path, get_credentials_file_path,
-            get_momento_dir, set_file_read_write, set_file_readonly,
+            get_momento_dir, prompt_user_for_input, set_file_read_write, set_file_readonly,
         },
         user::{get_config_for_profile, get_creds_for_profile},
     },
@@ -31,25 +28,46 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
         Ok(_) => {
             // explicitly allowing read/write access to the credentials file
             set_file_read_write(&credentials_file_path).await.unwrap();
-            add_profile_to_credentials(profile_name, credentials, &credentials_file_path).await;
+            add_profile_to_credentials(profile_name, credentials.clone(), &credentials_file_path)
+                .await;
             // explicitly revoking that access
             set_file_readonly(&credentials_file_path).await.unwrap();
 
             match create_file_if_not_exists(&config_file_path, "config").await {
                 Ok(_) => {
-                    add_profile_to_config(profile_name, config, &config_file_path).await;
+                    add_profile_to_config(profile_name, config.clone(), &config_file_path).await;
+                    match create_cache(config.cache, credentials.token).await {
+                        Ok(_) => info!("default cache successfully created"),
+                        Err(e) => {
+                            if e.msg.contains("already exists") {
+                                info!("default cache already exists");
+                                ()
+                            } else {
+                                return Err(e);
+                            }
+                        }
+                    };
                 }
                 Err(e) => {
-                    return Err(CliError {
-                        msg: format!("{}", e),
-                    });
+                    return Err(e);
                 }
             }
         }
         Err(e) => {
             match create_file_if_not_exists(&config_file_path, "config").await {
                 Ok(_) => {
-                    add_profile_to_config(profile_name, config, &config_file_path).await;
+                    add_profile_to_config(profile_name, config.clone(), &config_file_path).await;
+                    match create_cache(config.cache, credentials.token).await {
+                        Ok(_) => info!("default cache successfully created"),
+                        Err(e) => {
+                            if e.msg.contains("already exists") {
+                                info!("default cache already exists");
+                                ()
+                            } else {
+                                return Err(e);
+                            }
+                        }
+                    };
                 }
                 Err(_) => {
                     return Err(CliError {
@@ -57,9 +75,7 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
                     });
                 }
             }
-            return Err(CliError {
-                msg: format!("{}", e),
-            });
+            return Err(e);
         }
     };
     Ok(())
@@ -87,15 +103,21 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     } else {
         current_config.ttl
     };
-    let ttl = prompt_user_for_input(
+    let ttl = match prompt_user_for_input(
         "Default Ttl Seconds",
         prompt_ttl.to_string().as_str(),
         false,
     )
-    .await
-    .unwrap()
+    .await?
     .parse::<u32>()
-    .unwrap();
+    {
+        Ok(ttl) => ttl,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to parse ttl: {}", e),
+            })
+        }
+    };
 
     return Ok(Config {
         cache: cache_name,
@@ -112,7 +134,10 @@ async fn add_profile_to_credentials(
     // Empty default_section for Ini instance so that "default" will be used as a section
     ini_map.set_default_section("");
     ini_map.set(profile_name, "token", Some(credentials.token));
-    ini_map.write(credentials_file_path);
+    match ini_map.write(credentials_file_path) {
+        Ok(_) => {}
+        Err(_) => {}
+    }
 }
 
 async fn add_profile_to_config(profile_name: &str, config: Config, config_file_path: &str) {
@@ -121,55 +146,8 @@ async fn add_profile_to_config(profile_name: &str, config: Config, config_file_p
     ini_map.set_default_section("");
     ini_map.set(profile_name, "cache", Some(config.cache));
     ini_map.set(profile_name, "ttl", Some(config.ttl.to_string()));
-    ini_map.write(config_file_path);
-}
-
-async fn prompt_user_for_input(
-    prompt: &str,
-    default_value: &str,
-    is_secret: bool,
-) -> Result<String, CliError> {
-    let mut stdout = io::stdout();
-
-    let formatted_prompt = if default_value.is_empty() {
-        format!("{}: ", prompt)
-    } else if is_secret {
-        format!("{} [****]: ", prompt)
-    } else {
-        format!("{} [{}]: ", prompt, default_value)
-    };
-
-    match stdout.write(formatted_prompt.as_bytes()).await {
-        Ok(_) => debug!("wrote prompt '{}' to stdout", formatted_prompt),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to write prompt to stdout: {}", e),
-            })
-        }
-    };
-    match stdout.flush().await {
-        Ok(_) => debug!("flushed stdout"),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to flush stdout: {}", e),
-            })
-        }
-    };
-    let stdin = io::stdin();
-    let mut buffer = String::new();
-    let mut reader = BufReader::new(stdin);
-    match reader.read_line(&mut buffer).await {
-        Ok(_) => debug!("read line from stdin"),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to read line from stdin: {}", e),
-            })
-        }
-    };
-
-    let input = buffer.as_str().trim().to_string();
-    if input.is_empty() {
-        return Ok(default_value.to_string());
+    match ini_map.write(config_file_path) {
+        Ok(_) => {}
+        Err(_) => {}
     }
-    return Ok(input);
 }
