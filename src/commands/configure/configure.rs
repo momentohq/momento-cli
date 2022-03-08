@@ -1,19 +1,17 @@
-use log::debug;
+use log::{debug, info};
 use serde::{de::DeserializeOwned, Serialize};
 
-use tokio::{
-    fs,
-    io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
-};
+use tokio::fs;
 
 use crate::{
+    commands::cache::cache::create_cache,
     config::{Config, Credentials, Profiles},
     error::CliError,
     utils::{
         file::{
             create_file_if_not_exists, get_config_file_path, get_credentials_file_path,
-            get_momento_dir, read_toml_file, set_file_read_write, set_file_readonly,
-            write_to_existing_file,
+            get_momento_dir, prompt_user_for_input, read_toml_file, set_file_read_write,
+            set_file_readonly, write_to_existing_file,
         },
         user::{get_config_for_profile, get_creds_for_profile},
     },
@@ -27,17 +25,37 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
     let credentials_file_path = get_credentials_file_path();
     let config_file_path = get_config_file_path();
 
-    fs::create_dir_all(momento_dir).await.unwrap();
+    match fs::create_dir_all(momento_dir).await {
+        Ok(_) => (),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to create directory: {}", e),
+            })
+        }
+    };
     create_file_if_not_exists(&credentials_file_path).await?;
     create_file_if_not_exists(&config_file_path).await?;
 
     // explicitly allowing read/write access to the credentials file
-    set_file_read_write(&credentials_file_path).await.unwrap();
-    add_profile(profile_name, credentials, &credentials_file_path).await;
+    set_file_read_write(&credentials_file_path).await?;
+    add_profile(profile_name, credentials.clone(), &credentials_file_path).await?;
     // explicitly revoking that access
-    set_file_readonly(&credentials_file_path).await.unwrap();
+    set_file_readonly(&credentials_file_path).await?;
 
-    add_profile(profile_name, config, &config_file_path).await;
+    add_profile(profile_name, config.clone(), &config_file_path).await?;
+
+    match create_cache(config.cache, credentials.token).await {
+        Ok(_) => info!("default cache successfully created"),
+        Err(e) => {
+            if e.msg.contains("already exists") {
+                info!("default cache already exists");
+                ()
+            } else {
+                return Err(e);
+            }
+        }
+    };
+
     Ok(())
 }
 
@@ -63,15 +81,21 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     } else {
         current_config.ttl
     };
-    let ttl = prompt_user_for_input(
+    let ttl = match prompt_user_for_input(
         "Default Ttl Seconds",
         prompt_ttl.to_string().as_str(),
         false,
     )
-    .await
-    .unwrap()
+    .await?
     .parse::<u32>()
-    .unwrap();
+    {
+        Ok(ttl) => ttl,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to parse ttl: {}", e),
+            })
+        }
+    };
 
     return Ok(Config {
         cache: cache_name,
@@ -79,7 +103,11 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     });
 }
 
-async fn add_profile<T>(profile_name: &str, config: T, config_file_path: &str)
+async fn add_profile<T>(
+    profile_name: &str,
+    config: T,
+    config_file_path: &str,
+) -> Result<(), CliError>
 where
     T: DeserializeOwned + Default + Serialize,
 {
@@ -92,55 +120,6 @@ where
     };
     toml.profile.insert(profile_name.to_string(), config);
     let new_profile_string = toml::to_string(&toml).unwrap();
-    write_to_existing_file(config_file_path, &new_profile_string).await;
-}
-
-async fn prompt_user_for_input(
-    prompt: &str,
-    default_value: &str,
-    is_secret: bool,
-) -> Result<String, CliError> {
-    let mut stdout = io::stdout();
-
-    let formatted_prompt = if default_value.is_empty() {
-        format!("{}: ", prompt)
-    } else if is_secret {
-        format!("{} [****]: ", prompt)
-    } else {
-        format!("{} [{}]: ", prompt, default_value)
-    };
-
-    match stdout.write(formatted_prompt.as_bytes()).await {
-        Ok(_) => debug!("wrote prompt '{}' to stdout", formatted_prompt),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to write prompt to stdout: {}", e),
-            })
-        }
-    };
-    match stdout.flush().await {
-        Ok(_) => debug!("flushed stdout"),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to flush stdout: {}", e),
-            })
-        }
-    };
-    let stdin = io::stdin();
-    let mut buffer = String::new();
-    let mut reader = BufReader::new(stdin);
-    match reader.read_line(&mut buffer).await {
-        Ok(_) => debug!("read line from stdin"),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to read line from stdin: {}", e),
-            })
-        }
-    };
-
-    let input = buffer.as_str().trim().to_string();
-    if input.is_empty() {
-        return Ok(default_value.to_string());
-    }
-    return Ok(input);
+    write_to_existing_file(config_file_path, &new_profile_string).await?;
+    Ok(())
 }
