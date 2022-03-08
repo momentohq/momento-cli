@@ -44,14 +44,16 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
 
     add_profile(profile_name, config.clone(), &config_file_path).await?;
 
-    match create_cache(config.cache, credentials.token).await{
+    match create_cache(config.cache, credentials.token).await {
         Ok(_) => (),
-        Err(e) => if e.msg.contains("already exists") {
-            info!("default cache already exists");
-            ()
-        } else {
-            return Err(e)
-        },
+        Err(e) => {
+            if e.msg.contains("already exists") {
+                info!("default cache already exists");
+                ()
+            } else {
+                return Err(e);
+            }
+        }
     };
 
     Ok(())
