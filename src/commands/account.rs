@@ -5,7 +5,7 @@ use std::env;
 
 use crate::error::CliError;
 
-const SIGNUP_ENDPOINT: &str = "https://identity.prod.a.momentohq.com";
+const SIGNUP_ENDPOINT: &str = "https://signup.registry.prod.a.momentohq.com";
 
 #[derive(Deserialize, Debug)]
 struct CreateTokenResponse {
