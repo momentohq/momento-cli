@@ -3,7 +3,7 @@ use log::info;
 use tokio::fs;
 
 use crate::{
-    commands::cache::cache::create_cache,
+    commands::cache::cache_cli::create_cache,
     config::{Config, Credentials},
     error::CliError,
     utils::{
