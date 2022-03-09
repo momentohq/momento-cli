@@ -65,6 +65,4 @@ jobs:
       - name: Build
         run: cargo build --verbose
       - name: Run Integration Tests
-        run: |
-        chmod +x run_test_sequentially.sh
-        ./run_test_sequentially.sh
+        run: ./run_test_sequentially.sh
