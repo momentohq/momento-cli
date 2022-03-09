@@ -151,8 +151,12 @@ async fn entrypoint() -> Result<(), CliError> {
                 profile,
             } => {
                 let (creds, config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache_cli::get(cache_name.unwrap_or(config.cache), creds.token, key)
-                    .await?;
+                commands::cache::cache_cli::get(
+                    cache_name.unwrap_or(config.cache),
+                    creds.token,
+                    key,
+                )
+                .await?;
             }
             CacheCommand::Delete {
                 cache_name,

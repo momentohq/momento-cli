@@ -41,7 +41,6 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
                         Err(e) => {
                             if e.msg.contains("already exists") {
                                 info!("default cache already exists");
-                                ()
                             } else {
                                 return Err(e);
                             }
@@ -62,7 +61,6 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
                         Err(e) => {
                             if e.msg.contains("already exists") {
                                 info!("default cache already exists");
-                                ()
                             } else {
                                 return Err(e);
                             }
