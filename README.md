@@ -16,14 +16,16 @@ brew install momento-cli
 ```
 
 ## Sign up
-
-Currently supported AWS regions: `us-east-1` or `us-west-2`
-
+__NOTE:__ If you run into errors during signup, please ensure you have upgraded to the [latest version](https://github.com/momentohq/momento-cli/releases/latest) of our CLI. 
 ```
-momento account signup --region <TYPE_DESIRED_REGION> --email <TYPE_YOUR_EMAIL_HERE>
-```
+# default region is us-west-2
+momento account signup --email <TYPE_YOUR_EMAIL_HERE>
 
-This generates an access token and sends it to the email provided. This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager.
+# (optional) view help to see all available regions, and sign up for a specific region
+momento account signup --help
+momento account signup --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
+```
+Upon signing up, Momento sends a token to the email provided. This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager.
 
 ## Configure
 
@@ -31,7 +33,7 @@ This generates an access token and sends it to the email provided. This token un
 momento configure
 ```
 
-This will prompt you for your Momento Auth Token, and save it to be reused.
+This will prompt you for your Momento Auth Token, default cache name, default TTL, and save them to be reused as a part of your `default` profile.
 
 ## Use CLI
 
