@@ -16,6 +16,7 @@ brew install momento-cli
 ```
 
 ## Sign up
+__NOTE:__ If you run into errors during signup, please ensure you have upgraded to the [latest version](https://github.com/momentohq/momento-cli/releases/latest) of our CLI. 
 ```
 # default region is us-west-2
 momento account signup --email <TYPE_YOUR_EMAIL_HERE>
