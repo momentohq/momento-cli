@@ -16,6 +16,7 @@ cargo build
 
 ```
 cargo test
+cargo clippy --all-targets --all-features -- -D warnings
 ```
 
 ### Deploying

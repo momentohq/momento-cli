@@ -197,6 +197,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "configparser"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06821ea598337a8412cf47c5b71c3bc694a7f0aed188ac28b836fab164a2c202"
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -667,6 +673,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "colored",
+ "configparser",
  "env_logger",
  "home",
  "log",

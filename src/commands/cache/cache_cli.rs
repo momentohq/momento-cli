@@ -11,20 +11,20 @@ async fn get_momento_instance(auth_token: String) -> Result<SimpleCacheClient, C
 }
 
 pub async fn create_cache(cache_name: String, auth_token: String) -> Result<(), CliError> {
-    info!("create cache called");
+    info!("creating cache...");
     let mut momento = get_momento_instance(auth_token).await?;
     match momento.create_cache(&cache_name).await {
-        Ok(_) => info!("created cache {}", cache_name),
+        Ok(_) => (),
         Err(e) => return Err(CliError { msg: e.to_string() }),
     };
     Ok(())
 }
 
 pub async fn delete_cache(cache_name: String, auth_token: String) -> Result<(), CliError> {
-    info!("delete cache called");
+    info!("deleting cache...");
     let mut momento = get_momento_instance(auth_token).await?;
     match momento.delete_cache(&cache_name).await {
-        Ok(_) => info!("deleted cache {}", cache_name),
+        Ok(_) => (),
         Err(e) => return Err(CliError { msg: e.to_string() }),
     };
     Ok(())

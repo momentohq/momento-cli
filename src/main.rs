@@ -3,7 +3,7 @@ use std::{panic, process::exit};
 use clap::StructOpt;
 use env_logger::Env;
 use error::CliError;
-use log::error;
+use log::{error, info};
 use utils::user::get_creds_and_config;
 
 pub mod commands;
@@ -63,6 +63,8 @@ enum CacheCommand {
     Create {
         #[structopt(name = "name", long, short)]
         cache_name: String,
+        #[structopt(name = "profile", long, short, default_value = "default")]
+        profile: String,
     },
 
     #[structopt(about = "Stores a given item in cache")]
@@ -80,6 +82,8 @@ enum CacheCommand {
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
         ttl_seconds: Option<u32>,
+        #[structopt(name = "profile", long, short, default_value = "default")]
+        profile: String,
     },
 
     #[structopt(about = "Gets item from the cache")]
@@ -89,16 +93,23 @@ enum CacheCommand {
         // TODO: Add support for non-string key-value
         #[structopt(long, short)]
         key: String,
+        #[structopt(name = "profile", long, short, default_value = "default")]
+        profile: String,
     },
 
     #[structopt(about = "Deletes the cache")]
     Delete {
         #[structopt(name = "name", long, short)]
         cache_name: String,
+        #[structopt(name = "profile", long, short, default_value = "default")]
+        profile: String,
     },
 
     #[structopt(about = "Lists all momento caches")]
-    List {},
+    List {
+        #[structopt(name = "profile", long, short, default_value = "default")]
+        profile: String,
+    },
 }
 
 async fn entrypoint() -> Result<(), CliError> {
@@ -115,18 +126,23 @@ async fn entrypoint() -> Result<(), CliError> {
 
     match args.command {
         Subcommand::Cache { operation } => match operation {
-            CacheCommand::Create { cache_name } => {
-                let (creds, _config) = get_creds_and_config().await?;
-                commands::cache::cache::create_cache(cache_name, creds.token).await?
+            CacheCommand::Create {
+                cache_name,
+                profile,
+            } => {
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token).await?;
+                info!("created cache {cache_name}")
             }
             CacheCommand::Set {
                 cache_name,
                 key,
                 value,
                 ttl_seconds,
+                profile,
             } => {
-                let (creds, config) = get_creds_and_config().await?;
-                commands::cache::cache::set(
+                let (creds, config) = get_creds_and_config(&profile).await?;
+                commands::cache::cache_cli::set(
                     cache_name.unwrap_or(config.cache),
                     creds.token,
                     key,
@@ -135,22 +151,34 @@ async fn entrypoint() -> Result<(), CliError> {
                 )
                 .await?
             }
-            CacheCommand::Get { cache_name, key } => {
-                let (creds, config) = get_creds_and_config().await?;
-                commands::cache::cache::get(cache_name.unwrap_or(config.cache), creds.token, key)
-                    .await?;
+            CacheCommand::Get {
+                cache_name,
+                key,
+                profile,
+            } => {
+                let (creds, config) = get_creds_and_config(&profile).await?;
+                commands::cache::cache_cli::get(
+                    cache_name.unwrap_or(config.cache),
+                    creds.token,
+                    key,
+                )
+                .await?;
             }
-            CacheCommand::Delete { cache_name } => {
-                let (creds, _config) = get_creds_and_config().await?;
-                commands::cache::cache::delete_cache(cache_name, creds.token).await?
+            CacheCommand::Delete {
+                cache_name,
+                profile,
+            } => {
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token).await?;
+                info!("deleted cache {}", cache_name)
             }
-            CacheCommand::List {} => {
-                let (creds, _config) = get_creds_and_config().await?;
-                commands::cache::cache::list_caches(creds.token).await?
+            CacheCommand::List { profile } => {
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::cache::cache_cli::list_caches(creds.token).await?
             }
         },
         Subcommand::Configure { profile } => {
-            commands::configure::configure::configure_momento(&profile).await?
+            commands::configure::configure_cli::configure_momento(&profile).await?
         }
         Subcommand::Account { operation } => match operation {
             AccountCommand::Signup { email, region } => {
