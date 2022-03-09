@@ -5,11 +5,11 @@ use crate::{
 };
 
 pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config), CliError> {
-    let creds = match get_creds_for_profile(&profile).await {
+    let creds = match get_creds_for_profile(profile).await {
         Ok(c) => c,
         Err(e) => return Err(e),
     };
-    let config = match get_config_for_profile(&profile).await {
+    let config = match get_config_for_profile(profile).await {
         Ok(c) => c,
         Err(e) => return Err(e),
     };
