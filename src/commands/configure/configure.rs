@@ -88,7 +88,7 @@ async fn prompt_user_for_creds(profile_name: &str) -> Result<Credentials, CliErr
 
     let token = prompt_user_for_input("Token", current_credentials.token.as_str(), true).await?;
 
-    return Ok(Credentials { token });
+    Ok(Credentials { token })
 }
 
 async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> {
@@ -119,10 +119,10 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
         }
     };
 
-    return Ok(Config {
+    Ok(Config {
         cache: cache_name,
         ttl,
-    });
+    })
 }
 
 async fn add_profile_to_credentials(

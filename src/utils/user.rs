@@ -14,7 +14,7 @@ pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config)
         Err(e) => return Err(e),
     };
 
-    return Ok((creds, config));
+    Ok((creds, config))
 }
 
 pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliError> {
@@ -34,9 +34,9 @@ pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliErro
         }),
     };
 
-    return Ok(Credentials {
+    Ok(Credentials {
         token: creds_result,
-    });
+    })
 }
 
 pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
@@ -63,8 +63,8 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
         }),
     };
 
-    return Ok(Config {
+    Ok(Config {
         cache: cache_result,
         ttl: ttl_result.parse::<u32>().unwrap(),
-    });
+    })
 }
