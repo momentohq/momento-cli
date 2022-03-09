@@ -6,8 +6,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  TEST_AUTH_TOKEN_DEFAULT: ${{ secrets.TEST_AUTH_TOKEN }}
-  TEST_AUTH_TOKEN_WITH_PROFILE: ${{ secrets.TEST_AUTH_TOKEN }}
+  TEST_AUTH_TOKEN_DEFAULT: ${{ secrets.ALPHA_TEST_AUTH_TOKEN }}
+  TEST_AUTH_TOKEN_WITH_PROFILE: ${{ secrets.ALPHA_TEST_AUTH_TOKEN }}
   TEST_CACHE_DEFAULT: "cache-default"
   TEST_CACHE_WITH_PROFILE: "cache-with-profile"
   TEST_PROFILE: "test-profile"
@@ -35,6 +35,7 @@ jobs:
           [$TEST_PROFILE]
           token=$TEST_AUTH_TOKEN_WITH_PROFILE
           EOF
+          cat ~/.momento/credentials
       - name: Create config file
         run: |
           cat <<EOF > ~/.momento/config 
@@ -45,6 +46,7 @@ jobs:
           cache=$TEST_CACHE_WITH_PROFILE
           ttl=1000
           EOF
+          cat ~/.momento/config
 
   build:
     runs-on: ubuntu-latest
