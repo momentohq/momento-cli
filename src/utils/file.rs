@@ -23,18 +23,16 @@ pub fn get_config_file_path() -> String {
 
 pub fn get_momento_dir() -> String {
     let home = home_dir().unwrap();
-    return format!("{}/.momento", home.clone().display());
+    return format!("{}/.momento", home.display());
 }
 
 pub async fn read_file(path: &str) -> Result<Ini, CliError> {
     let mut config = Ini::new_cs();
     match config.load(path) {
-        Ok(_) => return Ok(config),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to read file: {}", e),
-            })
-        }
+        Ok(_) => Ok(config),
+        Err(e) => Err(CliError {
+            msg: format!("failed to read file: {}", e),
+        }),
     }
 }
 
@@ -44,7 +42,7 @@ pub async fn create_file_if_not_exists(path: &str, file_name: &str) -> Result<()
         match res {
             Ok(_) => {
                 debug!("created file {}", path);
-                return Ok(());
+                Ok(())
             }
             Err(e) => {
                 return Err(CliError {
@@ -72,13 +70,11 @@ pub async fn set_file_readonly(path: &str) -> Result<(), CliError> {
     .permissions();
     perms.set_mode(0o400);
     match fs::set_permissions(path, perms).await {
-        Ok(_) => return Ok(()),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to set file permissions {}", e),
-            })
-        }
-    };
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError {
+            msg: format!("failed to set file permissions {}", e),
+        }),
+    }
 }
 
 pub async fn set_file_read_write(path: &str) -> Result<(), CliError> {
@@ -93,13 +89,11 @@ pub async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     .permissions();
     perms.set_mode(0o600);
     match fs::set_permissions(path, perms).await {
-        Ok(_) => return Ok(()),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to set file permissions {}", e),
-            })
-        }
-    };
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError {
+            msg: format!("failed to set file permissions {}", e),
+        }),
+    }
 }
 
 pub async fn prompt_user_for_input(
@@ -149,5 +143,5 @@ pub async fn prompt_user_for_input(
     if input.is_empty() {
         return Ok(default_value.to_string());
     }
-    return Ok(input);
+    Ok(input)
 }

@@ -1,1 +1,1 @@
-pub mod configure;
+pub mod configure_cli;

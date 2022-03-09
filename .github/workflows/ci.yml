@@ -9,7 +9,7 @@ env:
 
 jobs:
   rustfmt:
-    name: rustfmt
+    name: Style & Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -19,6 +19,8 @@ jobs:
           token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - name: rustfmt
         run: cargo fmt -- --check
+      - name: Rigorous lint via Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
   build:
     runs-on: ubuntu-latest

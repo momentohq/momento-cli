@@ -1,8 +1,6 @@
 #[cfg(test)]
 mod tests {
 
-    use assert_cmd::Command;
-
     #[tokio::test]
     async fn configure_momento_named_profile() {
         // disabling these tests for now since they make an api call to create cache

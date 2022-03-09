@@ -3,7 +3,7 @@ use log::info;
 use tokio::fs;
 
 use crate::{
-    commands::cache::cache::create_cache,
+    commands::cache::cache_cli::create_cache,
     config::{Config, Credentials},
     error::CliError,
     utils::{
@@ -41,7 +41,6 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
                         Err(e) => {
                             if e.msg.contains("already exists") {
                                 info!("default cache already exists");
-                                ()
                             } else {
                                 return Err(e);
                             }
@@ -62,7 +61,6 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
                         Err(e) => {
                             if e.msg.contains("already exists") {
                                 info!("default cache already exists");
-                                ()
                             } else {
                                 return Err(e);
                             }
@@ -71,7 +69,7 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
                 }
                 Err(_) => {
                     return Err(CliError {
-                        msg: format!("Existing credentials and config files detected.\nPlease edit $HOME/.momento/credentials and $HOME/.momento/config directly to add or modify profiles"),
+                        msg: "Existing credentials and config files detected.\nPlease edit $HOME/.momento/credentials and $HOME/.momento/config directly to add or modify profiles".to_string(),
                     });
                 }
             }
@@ -88,7 +86,7 @@ async fn prompt_user_for_creds(profile_name: &str) -> Result<Credentials, CliErr
 
     let token = prompt_user_for_input("Token", current_credentials.token.as_str(), true).await?;
 
-    return Ok(Credentials { token });
+    Ok(Credentials { token })
 }
 
 async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> {
@@ -119,10 +117,10 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
         }
     };
 
-    return Ok(Config {
+    Ok(Config {
         cache: cache_name,
         ttl,
-    });
+    })
 }
 
 async fn add_profile_to_credentials(
@@ -134,10 +132,7 @@ async fn add_profile_to_credentials(
     // Empty default_section for Ini instance so that "default" will be used as a section
     ini_map.set_default_section("");
     ini_map.set(profile_name, "token", Some(credentials.token));
-    match ini_map.write(credentials_file_path) {
-        Ok(_) => {}
-        Err(_) => {}
-    }
+    write_config_file(ini_map, credentials_file_path)
 }
 
 async fn add_profile_to_config(profile_name: &str, config: Config, config_file_path: &str) {
@@ -146,8 +141,16 @@ async fn add_profile_to_config(profile_name: &str, config: Config, config_file_p
     ini_map.set_default_section("");
     ini_map.set(profile_name, "cache", Some(config.cache));
     ini_map.set(profile_name, "ttl", Some(config.ttl.to_string()));
+    write_config_file(ini_map, config_file_path)
+}
+
+fn write_config_file(ini_map: Ini, config_file_path: &str) {
     match ini_map.write(config_file_path) {
-        Ok(_) => {}
-        Err(_) => {}
+        Ok(_) => {
+            log::debug!("wrote config file successfully");
+        }
+        Err(e) => {
+            log::error!("failed to write config file: {:?}", e);
+        }
     }
 }
