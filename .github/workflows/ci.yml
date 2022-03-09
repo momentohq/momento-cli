@@ -65,8 +65,4 @@ jobs:
       - name: Build
         run: cargo build --verbose
       - name: Run Integration Tests
-      - run: cargo test --test create_cache_test --verbose
-      - run: cargo test --test set_test --verbose
-      - run: cargo test --test get_test --verbose
-      - run: cargo test --test list_cache_test --verbose
-      - run: cargo test --test delete_cache_test --verbose
+        run: ./run_test_sequentially.sh
