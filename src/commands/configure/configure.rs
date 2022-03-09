@@ -71,7 +71,7 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
                 }
                 Err(_) => {
                     return Err(CliError {
-                        msg: format!("Existing credentials and config files detected.\nPlease edit $HOME/.momento/credentials and $HOME/.momento/config directly to add or modify profiles"),
+                        msg: "Existing credentials and config files detected.\nPlease edit $HOME/.momento/credentials and $HOME/.momento/config directly to add or modify profiles".to_string(),
                     });
                 }
             }

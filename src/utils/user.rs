@@ -21,13 +21,10 @@ pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliErro
     let path = get_credentials_file_path();
     let credentials = match read_file(&path).await {
         Ok(c) => c,
-        Err(_) => {
-            return Err(CliError {
-                msg: format!(
-                "failed to read credentials, please run 'momento configure' to setup credentials"
-            ),
-            })
-        }
+        Err(_) => return Err(CliError {
+            msg: "failed to read credentials, please run 'momento configure' to setup credentials"
+                .to_string(),
+        }),
     };
 
     let creds_result = match credentials.get(profile, "token") {
@@ -46,13 +43,10 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
     let path = get_config_file_path();
     let configs = match read_file(&path).await {
         Ok(c) => c,
-        Err(_) => {
-            return Err(CliError {
-                msg: format!(
-                "failed to read credentials, please run 'momento configure' to setup credentials"
-            ),
-            })
-        }
+        Err(_) => return Err(CliError {
+            msg: "failed to read credentials, please run 'momento configure' to setup credentials"
+                .to_string(),
+        }),
     };
 
     let cache_result = match configs.get(profile, "cache") {
