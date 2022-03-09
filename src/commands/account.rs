@@ -27,7 +27,7 @@ impl Default for CreateTokenResponse {
 }
 
 fn get_signup_endpoint() -> String {
-    env::var("MOMENTO_SIGNUP_ENDPOINT").unwrap_or(String::from(SIGNUP_ENDPOINT))
+    env::var("MOMENTO_SIGNUP_ENDPOINT").unwrap_or_else(|_| String::from(SIGNUP_ENDPOINT))
 }
 
 pub async fn signup_user(email: String, region: String) -> Result<(), CliError> {
