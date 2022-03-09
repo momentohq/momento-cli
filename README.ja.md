@@ -56,7 +56,3 @@ momento cache get --key key --name example-cache
 ## Momento CLI リポジトリへの貢献について
 
 もし Momento CLI リポジトリへの貢献に興味がありましたら、こちらの[貢献ガイド](./CONTRIBUTING.ja.md)のご参考をお願いします。
-
-```
-
-```
