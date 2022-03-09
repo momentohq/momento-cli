@@ -134,10 +134,7 @@ async fn add_profile_to_credentials(
     // Empty default_section for Ini instance so that "default" will be used as a section
     ini_map.set_default_section("");
     ini_map.set(profile_name, "token", Some(credentials.token));
-    match ini_map.write(credentials_file_path) {
-        Ok(_) => {}
-        Err(_) => {}
-    }
+    write_config_file(ini_map, credentials_file_path)
 }
 
 async fn add_profile_to_config(profile_name: &str, config: Config, config_file_path: &str) {
@@ -146,8 +143,16 @@ async fn add_profile_to_config(profile_name: &str, config: Config, config_file_p
     ini_map.set_default_section("");
     ini_map.set(profile_name, "cache", Some(config.cache));
     ini_map.set(profile_name, "ttl", Some(config.ttl.to_string()));
+    write_config_file(ini_map, config_file_path)
+}
+
+fn write_config_file(ini_map: Ini, config_file_path: &str) {
     match ini_map.write(config_file_path) {
-        Ok(_) => {}
-        Err(_) => {}
+        Ok(_) => {
+            log::debug!("wrote config file successfully");
+        }
+        Err(e) => {
+            log::error!("failed to write config file: {:?}", e);
+        }
     }
 }
