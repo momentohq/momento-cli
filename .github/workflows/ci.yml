@@ -26,6 +26,21 @@ jobs:
         run: cargo fmt -- --check
       - name: Rigorous lint via Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # 🤮
+          submodules: true
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
       - name: Create .momento directory and create credential file
         run: |
           mkdir ~/.momento
@@ -47,21 +62,6 @@ jobs:
           ttl=1000
           EOF
           cat ~/.momento/config
-
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          # 🤮
-          submodules: true
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          override: true
       - name: Build
         run: cargo build --verbose
       # - name: Run Integration Tests
