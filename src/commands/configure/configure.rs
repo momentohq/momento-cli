@@ -1,17 +1,15 @@
-use log::{debug, info};
-use serde::{de::DeserializeOwned, Serialize};
-
+use configparser::ini::Ini;
+use log::info;
 use tokio::fs;
 
 use crate::{
     commands::cache::cache::create_cache,
-    config::{Config, Credentials, Profiles},
+    config::{Config, Credentials},
     error::CliError,
     utils::{
         file::{
             create_file_if_not_exists, get_config_file_path, get_credentials_file_path,
-            get_momento_dir, prompt_user_for_input, read_toml_file, set_file_read_write,
-            set_file_readonly, write_to_existing_file,
+            get_momento_dir, prompt_user_for_input, set_file_read_write, set_file_readonly,
         },
         user::{get_config_for_profile, get_creds_for_profile},
     },
@@ -25,37 +23,61 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
     let credentials_file_path = get_credentials_file_path();
     let config_file_path = get_config_file_path();
 
-    match fs::create_dir_all(momento_dir).await {
-        Ok(_) => (),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to create directory: {}", e),
-            })
-        }
-    };
-    create_file_if_not_exists(&credentials_file_path).await?;
-    create_file_if_not_exists(&config_file_path).await?;
+    fs::create_dir_all(momento_dir).await.unwrap();
+    match create_file_if_not_exists(&credentials_file_path, "credentials").await {
+        Ok(_) => {
+            // explicitly allowing read/write access to the credentials file
+            set_file_read_write(&credentials_file_path).await.unwrap();
+            add_profile_to_credentials(profile_name, credentials.clone(), &credentials_file_path)
+                .await;
+            // explicitly revoking that access
+            set_file_readonly(&credentials_file_path).await.unwrap();
 
-    // explicitly allowing read/write access to the credentials file
-    set_file_read_write(&credentials_file_path).await?;
-    add_profile(profile_name, credentials.clone(), &credentials_file_path).await?;
-    // explicitly revoking that access
-    set_file_readonly(&credentials_file_path).await?;
-
-    add_profile(profile_name, config.clone(), &config_file_path).await?;
-
-    match create_cache(config.cache, credentials.token).await {
-        Ok(_) => info!("default cache successfully created"),
-        Err(e) => {
-            if e.msg.contains("already exists") {
-                info!("default cache already exists");
-                ()
-            } else {
-                return Err(e);
+            match create_file_if_not_exists(&config_file_path, "config").await {
+                Ok(_) => {
+                    add_profile_to_config(profile_name, config.clone(), &config_file_path).await;
+                    match create_cache(config.cache, credentials.token).await {
+                        Ok(_) => info!("default cache successfully created"),
+                        Err(e) => {
+                            if e.msg.contains("already exists") {
+                                info!("default cache already exists");
+                                ()
+                            } else {
+                                return Err(e);
+                            }
+                        }
+                    };
+                }
+                Err(e) => {
+                    return Err(e);
+                }
             }
         }
+        Err(e) => {
+            match create_file_if_not_exists(&config_file_path, "config").await {
+                Ok(_) => {
+                    add_profile_to_config(profile_name, config.clone(), &config_file_path).await;
+                    match create_cache(config.cache, credentials.token).await {
+                        Ok(_) => info!("default cache successfully created"),
+                        Err(e) => {
+                            if e.msg.contains("already exists") {
+                                info!("default cache already exists");
+                                ()
+                            } else {
+                                return Err(e);
+                            }
+                        }
+                    };
+                }
+                Err(_) => {
+                    return Err(CliError {
+                        msg: format!("Existing credentials and config files detected.\nPlease edit $HOME/.momento/credentials and $HOME/.momento/config directly to add or modify profiles"),
+                    });
+                }
+            }
+            return Err(e);
+        }
     };
-
     Ok(())
 }
 
@@ -103,23 +125,29 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     });
 }
 
-async fn add_profile<T>(
+async fn add_profile_to_credentials(
     profile_name: &str,
-    config: T,
-    config_file_path: &str,
-) -> Result<(), CliError>
-where
-    T: DeserializeOwned + Default + Serialize,
-{
-    let mut toml = match read_toml_file::<Profiles<T>>(config_file_path).await {
-        Ok(t) => t,
-        Err(_) => {
-            debug!("config file is invalid, most likely we are creating it for the first time. Overwriting it with new profile");
-            Profiles::<T>::default()
-        }
-    };
-    toml.profile.insert(profile_name.to_string(), config);
-    let new_profile_string = toml::to_string(&toml).unwrap();
-    write_to_existing_file(config_file_path, &new_profile_string).await?;
-    Ok(())
+    credentials: Credentials,
+    credentials_file_path: &str,
+) {
+    let mut ini_map = Ini::new_cs();
+    // Empty default_section for Ini instance so that "default" will be used as a section
+    ini_map.set_default_section("");
+    ini_map.set(profile_name, "token", Some(credentials.token));
+    match ini_map.write(credentials_file_path) {
+        Ok(_) => {}
+        Err(_) => {}
+    }
+}
+
+async fn add_profile_to_config(profile_name: &str, config: Config, config_file_path: &str) {
+    let mut ini_map = Ini::new_cs();
+    // Empty default_section for Ini instance so that "default" will be used as a section
+    ini_map.set_default_section("");
+    ini_map.set(profile_name, "cache", Some(config.cache));
+    ini_map.set(profile_name, "ttl", Some(config.ttl.to_string()));
+    match ini_map.write(config_file_path) {
+        Ok(_) => {}
+        Err(_) => {}
+    }
 }

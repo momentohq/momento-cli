@@ -1,13 +1,10 @@
-use std::env;
-
 use crate::{
-    config::{Config, Credentials, Profiles},
+    config::{Config, Credentials},
     error::CliError,
-    utils::file::{get_config_file_path, get_credentials_file_path, read_toml_file},
+    utils::file::{get_config_file_path, get_credentials_file_path, read_file},
 };
 
-pub async fn get_creds_and_config() -> Result<(Credentials, Config), CliError> {
-    let profile = get_profile_to_use();
+pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config), CliError> {
     let creds = match get_creds_for_profile(&profile).await {
         Ok(c) => c,
         Err(e) => return Err(e),
@@ -20,13 +17,9 @@ pub async fn get_creds_and_config() -> Result<(Credentials, Config), CliError> {
     return Ok((creds, config));
 }
 
-pub fn get_profile_to_use() -> String {
-    env::var("MOMENTO_PROFILE").unwrap_or("default".to_string())
-}
-
 pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliError> {
     let path = get_credentials_file_path();
-    let credentials_toml = match read_toml_file::<Profiles<Credentials>>(&path).await {
+    let credentials = match read_file(&path).await {
         Ok(c) => c,
         Err(_) => {
             return Err(CliError {
@@ -37,36 +30,47 @@ pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliErro
         }
     };
 
-    let creds_result = match credentials_toml.profile.get(profile) {
+    let creds_result = match credentials.get(profile, "token") {
         Some(c) => c,
         None => return Err(CliError{
-            msg: format!("failed to get credentials for profile {}, please run 'momento configure' to confiure your profile", profile)
+            msg: format!("failed to get credentials for profile {}, please run 'momento configure' to configure your profile", profile)
         }),
     };
 
-    return Ok(creds_result.clone());
+    return Ok(Credentials {
+        token: creds_result,
+    });
 }
 
 pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
     let path = get_config_file_path();
-    let profile_toml = match read_toml_file::<Profiles<Config>>(&path).await {
+    let configs = match read_file(&path).await {
         Ok(c) => c,
-        Err(e) => return Err(CliError{
-            msg: format!("failed to read profile '{}', please run 'momento configure' to setup your profile, {:#?}", profile, e)
-    }),
-    };
-
-    let config_result = match profile_toml.profile.get(profile) {
-        Some(c) => c,
-        None => {
+        Err(_) => {
             return Err(CliError {
                 msg: format!(
-            "failed to read profile {}, please run 'momento configure' to confiure your profile",
-            profile
-        ),
+                "failed to read credentials, please run 'momento configure' to setup credentials"
+            ),
             })
         }
     };
 
-    return Ok(config_result.clone());
+    let cache_result = match configs.get(profile, "cache") {
+        Some(c) => c,
+        None => return Err(CliError{
+            msg: format!("failed to get cache config for profile {}, please run 'momento configure' to configure your profile", profile)
+        }),
+    };
+
+    let ttl_result = match configs.get(profile, "ttl") {
+        Some(c) => c,
+        None => return Err(CliError{
+            msg: format!("failed to get ttl config for profile {}, please run 'momento configure' to configure your profile", profile)
+        }),
+    };
+
+    return Ok(Config {
+        cache: cache_result,
+        ttl: ttl_result.parse::<u32>().unwrap(),
+    });
 }
