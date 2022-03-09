@@ -23,7 +23,7 @@ pub fn get_config_file_path() -> String {
 
 pub fn get_momento_dir() -> String {
     let home = home_dir().unwrap();
-    return format!("{}/.momento", home.clone().display());
+    return format!("{}/.momento", home.display());
 }
 
 pub async fn read_file(path: &str) -> Result<Ini, CliError> {
