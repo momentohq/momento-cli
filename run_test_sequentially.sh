@@ -28,4 +28,5 @@ else
     export TEST_PROFILE=$TEST_PROFILE
 fi
 
-cargo test --test create_cache_test && cargo test --test set_test && cargo test --test get_test && cargo test --test list_cache_test && cargo test --test delete_cache_test
+cargo test --test momento_default_profile
+cargo test --test momento_additional_profile
