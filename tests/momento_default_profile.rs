@@ -27,14 +27,14 @@ mod tests {
 
     async fn momento_cache_list_default_profile() {
         let mut test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
-        test_cache_default.push_str("\n");
+        test_cache_default.push('\n');
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(&["cache", "list"])
             .assert()
             .stdout(test_cache_default);
     }
 
-    async fn momento_cache_delete_default() {
+    async fn momento_cache_delete_default_profile() {
         let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(&["cache", "delete", "--name", &test_cache_default])
@@ -48,6 +48,6 @@ mod tests {
         momento_cache_set_default_profile().await;
         momento_cache_get_default_profile().await;
         momento_cache_list_default_profile().await;
-        momento_cache_delete_default().await;
+        momento_cache_delete_default_profile().await;
     }
 }
