@@ -1,0 +1,10 @@
+#This is an example for a config file with two profiles.
+#[default] is a default profile which will be used when --profile is not specified.
+#[us-west-2] is an additional profile which be used when --profile us-west-2 is specified.
+
+[default]
+cache=momento
+ttl=600
+[us-west-2]
+cache=momento-us-west-2
+ttl=700
