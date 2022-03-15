@@ -17,6 +17,9 @@ struct Momento {
     #[structopt(name = "verbose", global = true, long)]
     verbose: bool,
 
+    #[structopt(name = "version", global = true, long, short)]
+    version: bool,
+
     #[structopt(subcommand)]
     command: Subcommand,
 }
@@ -124,15 +127,21 @@ async fn entrypoint() -> Result<(), CliError> {
     )
     .init();
 
+    if args.version {
+        //Why is this not going to run... with momento --version
+        commands::version::get_version().await.unwrap();
+    }
+
     match args.command {
         Subcommand::Cache { operation } => match operation {
             CacheCommand::Create {
                 cache_name,
                 profile,
             } => {
-                let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token).await?;
-                info!("created cache {cache_name}")
+                // let (creds, _config) = get_creds_and_config(&profile).await?;
+                // commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token).await?;
+                // info!("created cache {cache_name}")
+                commands::version::get_version().await?;
             }
             CacheCommand::Set {
                 cache_name,
