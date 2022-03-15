@@ -129,7 +129,7 @@ async fn entrypoint() -> Result<(), CliError> {
 
     if args.version {
         //Why is this not going to run... with momento --version
-        commands::version::get_version().await.unwrap();
+        commands::version::get_version().await?;
     }
 
     match args.command {
