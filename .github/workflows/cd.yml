@@ -55,16 +55,13 @@ jobs:
         shell: bash
 
       - name: Create version update pull request
-        id: cpr
-        uses: repo-sync/pull-request@v2
-        with:
-          destination_branch: "version-update/v${{ steps.semrel.outputs.version }}"
-          pr_title: "momento-cli version update ${{ github.ref }}"
-          pr_body: ":crown: *Automated PR*"
-          pr_label: "automation"
-          pr_draft: false
-          pr_allow_empty: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add .
+          git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
+          git push origin version-update/v${{ steps.semrel.outputs.version }}
+        shell: bash
 
       - name: Build
         run: cargo build --verbose
