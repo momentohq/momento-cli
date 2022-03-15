@@ -80,7 +80,10 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
         .unwrap_or_default();
 
     let cache_name =
-        prompt_user_for_input("Default Cache", current_config.cache.as_str(), false).await?;
+        match prompt_user_for_input("Default Cache", current_config.cache.as_str(), false).await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
     let prompt_ttl = if current_config.ttl == 0 {
         600
     } else {
