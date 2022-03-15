@@ -3,7 +3,7 @@ use log::info;
 use std::path::Path;
 use tokio::{
     fs,
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    io::{AsyncBufReadExt, BufReader},
 };
 
 use crate::{
