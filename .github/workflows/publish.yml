@@ -1,11 +1,10 @@
 name: momento-cli version update pr-pull
 on:
-  pull_request_target:
-    types:
-      - labeled
+  pull_request:
+    branches:
+      - "version-update/**"
 jobs:
   pr-pull:
-    if: contains(github.event.pull_request.labels.*.name, 'automation')
     runs-on: ubuntu-latest
     steps:
       - name: Set up Homebrew
