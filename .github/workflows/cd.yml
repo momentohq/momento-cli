@@ -58,15 +58,12 @@ jobs:
         id: cpr
         uses: repo-sync/pull-request@v2
         with:
-          destination_branch: "verions-update/v${{ steps.semrel.outputs.version }}"
+          destination_branch: "version-update/v${{ steps.semrel.outputs.version }}"
           pr_title: "momento-cli version update ${{ github.ref }}"
           pr_body: ":crown: *Automated PR*"
-          pr_reviewer: "bruuuuuuuce"
-          pr_assignee: "bruuuuuuuce"
           pr_label: "automation"
           pr_draft: false
           pr_allow_empty: true
-          github_token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
 
       - name: Build
         run: cargo build --verbose
