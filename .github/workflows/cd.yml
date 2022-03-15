@@ -3,9 +3,9 @@ name: CD
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
-      - '**/Cargo.toml'
+      - "**/Cargo.toml"
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with: 
+        with:
           submodules: true
           token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - uses: actions-rs/toolchain@v1
@@ -34,12 +34,12 @@ jobs:
           toolchain: stable
           components: rustfmt
           override: true
-          
+
       - name: Setup Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.x'
-          
+          python-version: "3.x"
+
       - name: Set release
         id: semrel
         uses: go-semantic-release/action@v1
@@ -52,6 +52,9 @@ jobs:
         run: |
           chmod +x set_cargo_version.sh
           ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
+          git add .
+          git commit -m "chore: update cargo version"
+          git push origin
         shell: bash
 
       - name: Build
@@ -75,7 +78,7 @@ jobs:
           echo $GH_ASSET
           curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
         shell: bash
-        
+
       - name: Check out homebrew-tap
         uses: actions/checkout@v2
         with:

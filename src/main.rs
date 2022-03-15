@@ -188,8 +188,8 @@ async fn entrypoint() -> Result<(), CliError> {
             }
         },
         Subcommand::Version {} => {
-            info!("Version command called");
-            commands::version::get_version().await?;
+            const VERSION: &str = env!("CARGO_PKG_VERSION");
+            info!("Momento v{}", VERSION);
         }
     }
     Ok(())
