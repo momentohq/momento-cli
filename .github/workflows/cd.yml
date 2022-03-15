@@ -52,12 +52,21 @@ jobs:
         run: |
           chmod +x set_cargo_version.sh
           ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
-          git config user.email "momentobot@users.noreply.github.com"
-          git config user.name "momentobot"
-          git add .
-          git commit -m "chore: update cargo version"
-          git push origin version-update/v${{ steps.semrel.outputs.version }}
         shell: bash
+
+      - name: Create version update pull request
+        id: cpr
+        uses: repo-sync/pull-request@v2
+        with:
+          destination_branch: "verions-update/v${{ steps.semrel.outputs.version }}"
+          pr_title: "momento-cli version update ${{ github.ref }}"
+          pr_body: ":crown: *Automated PR*"
+          pr_reviewer: "bruuuuuuuce"
+          pr_assignee: "bruuuuuuuce"
+          pr_label: "automation"
+          pr_draft: false
+          pr_allow_empty: true
+          github_token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
 
       - name: Build
         run: cargo build --verbose
