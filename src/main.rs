@@ -17,9 +17,6 @@ struct Momento {
     #[structopt(name = "verbose", global = true, long)]
     verbose: bool,
 
-    #[structopt(name = "version", global = true, long, short)]
-    version: bool,
-
     #[structopt(subcommand)]
     command: Subcommand,
 }
@@ -41,6 +38,8 @@ enum Subcommand {
         #[structopt(subcommand)]
         operation: AccountCommand,
     },
+    #[structopt(about = "Display Momento CLI version", name = "version")]
+    Version {},
 }
 
 #[derive(Debug, StructOpt)]
@@ -116,7 +115,14 @@ enum CacheCommand {
 }
 
 async fn entrypoint() -> Result<(), CliError> {
-    let args = Momento::parse();
+    let args = match Momento::try_parse() {
+        Ok(s) => s,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("Failed at {}", e),
+            })
+        }
+    };
 
     let log_level = if args.verbose { "debug" } else { "info" };
 
@@ -127,21 +133,15 @@ async fn entrypoint() -> Result<(), CliError> {
     )
     .init();
 
-    if args.version {
-        //Why is this not going to run... with momento --version
-        commands::version::get_version().await?;
-    }
-
     match args.command {
         Subcommand::Cache { operation } => match operation {
             CacheCommand::Create {
                 cache_name,
                 profile,
             } => {
-                // let (creds, _config) = get_creds_and_config(&profile).await?;
-                // commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token).await?;
-                // info!("created cache {cache_name}")
-                commands::version::get_version().await?;
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token).await?;
+                info!("created cache {cache_name}")
             }
             CacheCommand::Set {
                 cache_name,
@@ -194,6 +194,10 @@ async fn entrypoint() -> Result<(), CliError> {
                 commands::account::signup_user(email, region).await?;
             }
         },
+        Subcommand::Version {} => {
+            info!("Version command called");
+            commands::version::get_version().await?;
+        }
     }
     Ok(())
 }
