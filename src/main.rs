@@ -4,7 +4,6 @@ use clap::StructOpt;
 use env_logger::Env;
 use error::CliError;
 use log::{error, info};
-use std::process::Command;
 use utils::user::get_creds_and_config;
 
 pub mod commands;
@@ -13,6 +12,7 @@ pub mod error;
 mod utils;
 
 #[derive(Debug, StructOpt)]
+#[clap(version)]
 #[structopt(about = "CLI for Momento APIs")]
 struct Momento {
     #[structopt(name = "verbose", global = true, long)]
@@ -39,8 +39,6 @@ enum Subcommand {
         #[structopt(subcommand)]
         operation: AccountCommand,
     },
-    #[structopt(about = "Display Momento CLI version", name = "version")]
-    Version {},
 }
 
 #[derive(Debug, StructOpt)]
@@ -188,26 +186,6 @@ async fn entrypoint() -> Result<(), CliError> {
                 commands::account::signup_user(email, region).await?;
             }
         },
-        Subcommand::Version {} => {
-            const VERSION: &str = env!("CARGO_PKG_VERSION");
-            info!("Momento v{}", VERSION);
-
-            // Let user know to upgrade to the latest momento-cli if installed version is older
-            let output = Command::new("brew")
-                .arg("list")
-                .arg("--formulae")
-                .arg("momento-cli")
-                .arg("--version")
-                .output()
-                .expect("failed to execute process");
-            let installed_version = String::from_utf8(output.stdout).unwrap();
-            let trimmed_version = installed_version
-                .replace('\n', "")
-                .replace("momento-cli ", "");
-            if !VERSION.eq(&trimmed_version) {
-                println!("You have older version of Momento CLI.\nRun 'brew upgrade momento-cli' to upgrade to the latest v.{}", VERSION);
-            }
-        }
     }
     Ok(())
 }
