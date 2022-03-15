@@ -1,0 +1,20 @@
+name: momento-cli version update pr-pull
+on:
+  push:
+    branches:
+      - "version-update/**"
+jobs:
+  pr-pull:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Set up git
+        uses: Homebrew/actions/git-user-config@master
+
+      - name: Push commits
+        uses: Homebrew/actions/git-try-push@master
+        with:
+          token: ${{ github.token }}
+          branch: main
