@@ -115,14 +115,7 @@ enum CacheCommand {
 }
 
 async fn entrypoint() -> Result<(), CliError> {
-    let args = match Momento::try_parse() {
-        Ok(s) => s,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("Failed at {}", e),
-            })
-        }
-    };
+    let args = Momento::parse();
 
     let log_level = if args.verbose { "debug" } else { "info" };
 
