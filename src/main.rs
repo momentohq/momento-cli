@@ -12,7 +12,8 @@ pub mod error;
 mod utils;
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "CLI for Momento APIs")]
+#[clap(version)]
+#[structopt(about = "CLI for Momento APIs", name = "momento")]
 struct Momento {
     #[structopt(name = "verbose", global = true, long)]
     verbose: bool,
