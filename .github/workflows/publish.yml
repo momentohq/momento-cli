@@ -1,6 +1,6 @@
 name: momento-cli version update pr-pull
 on:
-  pull_request:
+  push:
     branches:
       - "version-update/**"
 jobs:
