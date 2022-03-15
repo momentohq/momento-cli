@@ -52,6 +52,8 @@ jobs:
         run: |
           chmod +x set_cargo_version.sh
           ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
           git add .
           git commit -m "chore: update cargo version"
           git push origin
