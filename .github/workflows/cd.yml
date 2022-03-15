@@ -48,14 +48,11 @@ jobs:
           allow-initial-development-versions: true
           force-bump-patch-version: true
 
-      - name: Update Cargo Version
+      - name: Update Cargo Version and create version update pull request
         run: |
+          git checkout -b version-update/v${{ steps.semrel.outputs.version }}
           chmod +x set_cargo_version.sh
           ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
-        shell: bash
-
-      - name: Create version update pull request
-        run: |
           git config user.email "momentobot@users.noreply.github.com"
           git config user.name "momentobot"
           git add .
