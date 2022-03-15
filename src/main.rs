@@ -13,7 +13,7 @@ mod utils;
 
 #[derive(Debug, StructOpt)]
 #[clap(version)]
-#[structopt(about = "CLI for Momento APIs")]
+#[structopt(about = "CLI for Momento APIs", name = "momento")]
 struct Momento {
     #[structopt(name = "verbose", global = true, long)]
     verbose: bool,

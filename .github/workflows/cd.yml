@@ -56,7 +56,7 @@ jobs:
           git config user.name "momentobot"
           git add .
           git commit -m "chore: update cargo version"
-          git push origin
+          git push origin version-update/v${{ steps.semrel.outputs.version }}
         shell: bash
 
       - name: Build
