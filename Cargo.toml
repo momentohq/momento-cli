@@ -1,28 +1,48 @@
+[[bin]]
+name = "momento"
+path = "src/main.rs"
+
 [package]
 name = "momento-cli"
-version = "0.1.0"
+version = "0.11.9"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 colored = "2.0.0"
-clap = { version = "3.0.10", features = ["derive"] }
-log = { version = "^0.4.14" }
-env_logger = { version = "^0.9.0" }
-tracing-subscriber = { version = "0.2.16", features = ["fmt"] }
-tokio = { version = "1", features = ["full"] }
 home = "0.5.3"
 toml = "0.5.8"
-serde = {version = "1.0", features = ["derive"] }
 maplit = "1.0.2"
-reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
-momento = { path = "./client-sdk-rust" }
 configparser = "3.0.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
 
-[[bin]]
-name = "momento"
-path = "src/main.rs"
+[dependencies.clap]
+version = "3.0.10"
+features = [ "derive",]
+
+[dependencies.log]
+version = "^0.4.14"
+
+[dependencies.env_logger]
+version = "^0.9.0"
+
+[dependencies.tracing-subscriber]
+version = "0.2.16"
+features = [ "fmt",]
+
+[dependencies.tokio]
+version = "1"
+features = [ "full",]
+
+[dependencies.serde]
+version = "1.0"
+features = [ "derive",]
+
+[dependencies.reqwest]
+version = "0.11"
+features = [ "json", "rustls-tls",]
+default-features = false
+
+[dependencies.momento]
+path = "./client-sdk-rust"
