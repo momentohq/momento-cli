@@ -1,0 +1,17 @@
+name: Merge momento-cli version update pr to main
+on:
+  push:
+    branches:
+      - "version-update/**"
+jobs:
+  merge-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Merge version-release/v{version} to main
+        uses: devmasx/merge-branch@master
+        with:
+          type: now
+          target_branch: main
+          github_token: ${{ github.token }}
