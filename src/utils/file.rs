@@ -181,11 +181,6 @@ pub async fn prompt_user_for_input(
     };
 
     let input = buffer.as_str().trim().to_string();
-    if input.is_empty() && prompt.to_owned().eq("Default Cache") && default_value.is_empty() {
-        return Err(CliError {
-            msg: "No default cache is provided.".to_string(),
-        });
-    }
     if input.is_empty() {
         return Ok(default_value.to_string());
     }

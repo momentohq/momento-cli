@@ -83,6 +83,11 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
             Ok(s) => s,
             Err(e) => return Err(e),
         };
+    let cache_name_to_use = if cache_name.is_empty() {
+        "default-cache".to_string()
+    } else {
+        cache_name
+    };
     let prompt_ttl = if current_config.ttl == 0 {
         600
     } else {
@@ -105,7 +110,7 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     };
 
     Ok(Config {
-        cache: cache_name,
+        cache: cache_name_to_use,
         ttl,
     })
 }
