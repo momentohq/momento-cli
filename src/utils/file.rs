@@ -50,6 +50,17 @@ pub async fn read_file(path: &str) -> Result<Ini, CliError> {
     }
 }
 
+pub async fn read_file_contents(file: File) -> Vec<String> {
+    let reader = BufReader::new(file);
+    let mut contents = reader.lines();
+    // Put each line read from the credentials file to a vector
+    let mut line_array: Vec<String> = vec![];
+    while let Some(line) = contents.next_line().await.unwrap() {
+        line_array.push(format!("{}\n", line));
+    }
+    line_array
+}
+
 pub async fn create_file(path: &str) -> Result<(), CliError> {
     let res = File::create(path).await;
     match res {
