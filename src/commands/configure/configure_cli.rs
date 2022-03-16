@@ -55,13 +55,12 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
         Err(e) => {
             if e.msg.contains("already exists") {
                 info!("default cache already exists");
-                ()
             } else {
                 return Err(e);
             }
         }
     };
-    return Ok(());
+    Ok(())
 }
 
 async fn prompt_user_for_creds(profile_name: &str) -> Result<Credentials, CliError> {
@@ -133,7 +132,7 @@ async fn add_profile_to_credentials(
             Err(e) => return Err(e),
         };
         // explicitly revoking that access
-        set_file_readonly(&credentials_file_path).await.unwrap();
+        set_file_readonly(credentials_file_path).await.unwrap();
     } else {
         // If credentials file already exists, figure out any profiles exist in the file
         set_file_read_write(credentials_file_path).await.unwrap();
@@ -207,7 +206,7 @@ async fn add_profile_to_credentials(
             None => {
                 // If no profile is found, check there is any contents inside of credentials file.
                 // If no content was found, write new credentials to the file.
-                if line_array.len() == 0 {
+                if line_array.is_empty() {
                     let mut ini_map = Ini::new_cs();
                     // Empty default_section for Ini instance so that "default" will be used as a section
                     ini_map.set_default_section("");
@@ -227,9 +226,9 @@ async fn add_profile_to_credentials(
                 }
             }
         }
-        set_file_readonly(&credentials_file_path).await.unwrap();
+        set_file_readonly(credentials_file_path).await.unwrap();
     }
-    return Ok(());
+    Ok(())
 }
 
 async fn add_profile_to_config(
@@ -275,7 +274,7 @@ async fn add_profile_to_config(
                 if !does_profile_name_exist(line_array.clone(), profile_name) {
                     line_array.push(format!("[{}]\n", profile_name));
                     line_array.push(format!("cache={}\n", config.cache));
-                    line_array.push(format!("ttl={}\n", config.ttl.to_string()));
+                    line_array.push(format!("ttl={}\n", config.ttl));
                 } else {
                     // If profile_name already exists, update cache/ttl values
                     let line_num_of_existing_profile =
@@ -353,7 +352,7 @@ async fn add_profile_to_config(
             None => {
                 // If no profile is found, check there is any contents inside of config file.
                 // If no content was found, write new config to the file.
-                if line_array.len() == 0 {
+                if line_array.is_empty() {
                     let mut ini_map = Ini::new_cs();
                     // Empty default_section for Ini instance so that "default" will be used as a section
                     ini_map.set_default_section("");
@@ -367,7 +366,7 @@ async fn add_profile_to_config(
                     // If there is (such as just comments), then leave it as and new profile and cache/ttl value
                     line_array.push(format!("[{}]\n", profile_name));
                     line_array.push(format!("cache={}", config.cache));
-                    line_array.push(format!("ttl={}", config.ttl.to_string()));
+                    line_array.push(format!("ttl={}", config.ttl));
                     match write_to_file(config_file_path, line_array.clone()).await {
                         Ok(_) => {}
                         Err(e) => return Err(e),
@@ -376,7 +375,7 @@ async fn add_profile_to_config(
             }
         }
     }
-    return Ok(());
+    Ok(())
 }
 
 fn find_profile_start(line_array: Vec<String>) -> Option<Vec<usize>> {
@@ -387,16 +386,16 @@ fn find_profile_start(line_array: Vec<String>) -> Option<Vec<usize>> {
     while counter < line_array_len {
         let line = line_array[counter].trim();
         if line.starts_with('[') && line.ends_with(']') {
-            profile_counter = counter.clone();
+            profile_counter = counter;
             // Collect line number of profile
-            profile_start_line_num_array.push(profile_counter.clone());
+            profile_start_line_num_array.push(profile_counter);
         }
         counter += 1;
     }
-    if profile_start_line_num_array.len() == 0 {
-        return None;
+    if profile_start_line_num_array.is_empty() {
+        None
     } else {
-        return Some(profile_start_line_num_array);
+        Some(profile_start_line_num_array)
     }
 }
 
@@ -407,7 +406,7 @@ fn does_profile_name_exist(line_array: Vec<String>, profile_name: &str) -> bool 
             return true;
         }
     }
-    return false;
+    false
 }
 
 fn find_existing_profile_start(line_array: Vec<String>, profile_name: &str) -> usize {
@@ -421,5 +420,5 @@ fn find_existing_profile_start(line_array: Vec<String>, profile_name: &str) -> u
         }
         counter += 1;
     }
-    return counter;
+    counter
 }
