@@ -20,9 +20,9 @@ pub async fn add_new_profile_to_credentials(
     ini_map.set_default_section("");
     ini_map.set(profile_name, "token", Some(credentials.token));
     match ini_write_to_file(ini_map, credentials_file_path).await {
-        Ok(_) => return Ok(()),
-        Err(e) => return Err(e),
-    };
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
 }
 
 pub async fn add_new_profile_to_config(
@@ -36,24 +36,25 @@ pub async fn add_new_profile_to_config(
     ini_map.set(profile_name, "cache", Some(config.cache));
     ini_map.set(profile_name, "ttl", Some(config.ttl.to_string()));
     match ini_write_to_file(ini_map, config_file_path).await {
-        Ok(_) => return Ok(()),
-        Err(e) => return Err(e),
-    };
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
 }
 
 pub fn update_token_value(
     profile_line_num_array: Vec<usize>,
     line_num_of_existing_profile: usize,
-    line_array: &mut Vec<String>,
+    line_array: &mut [String],
     credentials: Credentials,
 ) {
-    let mut counter = 0;
     let num_of_profiles = profile_line_num_array.len();
     let line_array_len = line_array.len();
-    for line_num in profile_line_num_array.iter() {
+    for (counter, line_num) in profile_line_num_array.iter().enumerate() {
+        #[allow(clippy:needless_range_loop)]
         if line_num_of_existing_profile == *line_num {
             // Case where profile_name is the last item in profile_line_num_array
             if counter == num_of_profiles - 1 {
+                #[allow(clippy::needless_range_loop)]
                 for n in *line_num..line_array_len {
                     // Check if line is not a comment or profile
                     if !line_array[n].starts_with('#') && !line_array[n].starts_with('[') {
@@ -67,6 +68,7 @@ pub fn update_token_value(
                 }
             } else {
                 // Case where profile_name is at the beginning or at the middle of profile_line_num_array
+                #[allow(clippy::needless_range_loop)]
                 for n in profile_line_num_array[counter]..profile_line_num_array[counter + 1] {
                     // Check if line is not a comment or profile
                     if !line_array[n].starts_with('#') && !line_array[n].starts_with('[') {
@@ -80,23 +82,22 @@ pub fn update_token_value(
                 }
             }
         }
-        counter += 1;
     }
 }
 
 pub fn update_cache_ttl_value(
     profile_line_num_array: Vec<usize>,
     line_num_of_existing_profile: usize,
-    line_array: &mut Vec<String>,
+    line_array: &mut [String],
     config: Config,
 ) {
-    let mut counter = 0;
     let num_of_profiles = profile_line_num_array.len();
     let line_array_len = line_array.len();
-    for line_num in profile_line_num_array.iter() {
+    for (counter, line_num) in profile_line_num_array.iter().enumerate() {
         if line_num_of_existing_profile == *line_num {
             // Case where profile_name is the last item in profile_line_num_array
             if counter == num_of_profiles - 1 {
+                #[allow(clippy::needless_range_loop)]
                 for n in *line_num..line_array_len {
                     // Check if line is not a comment or profile and for cache
                     if !line_array[n].starts_with('#')
@@ -125,6 +126,7 @@ pub fn update_cache_ttl_value(
                 }
             } else {
                 // Case where profile_name is at the beginning or at the middle of profile_line_num_array
+                #[allow(clippy::needless_range_loop)]
                 for n in profile_line_num_array[counter]..profile_line_num_array[counter + 1] {
                     // Check if line is not a comment or profile and for cache
                     if !line_array[n].starts_with('#')
@@ -153,6 +155,5 @@ pub fn update_cache_ttl_value(
                 }
             }
         }
-        counter += 1;
     }
 }

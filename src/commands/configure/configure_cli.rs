@@ -78,11 +78,15 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
         .await
         .unwrap_or_default();
 
-    let cache_name =
-        match prompt_user_for_input("Default Cache", current_config.cache.as_str(), false).await {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
+    let prompt_cache = if current_config.cache.is_empty() {
+        "default-cache"
+    } else {
+        current_config.cache.as_str()
+    };
+    let cache_name = match prompt_user_for_input("Default Cache", prompt_cache, false).await {
+        Ok(s) => s,
+        Err(e) => return Err(e),
+    };
     let cache_name_to_use = if cache_name.is_empty() {
         "default-cache".to_string()
     } else {
