@@ -4,10 +4,10 @@ mod tests {
     use assert_cmd::Command;
 
     async fn configure_momento_default_profile() {
-        let test_auth_token = std::env::var("TEST_AUTH_TOKEN").unwrap();
+        let test_auth_token = std::env::var("TEST_AUTH_TOKEN_DEFAULT").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(&["configure"])
-            .write_stdin(format!("{}", test_auth_token))
+            .write_stdin(format!("{}", test_auth_token.to_string()))
             .assert()
             .success();
     }

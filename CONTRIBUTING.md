@@ -49,12 +49,12 @@ cargo clippy --all-targets --all-features -- -D warnings
 :warning: Important notes on running `cargo test --test configure_profiles_test`
 
 ```
-export TEST_AUTH_TOKEN=<YOUR_TEST_AUTH_TOKEN>
+export TEST_AUTH_TOKEN_DEFAULT=<YOUR_TEST_AUTH_TOKEN_DEFAULT>
 export TEST_CACHE_DEFAULT=<YOUR_TEST_CACHE_DEFAULT>
 cargo test --test configure_profile_test
 ```
 
-- If you already have existing credentials and config files locally, running `cargo test --test configure_profiles_test` with provided `TEST_AUTH_TOKEN` will overwrite values for token your `default` profile.
+- If you already have existing credentials and config files locally, running `cargo test --test configure_profiles_test` with provided `TEST_AUTH_TOKEN_DEFAULT` will overwrite values for token your `default` profile.
 - The value for `TEST_CACHE_DEFAULT` needs to match the cache value your `default` profile and the cache needs to exist. However, this cache will be deleted after this test runs successfully.
 
 ### Deploying
