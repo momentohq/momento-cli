@@ -1,7 +1,7 @@
 use configparser::ini::Ini;
 
 use crate::{
-    config::{Config, Credentials},
+    config::{Config, Credentials, FileTypes},
     error::CliError,
     utils::file::ini_write_to_file,
 };
@@ -41,43 +41,41 @@ pub async fn add_new_profile_to_config(
     }
 }
 
-pub fn update_credentials_file_profile_values(
+pub fn update_profile_values(
     profile_line_num_array: Vec<usize>,
     line_num_of_existing_profile: usize,
     line_array: &mut [String],
-    credentials: Credentials,
+    file_types: FileTypes,
 ) {
     let num_of_profiles = profile_line_num_array.len();
     let line_array_len = line_array.len();
     for (counter, line_num) in profile_line_num_array.iter().enumerate() {
         #[allow(clippy:needless_range_loop)]
         if line_num_of_existing_profile == *line_num {
-            // Case where profile_name is the last item in profile_line_num_array
+            // Case where profile_name is the only or last item in profile_line_num_array
             if counter == num_of_profiles - 1 {
                 #[allow(clippy::needless_range_loop)]
                 for n in *line_num..line_array_len {
-                    // Check if line is not a comment or profile
-                    if !line_array[n].starts_with('#') && !line_array[n].starts_with('[') {
-                        let line_len = line_array[n].len();
-                        // Replace value after "token="
-                        line_array[n].replace_range(
-                            AFTER_TOKEN_INDEX..line_len,
-                            &format!("{}\n", &credentials.token),
-                        );
+                    match file_types {
+                        FileTypes::Credentials(ref cr) => {
+                            replace_value(line_array, n, FileTypes::Credentials(cr.clone()))
+                        }
+                        FileTypes::Config(ref cf) => {
+                            replace_value(line_array, n, FileTypes::Config(cf.clone()))
+                        }
                     }
                 }
             } else {
                 // Case where profile_name is at the beginning or at the middle of profile_line_num_array
                 #[allow(clippy::needless_range_loop)]
                 for n in profile_line_num_array[counter]..profile_line_num_array[counter + 1] {
-                    // Check if line is not a comment or profile
-                    if !line_array[n].starts_with('#') && !line_array[n].starts_with('[') {
-                        let line_len = line_array[n].len();
-                        // Replace value after "token="
-                        line_array[n].replace_range(
-                            AFTER_TOKEN_INDEX..line_len,
-                            &format!("{}\n", &credentials.token),
-                        );
+                    match file_types {
+                        FileTypes::Credentials(ref cr) => {
+                            replace_value(line_array, n, FileTypes::Credentials(cr.clone()))
+                        }
+                        FileTypes::Config(ref cf) => {
+                            replace_value(line_array, n, FileTypes::Config(cf.clone()))
+                        }
                     }
                 }
             }
@@ -85,74 +83,39 @@ pub fn update_credentials_file_profile_values(
     }
 }
 
-pub fn update_config_file_profile_values(
-    profile_line_num_array: Vec<usize>,
-    line_num_of_existing_profile: usize,
-    line_array: &mut [String],
-    config: Config,
-) {
-    let num_of_profiles = profile_line_num_array.len();
-    let line_array_len = line_array.len();
-    for (counter, line_num) in profile_line_num_array.iter().enumerate() {
-        if line_num_of_existing_profile == *line_num {
-            // Case where profile_name is the last item in profile_line_num_array
-            if counter == num_of_profiles - 1 {
-                #[allow(clippy::needless_range_loop)]
-                for n in *line_num..line_array_len {
-                    // Check if line is not a comment or profile and for cache
-                    if !line_array[n].starts_with('#')
-                        && !line_array[n].starts_with('[')
-                        && line_array[n].starts_with('c')
-                    {
-                        let line_len = line_array[n].len();
-                        // Replace value after "cache="
-                        line_array[n].replace_range(
-                            AFTER_CACHE_INDEX..line_len,
-                            &format!("{}\n", &config.cache),
-                        );
-                    }
-                    // Check if line is not a comment or profile and for ttl
-                    if !line_array[n].starts_with('#')
-                        && !line_array[n].starts_with('[')
-                        && line_array[n].starts_with('t')
-                    {
-                        let line_len = line_array[n].len();
-                        // Replace value after "ttl="
-                        line_array[n].replace_range(
-                            AFTER_TTL_INDEX..line_len,
-                            &format!("{}\n", &config.ttl.to_string()),
-                        );
-                    }
-                }
-            } else {
-                // Case where profile_name is at the beginning or at the middle of profile_line_num_array
-                #[allow(clippy::needless_range_loop)]
-                for n in profile_line_num_array[counter]..profile_line_num_array[counter + 1] {
-                    // Check if line is not a comment or profile and for cache
-                    if !line_array[n].starts_with('#')
-                        && !line_array[n].starts_with('[')
-                        && line_array[n].starts_with('c')
-                    {
-                        let line_len = line_array[n].len();
-                        // Replace value after "cache="
-                        line_array[n].replace_range(
-                            AFTER_CACHE_INDEX..line_len,
-                            &format!("{}\n", &config.cache),
-                        );
-                    }
-                    // Check if line is not a comment or profile and for ttl
-                    if !line_array[n].starts_with('#')
-                        && !line_array[n].starts_with('[')
-                        && line_array[n].starts_with('t')
-                    {
-                        let line_len = line_array[n].len();
-                        // Replace value after "ttl="
-                        line_array[n].replace_range(
-                            AFTER_TTL_INDEX..line_len,
-                            &format!("{}\n", &config.ttl.to_string()),
-                        );
-                    }
-                }
+fn replace_value(line_array: &mut [String], index: usize, file_types: FileTypes) {
+    match file_types {
+        FileTypes::Credentials(cr) => {
+            // Check if line is not a comment or profile
+            if !line_array[index].starts_with('#') && !line_array[index].starts_with('[') {
+                let line_len = line_array[index].len();
+                // Replace value after "token="
+                line_array[index]
+                    .replace_range(AFTER_TOKEN_INDEX..line_len, &format!("{}\n", &cr.token));
+            }
+        }
+        FileTypes::Config(cf) => {
+            // Check if line is not a comment or profile and for cache
+            if !line_array[index].starts_with('#')
+                && !line_array[index].starts_with('[')
+                && line_array[index].starts_with('c')
+            {
+                let line_len = line_array[index].len();
+                // Replace value after "cache="
+                line_array[index]
+                    .replace_range(AFTER_CACHE_INDEX..line_len, &format!("{}\n", &cf.cache));
+            }
+            // Check if line is not a comment or profile and for ttl
+            if !line_array[index].starts_with('#')
+                && !line_array[index].starts_with('[')
+                && line_array[index].starts_with('t')
+            {
+                let line_len = line_array[index].len();
+                // Replace value after "ttl="
+                line_array[index].replace_range(
+                    AFTER_TTL_INDEX..line_len,
+                    &format!("{}\n", &cf.ttl.to_string()),
+                );
             }
         }
     }
