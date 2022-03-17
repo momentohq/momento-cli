@@ -13,8 +13,8 @@ use crate::{
             set_file_readonly, write_to_file,
         },
         ini_config::{
-            add_new_profile_to_config, add_new_profile_to_credentials, update_cache_ttl_value,
-            update_token_value,
+            add_new_profile_to_config, add_new_profile_to_credentials,
+            update_config_file_profile_values, update_credentials_file_profile_values,
         },
         user::{get_config_for_profile, get_creds_for_profile},
     },
@@ -157,7 +157,7 @@ async fn add_profile_to_credentials(
                     // If profile_name already exists, update token value
                     let line_num_of_existing_profile =
                         find_existing_profile_start(line_array.clone(), profile_name);
-                    update_token_value(
+                    update_credentials_file_profile_values(
                         profile_line_num_array,
                         line_num_of_existing_profile,
                         &mut line_array,
@@ -235,7 +235,7 @@ async fn add_profile_to_config(
                     // If profile_name already exists, update cache/ttl values
                     let line_num_of_existing_profile =
                         find_existing_profile_start(line_array.clone(), profile_name);
-                    update_cache_ttl_value(
+                    update_config_file_profile_values(
                         profile_line_num_array,
                         line_num_of_existing_profile,
                         &mut line_array,

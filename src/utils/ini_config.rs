@@ -41,7 +41,7 @@ pub async fn add_new_profile_to_config(
     }
 }
 
-pub fn update_token_value(
+pub fn update_credentials_file_profile_values(
     profile_line_num_array: Vec<usize>,
     line_num_of_existing_profile: usize,
     line_array: &mut [String],
@@ -85,7 +85,7 @@ pub fn update_token_value(
     }
 }
 
-pub fn update_cache_ttl_value(
+pub fn update_config_file_profile_values(
     profile_line_num_array: Vec<usize>,
     line_num_of_existing_profile: usize,
     line_array: &mut [String],
