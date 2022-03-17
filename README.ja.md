@@ -56,11 +56,20 @@ momento configure --profile new-profile
 ## CLI 使用方法
 
 ```
-
+#　デフォルトプロファイルが使用される
 momento cache create --name example-cache
 momento cache set --key key --value value --ttl 100 --name example-cache
 momento cache get --key key --name example-cache
 
+```
+
+ご希望のプロファイルを指定する事もできます。
+
+```
+# new-profileが使用される
+momento cache create --name example-cache --profile new-profile
+momento cache set --key key --value value --ttl 100 --name example-cache --profile new-profile
+momento cache get --key key --name example-cache --profile new-profile
 ```
 
 ## ご自身のプロジェクト内での Momento 使用方法

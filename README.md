@@ -56,9 +56,19 @@ To update your desired profile, use the same command as above.
 ## Use CLI
 
 ```
+# use default profile
 momento cache create --name example-cache
 momento cache set --key key --value value --ttl 100 --name example-cache
 momento cache get --key key --name example-cache
+```
+
+You can also specify your desired profile.
+
+```
+# use new-profile
+momento cache create --name example-cache --profile new-profile
+momento cache set --key key --value value --ttl 100 --name example-cache --profile new-profile
+momento cache get --key key --name example-cache --profile new-profile
 ```
 
 ## Use Momento in Your Project
