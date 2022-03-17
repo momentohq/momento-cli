@@ -53,12 +53,12 @@ pub async fn read_file(path: &str) -> Result<Ini, CliError> {
 pub async fn read_file_contents(file: File) -> Vec<String> {
     let reader = BufReader::new(file);
     let mut contents = reader.lines();
-    // Put each line read from the credentials file to a vector
-    let mut line_array: Vec<String> = vec![];
+    // Put each line read from file to a vector
+    let mut file_contents: Vec<String> = vec![];
     while let Some(line) = contents.next_line().await.unwrap() {
-        line_array.push(format!("{}\n", line));
+        file_contents.push(format!("{}\n", line));
     }
-    line_array
+    file_contents
 }
 
 pub async fn create_file(path: &str) -> Result<(), CliError> {
@@ -76,7 +76,7 @@ pub async fn create_file(path: &str) -> Result<(), CliError> {
     }
 }
 
-pub async fn write_to_file(path: &str, line_array: Vec<String>) -> Result<(), CliError> {
+pub async fn write_to_file(path: &str, file_contents: Vec<String>) -> Result<(), CliError> {
     let mut file = match fs::File::create(path).await {
         Ok(f) => f,
         Err(e) => {
@@ -85,8 +85,8 @@ pub async fn write_to_file(path: &str, line_array: Vec<String>) -> Result<(), Cl
             })
         }
     };
-    // Write to credentials file
-    for line in line_array.iter() {
+    // Write to file
+    for line in file_contents.iter() {
         match file.write(line.as_bytes()).await {
             Ok(_) => {}
             Err(e) => {

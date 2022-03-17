@@ -42,81 +42,138 @@ pub async fn add_new_profile_to_config(
 }
 
 pub fn update_profile_values(
-    profile_line_num_array: Vec<usize>,
-    line_num_of_existing_profile: usize,
-    line_array: &mut [String],
+    existing_profile_line_numbers: Vec<usize>,
+    existing_profile_starting_line_num: usize,
+    file_contents: Vec<String>,
     file_types: FileTypes,
-) {
-    let num_of_profiles = profile_line_num_array.len();
-    let line_array_len = line_array.len();
-    for (counter, line_num) in profile_line_num_array.iter().enumerate() {
+) -> Vec<String> {
+    let num_of_profiles = existing_profile_line_numbers.len();
+    let file_contents_len = file_contents.len();
+    let mut updated_file_contents: Vec<String> = Vec::new();
+    for (counter, line_num) in existing_profile_line_numbers.iter().enumerate() {
         #[allow(clippy:needless_range_loop)]
-        if line_num_of_existing_profile == *line_num {
-            // Case where profile_name is the only or last item in profile_line_num_array
+        if existing_profile_starting_line_num == *line_num {
+            // Case where profile_name is the only or last item in existing_profile_line_numbers
             if counter == num_of_profiles - 1 {
                 #[allow(clippy::needless_range_loop)]
-                for n in *line_num..line_array_len {
+                for n in *line_num..file_contents_len {
                     match file_types {
                         FileTypes::Credentials(ref cr) => {
-                            replace_value(line_array, n, FileTypes::Credentials(cr.clone()))
+                            if n == *line_num {
+                                updated_file_contents = replace_value(
+                                    file_contents.clone(),
+                                    n,
+                                    FileTypes::Credentials(cr.clone()),
+                                )
+                            } else {
+                                updated_file_contents = replace_value(
+                                    updated_file_contents.clone(),
+                                    n,
+                                    FileTypes::Credentials(cr.clone()),
+                                )
+                            }
                         }
                         FileTypes::Config(ref cf) => {
-                            replace_value(line_array, n, FileTypes::Config(cf.clone()))
+                            if n == *line_num {
+                                updated_file_contents = replace_value(
+                                    file_contents.clone(),
+                                    n,
+                                    FileTypes::Config(cf.clone()),
+                                )
+                            } else {
+                                updated_file_contents = replace_value(
+                                    updated_file_contents.clone(),
+                                    n,
+                                    FileTypes::Config(cf.clone()),
+                                )
+                            }
                         }
                     }
                 }
             } else {
-                // Case where profile_name is at the beginning or at the middle of profile_line_num_array
+                // Case where profile_name is at the beginning or at the middle of existing_profile_line_numbers
                 #[allow(clippy::needless_range_loop)]
-                for n in profile_line_num_array[counter]..profile_line_num_array[counter + 1] {
+                for n in existing_profile_line_numbers[counter]
+                    ..existing_profile_line_numbers[counter + 1]
+                {
                     match file_types {
                         FileTypes::Credentials(ref cr) => {
-                            replace_value(line_array, n, FileTypes::Credentials(cr.clone()))
+                            if n == existing_profile_line_numbers[counter] {
+                                updated_file_contents = replace_value(
+                                    file_contents.clone(),
+                                    n,
+                                    FileTypes::Credentials(cr.clone()),
+                                )
+                            } else {
+                                updated_file_contents = replace_value(
+                                    updated_file_contents.clone(),
+                                    n,
+                                    FileTypes::Credentials(cr.clone()),
+                                )
+                            }
                         }
                         FileTypes::Config(ref cf) => {
-                            replace_value(line_array, n, FileTypes::Config(cf.clone()))
+                            if n == existing_profile_line_numbers[counter] {
+                                updated_file_contents = replace_value(
+                                    file_contents.clone(),
+                                    n,
+                                    FileTypes::Config(cf.clone()),
+                                )
+                            } else {
+                                updated_file_contents = replace_value(
+                                    updated_file_contents.clone(),
+                                    n,
+                                    FileTypes::Config(cf.clone()),
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+    updated_file_contents
 }
 
-fn replace_value(line_array: &mut [String], index: usize, file_types: FileTypes) {
+fn replace_value(file_contents: Vec<String>, index: usize, file_types: FileTypes) -> Vec<String> {
+    let mut updated_file_contents = file_contents;
     match file_types {
         FileTypes::Credentials(cr) => {
             // Check if line is not a comment or profile
-            if !line_array[index].starts_with('#') && !line_array[index].starts_with('[') {
-                let line_len = line_array[index].len();
+            if !updated_file_contents[index].starts_with('#')
+                && !updated_file_contents[index].starts_with('[')
+            {
+                let line_len = updated_file_contents[index].len();
                 // Replace value after "token="
-                line_array[index]
+                updated_file_contents[index]
                     .replace_range(AFTER_TOKEN_INDEX..line_len, &format!("{}\n", &cr.token));
             }
+            updated_file_contents
         }
         FileTypes::Config(cf) => {
             // Check if line is not a comment or profile and for cache
-            if !line_array[index].starts_with('#')
-                && !line_array[index].starts_with('[')
-                && line_array[index].starts_with('c')
+            if !updated_file_contents[index].starts_with('#')
+                && !updated_file_contents[index].starts_with('[')
+                && updated_file_contents[index].starts_with('c')
             {
-                let line_len = line_array[index].len();
+                let line_len = updated_file_contents[index].len();
                 // Replace value after "cache="
-                line_array[index]
+                updated_file_contents[index]
                     .replace_range(AFTER_CACHE_INDEX..line_len, &format!("{}\n", &cf.cache));
             }
             // Check if line is not a comment or profile and for ttl
-            if !line_array[index].starts_with('#')
-                && !line_array[index].starts_with('[')
-                && line_array[index].starts_with('t')
+            if !updated_file_contents[index].starts_with('#')
+                && !updated_file_contents[index].starts_with('[')
+                && updated_file_contents[index].starts_with('t')
             {
-                let line_len = line_array[index].len();
+                let line_len = updated_file_contents[index].len();
                 // Replace value after "ttl="
-                line_array[index].replace_range(
+                updated_file_contents[index].replace_range(
                     AFTER_TTL_INDEX..line_len,
                     &format!("{}\n", &cf.ttl.to_string()),
                 );
             }
+            updated_file_contents
         }
     }
 }

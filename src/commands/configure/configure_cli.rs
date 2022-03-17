@@ -141,73 +141,51 @@ async fn add_profile(
         }
         // explicitly allowing read/write access to the file
         set_file_read_write(path).await.unwrap();
-        match file_types.clone() {
-            FileTypes::Credentials(cr) => {
-                match add_new_profile_to_credentials(profile_name, path, cr).await {
-                    Ok(_) => {}
-                    Err(e) => return Err(e),
-                }
-                // explicitly revoking that access
-                set_file_readonly(path).await.unwrap();
-            }
-            FileTypes::Config(cf) => {
-                match add_new_profile_to_config(profile_name, path, cf).await {
-                    Ok(_) => {}
-                    Err(e) => return Err(e),
-                }
-            }
+        match add_new_profile_to_new_file(file_types.clone(), profile_name, path).await {
+            Ok(_) => {}
+            Err(e) => return Err(e),
         }
     } else {
         // If file already exists, figure out any profiles exist in the file
         set_file_read_write(path).await.unwrap();
         let file = open_file(path).await.unwrap();
-        let mut line_array = read_file_contents(file).await;
+        let file_contents = read_file_contents(file).await;
+        let updated_file_contents: Vec<String>;
         // Determine if  file contains profiles
-        match find_profile_start(line_array.clone()) {
-            // profile_line_num_array contains line number for profile: e.g. [1, 4, 7]
-            Some(profile_line_num_array) => {
+        match find_profile_start(file_contents.clone()) {
+            // existing_profile_line_numbers contains line number for profile: e.g. [1, 4, 7]
+            Some(existing_profile_line_numbers) => {
                 // If profile_name does not exist yet, add new profile and token value
-                if !does_profile_name_exist(line_array.clone(), profile_name) {
-                    match file_types.clone() {
-                        FileTypes::Credentials(cr) => {
-                            push_to_line_array(
-                                &mut line_array,
-                                FileTypes::Credentials(cr),
-                                profile_name,
-                            );
-                        }
-                        FileTypes::Config(cf) => {
-                            push_to_line_array(
-                                &mut line_array,
-                                FileTypes::Config(cf),
-                                profile_name,
-                            );
-                        }
-                    }
+                if !does_profile_name_exist(file_contents.clone(), profile_name) {
+                    updated_file_contents = add_new_profile_to_existing_file(
+                        file_types.clone(),
+                        file_contents.clone(),
+                        profile_name,
+                    );
                 } else {
                     // If profile_name already exists, update token value
-                    let line_num_of_existing_profile =
-                        find_existing_profile_start(line_array.clone(), profile_name);
+                    let existing_profile_starting_line_num =
+                        find_existing_profile_start(file_contents.clone(), profile_name);
                     match file_types.clone() {
                         FileTypes::Credentials(cr) => {
-                            update_profile_values(
-                                profile_line_num_array,
-                                line_num_of_existing_profile,
-                                &mut line_array,
+                            updated_file_contents = update_profile_values(
+                                existing_profile_line_numbers,
+                                existing_profile_starting_line_num,
+                                file_contents.clone(),
                                 FileTypes::Credentials(cr),
                             );
                         }
                         FileTypes::Config(cf) => {
-                            update_profile_values(
-                                profile_line_num_array,
-                                line_num_of_existing_profile,
-                                &mut line_array,
+                            updated_file_contents = update_profile_values(
+                                existing_profile_line_numbers,
+                                existing_profile_starting_line_num,
+                                file_contents.clone(),
                                 FileTypes::Config(cf),
                             );
                         }
                     }
                 }
-                match write_to_file(path, line_array.clone()).await {
+                match write_to_file(path, updated_file_contents.clone()).await {
                     Ok(_) => {}
                     Err(e) => return Err(e),
                 }
@@ -215,42 +193,20 @@ async fn add_profile(
             None => {
                 // If no profile is found, check there is any contents inside of credentials file.
                 // If no content was found, write new credentials to the file.
-                if line_array.is_empty() {
-                    match file_types.clone() {
-                        FileTypes::Credentials(cr) => {
-                            match add_new_profile_to_credentials(profile_name, path, cr).await {
-                                Ok(_) => {}
-                                Err(e) => return Err(e),
-                            }
-                            // explicitly revoking that access
-                            set_file_readonly(path).await.unwrap();
-                        }
-                        FileTypes::Config(cf) => {
-                            match add_new_profile_to_config(profile_name, path, cf).await {
-                                Ok(_) => {}
-                                Err(e) => return Err(e),
-                            }
-                        }
+                if file_contents.is_empty() {
+                    match add_new_profile_to_new_file(file_types.clone(), profile_name, path).await
+                    {
+                        Ok(_) => {}
+                        Err(e) => return Err(e),
                     }
                 } else {
                     // If there is (such as just comments), then leave it as and new profile and token value
-                    match file_types.clone() {
-                        FileTypes::Credentials(cr) => {
-                            push_to_line_array(
-                                &mut line_array,
-                                FileTypes::Credentials(cr),
-                                profile_name,
-                            );
-                        }
-                        FileTypes::Config(cf) => {
-                            push_to_line_array(
-                                &mut line_array,
-                                FileTypes::Config(cf),
-                                profile_name,
-                            );
-                        }
-                    }
-                    match write_to_file(path, line_array.clone()).await {
+                    updated_file_contents = add_new_profile_to_existing_file(
+                        file_types.clone(),
+                        file_contents.clone(),
+                        profile_name,
+                    );
+                    match write_to_file(path, updated_file_contents.clone()).await {
                         Ok(_) => {}
                         Err(e) => return Err(e),
                     }
@@ -267,13 +223,13 @@ async fn add_profile(
     Ok(())
 }
 
-fn find_profile_start(line_array: Vec<String>) -> Option<Vec<usize>> {
+fn find_profile_start(file_contents: Vec<String>) -> Option<Vec<usize>> {
     let mut counter = 0;
     let mut profile_counter;
-    let line_array_len = line_array.len();
-    let mut profile_start_line_num_array: Vec<usize> = vec![];
+    let line_array_len = file_contents.len();
+    let mut profile_start_line_num_array: Vec<usize> = Vec::new();
     while counter < line_array_len {
-        let line = line_array[counter].trim();
+        let line = file_contents[counter].trim();
         if line.starts_with('[') && line.ends_with(']') {
             profile_counter = counter;
             // Collect line number of profile
@@ -288,8 +244,8 @@ fn find_profile_start(line_array: Vec<String>) -> Option<Vec<usize>> {
     }
 }
 
-fn does_profile_name_exist(line_array: Vec<String>, profile_name: &str) -> bool {
-    for line in line_array.iter() {
+fn does_profile_name_exist(file_contents: Vec<String>, profile_name: &str) -> bool {
+    for line in file_contents.iter() {
         let trimmed_line = line.replace('\n', "");
         if trimmed_line.eq(&format!("[{}]", profile_name)) {
             return true;
@@ -298,12 +254,12 @@ fn does_profile_name_exist(line_array: Vec<String>, profile_name: &str) -> bool 
     false
 }
 
-fn find_existing_profile_start(line_array: Vec<String>, profile_name: &str) -> usize {
+fn find_existing_profile_start(file_contents: Vec<String>, profile_name: &str) -> usize {
     let mut counter = 0;
-    let line_array_len = line_array.len();
+    let line_array_len = file_contents.len();
 
     while counter < line_array_len {
-        let trimmed_line = line_array[counter].replace('\n', "");
+        let trimmed_line = file_contents[counter].replace('\n', "");
         if trimmed_line.eq(&format!("[{}]", profile_name)) {
             return counter;
         }
@@ -312,18 +268,62 @@ fn find_existing_profile_start(line_array: Vec<String>, profile_name: &str) -> u
     counter
 }
 
-fn push_to_line_array(line_array: &mut Vec<String>, file_types: FileTypes, profile_name: &str) {
+fn push_to_file_contents(
+    file_contents: Vec<String>,
+    file_types: FileTypes,
+    profile_name: &str,
+) -> Vec<String> {
+    let mut updated_file_contents = file_contents;
     match file_types {
         FileTypes::Credentials(cr) => {
-            line_array.push('\n'.to_string());
-            line_array.push(format!("[{}]\n", profile_name));
-            line_array.push(format!("token={}\n", cr.token));
+            updated_file_contents.push('\n'.to_string());
+            updated_file_contents.push(format!("[{}]\n", profile_name));
+            updated_file_contents.push(format!("token={}", cr.token));
         }
         FileTypes::Config(cf) => {
-            line_array.push('\n'.to_string());
-            line_array.push(format!("[{}]\n", profile_name));
-            line_array.push(format!("cache={}", cf.cache));
-            line_array.push(format!("ttl={}", cf.ttl));
+            updated_file_contents.push('\n'.to_string());
+            updated_file_contents.push(format!("[{}]\n", profile_name));
+            updated_file_contents.push(format!("cache={}\n", cf.cache));
+            updated_file_contents.push(format!("ttl={}", cf.ttl));
         }
     }
+    updated_file_contents
+}
+
+async fn add_new_profile_to_new_file(
+    file_types: FileTypes,
+    profile_name: &str,
+    path: &str,
+) -> Result<(), CliError> {
+    match file_types {
+        FileTypes::Credentials(cr) => {
+            match add_new_profile_to_credentials(profile_name, path, cr).await {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+            // explicitly revoking that access
+            set_file_readonly(path).await.unwrap();
+            Ok(())
+        }
+        FileTypes::Config(cf) => match add_new_profile_to_config(profile_name, path, cf).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        },
+    }
+}
+
+fn add_new_profile_to_existing_file(
+    file_types: FileTypes,
+    file_contents: Vec<String>,
+    profile_name: &str,
+) -> Vec<String> {
+    let updated_file_contents: Vec<String> = match file_types {
+        FileTypes::Credentials(cr) => {
+            push_to_file_contents(file_contents, FileTypes::Credentials(cr), profile_name)
+        }
+        FileTypes::Config(cf) => {
+            push_to_file_contents(file_contents, FileTypes::Config(cf), profile_name)
+        }
+    };
+    updated_file_contents
 }
