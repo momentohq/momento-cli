@@ -679,6 +679,7 @@ dependencies = [
  "log",
  "maplit",
  "momento",
+ "regex",
  "reqwest",
  "serde",
  "tokio",

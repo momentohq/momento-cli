@@ -6,9 +6,8 @@ mod tests {
     async fn configure_momento_default_profile() {
         let test_auth_token = std::env::var("TEST_AUTH_TOKEN_DEFAULT").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        #[allow(clippy::useless_format)]
         cmd.args(&["configure"])
-            .write_stdin(format!("{}", test_auth_token))
+            .write_stdin(test_auth_token)
             .assert()
             .success();
     }

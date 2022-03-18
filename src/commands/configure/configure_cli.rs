@@ -168,20 +168,26 @@ async fn add_profile(
                         find_existing_profile_start(file_contents.clone(), profile_name);
                     match file_types.clone() {
                         FileTypes::Credentials(cr) => {
-                            updated_file_contents = update_profile_values(
+                            updated_file_contents = match update_profile_values(
                                 existing_profile_line_numbers,
                                 existing_profile_starting_line_num,
                                 file_contents.clone(),
                                 FileTypes::Credentials(cr),
-                            );
+                            ) {
+                                Ok(v) => v,
+                                Err(e) => return Err(e),
+                            }
                         }
                         FileTypes::Config(cf) => {
-                            updated_file_contents = update_profile_values(
+                            updated_file_contents = match update_profile_values(
                                 existing_profile_line_numbers,
                                 existing_profile_starting_line_num,
                                 file_contents.clone(),
                                 FileTypes::Config(cf),
-                            );
+                            ) {
+                                Ok(v) => v,
+                                Err(e) => return Err(e),
+                            }
                         }
                     }
                 }
