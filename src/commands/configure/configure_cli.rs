@@ -1,15 +1,19 @@
-use configparser::ini::Ini;
 use log::info;
+use std::path::Path;
 use tokio::fs;
 
 use crate::{
     commands::cache::cache_cli::create_cache,
-    config::{Config, Credentials},
+    config::{Config, Credentials, FileTypes},
     error::CliError,
     utils::{
         file::{
-            create_file_if_not_exists, get_config_file_path, get_credentials_file_path,
-            get_momento_dir, prompt_user_for_input, set_file_read_write, set_file_readonly,
+            create_file, get_config_file_path, get_credentials_file_path, get_momento_dir,
+            open_file, prompt_user_for_input, read_file_contents, set_file_read_write,
+            set_file_readonly, write_to_file,
+        },
+        ini_config::{
+            add_new_profile_to_config, add_new_profile_to_credentials, update_profile_values,
         },
         user::{get_config_for_profile, get_creds_for_profile},
     },
@@ -23,57 +27,46 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
     let credentials_file_path = get_credentials_file_path();
     let config_file_path = get_config_file_path();
 
-    fs::create_dir_all(momento_dir).await.unwrap();
-    match create_file_if_not_exists(&credentials_file_path, "credentials").await {
-        Ok(_) => {
-            // explicitly allowing read/write access to the credentials file
-            set_file_read_write(&credentials_file_path).await.unwrap();
-            add_profile_to_credentials(profile_name, credentials.clone(), &credentials_file_path)
-                .await;
-            // explicitly revoking that access
-            set_file_readonly(&credentials_file_path).await.unwrap();
-
-            match create_file_if_not_exists(&config_file_path, "config").await {
-                Ok(_) => {
-                    add_profile_to_config(profile_name, config.clone(), &config_file_path).await;
-                    match create_cache(config.cache, credentials.token).await {
-                        Ok(_) => info!("default cache successfully created"),
-                        Err(e) => {
-                            if e.msg.contains("already exists") {
-                                info!("default cache already exists");
-                            } else {
-                                return Err(e);
-                            }
-                        }
-                    };
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-        }
+    match fs::create_dir_all(momento_dir).await {
+        Ok(_) => (),
         Err(e) => {
-            match create_file_if_not_exists(&config_file_path, "config").await {
-                Ok(_) => {
-                    add_profile_to_config(profile_name, config.clone(), &config_file_path).await;
-                    match create_cache(config.cache, credentials.token).await {
-                        Ok(_) => info!("default cache successfully created"),
-                        Err(e) => {
-                            if e.msg.contains("already exists") {
-                                info!("default cache already exists");
-                            } else {
-                                return Err(e);
-                            }
-                        }
-                    };
-                }
-                Err(_) => {
-                    return Err(CliError {
-                        msg: "Existing credentials and config files detected.\nPlease edit $HOME/.momento/credentials and $HOME/.momento/config directly to add or modify profiles".to_string(),
-                    });
-                }
-            }
+            return Err(CliError {
+                msg: format!("failed to create directory: {}", e),
+            })
+        }
+    };
+    match add_profile(
+        profile_name,
+        FileTypes::Credentials(credentials.clone()),
+        &credentials_file_path,
+    )
+    .await
+    {
+        Ok(_) => {}
+        Err(e) => {
             return Err(e);
+        }
+    }
+    match add_profile(
+        profile_name,
+        FileTypes::Config(config.clone()),
+        &config_file_path,
+    )
+    .await
+    {
+        Ok(_) => {}
+        Err(e) => {
+            return Err(e);
+        }
+    }
+    match create_cache(config.cache, credentials.token).await {
+        Ok(_) => info!("default cache successfully created"),
+        Err(e) => {
+            if e.msg.contains("already exists") {
+                info!("default cache already exists");
+            } else {
+                return Err(e);
+            }
         }
     };
     Ok(())
@@ -94,8 +87,20 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
         .await
         .unwrap_or_default();
 
-    let cache_name =
-        prompt_user_for_input("Default Cache", current_config.cache.as_str(), false).await?;
+    let prompt_cache = if current_config.cache.is_empty() {
+        "default-cache"
+    } else {
+        current_config.cache.as_str()
+    };
+    let cache_name = match prompt_user_for_input("Default Cache", prompt_cache, false).await {
+        Ok(s) => s,
+        Err(e) => return Err(e),
+    };
+    let cache_name_to_use = if cache_name.is_empty() {
+        "default-cache".to_string()
+    } else {
+        cache_name
+    };
     let prompt_ttl = if current_config.ttl == 0 {
         600
     } else {
@@ -118,39 +123,213 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     };
 
     Ok(Config {
-        cache: cache_name,
+        cache: cache_name_to_use,
         ttl,
     })
 }
 
-async fn add_profile_to_credentials(
+async fn add_profile(
     profile_name: &str,
-    credentials: Credentials,
-    credentials_file_path: &str,
-) {
-    let mut ini_map = Ini::new_cs();
-    // Empty default_section for Ini instance so that "default" will be used as a section
-    ini_map.set_default_section("");
-    ini_map.set(profile_name, "token", Some(credentials.token));
-    write_config_file(ini_map, credentials_file_path)
-}
-
-async fn add_profile_to_config(profile_name: &str, config: Config, config_file_path: &str) {
-    let mut ini_map = Ini::new_cs();
-    // Empty default_section for Ini instance so that "default" will be used as a section
-    ini_map.set_default_section("");
-    ini_map.set(profile_name, "cache", Some(config.cache));
-    ini_map.set(profile_name, "ttl", Some(config.ttl.to_string()));
-    write_config_file(ini_map, config_file_path)
-}
-
-fn write_config_file(ini_map: Ini, config_file_path: &str) {
-    match ini_map.write(config_file_path) {
-        Ok(_) => {
-            log::debug!("wrote config file successfully");
+    file_types: FileTypes,
+    path: &str,
+) -> Result<(), CliError> {
+    // If file does not exists, create one and set default profile with token
+    if !Path::new(path).exists() {
+        match create_file(path).await {
+            Ok(_) => {}
+            Err(e) => return Err(e),
         }
-        Err(e) => {
-            log::error!("failed to write config file: {:?}", e);
+        // explicitly allowing read/write access to the file
+        set_file_read_write(path).await.unwrap();
+        match add_new_profile_to_new_file(file_types.clone(), profile_name, path).await {
+            Ok(_) => {}
+            Err(e) => return Err(e),
+        }
+    } else {
+        // If file already exists, figure out any profiles exist in the file
+        set_file_read_write(path).await.unwrap();
+        let file = open_file(path).await.unwrap();
+        let file_contents = read_file_contents(file).await;
+        let updated_file_contents: Vec<String>;
+        // Determine if  file contains profiles
+        match find_profile_start(file_contents.clone()) {
+            // existing_profile_line_numbers contains line number for profile: e.g. [1, 4, 7]
+            Some(existing_profile_line_numbers) => {
+                // If profile_name does not exist yet, add new profile and token value
+                if !does_profile_name_exist(file_contents.clone(), profile_name) {
+                    updated_file_contents = add_new_profile_to_existing_file(
+                        file_types.clone(),
+                        file_contents.clone(),
+                        profile_name,
+                    );
+                } else {
+                    // If profile_name already exists, update token value
+                    let existing_profile_starting_line_num =
+                        find_existing_profile_start(file_contents.clone(), profile_name);
+                    match file_types.clone() {
+                        FileTypes::Credentials(cr) => {
+                            updated_file_contents = match update_profile_values(
+                                existing_profile_line_numbers,
+                                existing_profile_starting_line_num,
+                                file_contents.clone(),
+                                FileTypes::Credentials(cr),
+                            ) {
+                                Ok(v) => v,
+                                Err(e) => return Err(e),
+                            }
+                        }
+                        FileTypes::Config(cf) => {
+                            updated_file_contents = match update_profile_values(
+                                existing_profile_line_numbers,
+                                existing_profile_starting_line_num,
+                                file_contents.clone(),
+                                FileTypes::Config(cf),
+                            ) {
+                                Ok(v) => v,
+                                Err(e) => return Err(e),
+                            }
+                        }
+                    }
+                }
+                match write_to_file(path, updated_file_contents.clone()).await {
+                    Ok(_) => {}
+                    Err(e) => return Err(e),
+                }
+            }
+            None => {
+                // If no profile is found, check there is any contents inside of credentials file.
+                // If no content was found, write new credentials to the file.
+                if file_contents.is_empty() {
+                    match add_new_profile_to_new_file(file_types.clone(), profile_name, path).await
+                    {
+                        Ok(_) => {}
+                        Err(e) => return Err(e),
+                    }
+                } else {
+                    // If there is (such as just comments), then leave it as and new profile and token value
+                    updated_file_contents = add_new_profile_to_existing_file(
+                        file_types.clone(),
+                        file_contents.clone(),
+                        profile_name,
+                    );
+                    match write_to_file(path, updated_file_contents.clone()).await {
+                        Ok(_) => {}
+                        Err(e) => return Err(e),
+                    }
+                }
+            }
+        }
+        match file_types {
+            FileTypes::Credentials(_) => {
+                set_file_readonly(path).await.unwrap();
+            }
+            FileTypes::Config(_) => {}
         }
     }
+    Ok(())
+}
+
+fn find_profile_start(file_contents: Vec<String>) -> Option<Vec<usize>> {
+    let mut counter = 0;
+    let mut profile_counter;
+    let line_array_len = file_contents.len();
+    let mut profile_start_line_num_array: Vec<usize> = Vec::new();
+    while counter < line_array_len {
+        let line = file_contents[counter].trim();
+        if line.starts_with('[') && line.ends_with(']') {
+            profile_counter = counter;
+            // Collect line number of profile
+            profile_start_line_num_array.push(profile_counter);
+        }
+        counter += 1;
+    }
+    if profile_start_line_num_array.is_empty() {
+        None
+    } else {
+        Some(profile_start_line_num_array)
+    }
+}
+
+fn does_profile_name_exist(file_contents: Vec<String>, profile_name: &str) -> bool {
+    for line in file_contents.iter() {
+        let trimmed_line = line.replace('\n', "");
+        if trimmed_line.eq(&format!("[{}]", profile_name)) {
+            return true;
+        }
+    }
+    false
+}
+
+fn find_existing_profile_start(file_contents: Vec<String>, profile_name: &str) -> usize {
+    let mut counter = 0;
+    let line_array_len = file_contents.len();
+
+    while counter < line_array_len {
+        let trimmed_line = file_contents[counter].replace('\n', "");
+        if trimmed_line.eq(&format!("[{}]", profile_name)) {
+            return counter;
+        }
+        counter += 1;
+    }
+    counter
+}
+
+fn push_to_file_contents(
+    file_contents: Vec<String>,
+    file_types: FileTypes,
+    profile_name: &str,
+) -> Vec<String> {
+    let mut updated_file_contents = file_contents;
+    match file_types {
+        FileTypes::Credentials(cr) => {
+            updated_file_contents.push('\n'.to_string());
+            updated_file_contents.push(format!("[{}]\n", profile_name));
+            updated_file_contents.push(format!("token={}", cr.token));
+        }
+        FileTypes::Config(cf) => {
+            updated_file_contents.push('\n'.to_string());
+            updated_file_contents.push(format!("[{}]\n", profile_name));
+            updated_file_contents.push(format!("cache={}\n", cf.cache));
+            updated_file_contents.push(format!("ttl={}", cf.ttl));
+        }
+    }
+    updated_file_contents
+}
+
+async fn add_new_profile_to_new_file(
+    file_types: FileTypes,
+    profile_name: &str,
+    path: &str,
+) -> Result<(), CliError> {
+    match file_types {
+        FileTypes::Credentials(cr) => {
+            match add_new_profile_to_credentials(profile_name, path, cr).await {
+                Ok(_) => {}
+                Err(e) => return Err(e),
+            }
+            // explicitly revoking that access
+            set_file_readonly(path).await.unwrap();
+            Ok(())
+        }
+        FileTypes::Config(cf) => match add_new_profile_to_config(profile_name, path, cf).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        },
+    }
+}
+
+fn add_new_profile_to_existing_file(
+    file_types: FileTypes,
+    file_contents: Vec<String>,
+    profile_name: &str,
+) -> Vec<String> {
+    let updated_file_contents: Vec<String> = match file_types {
+        FileTypes::Credentials(cr) => {
+            push_to_file_contents(file_contents, FileTypes::Credentials(cr), profile_name)
+        }
+        FileTypes::Config(cf) => {
+            push_to_file_contents(file_contents, FileTypes::Config(cf), profile_name)
+        }
+    };
+    updated_file_contents
 }

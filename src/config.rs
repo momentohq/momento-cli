@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Default)]
-pub struct Profiles<T>
-where
-    T: Default,
-{
-    pub profile: HashMap<String, T>,
+#[derive(Clone)]
+pub enum FileTypes {
+    Config(Config),
+    Credentials(Credentials),
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]

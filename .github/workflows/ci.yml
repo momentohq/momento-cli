@@ -8,7 +8,7 @@ env:
   CARGO_TERM_COLOR: always
   TEST_AUTH_TOKEN_DEFAULT: ${{ secrets.ALPHA_TEST_AUTH_TOKEN }}
   TEST_AUTH_TOKEN_WITH_PROFILE: ${{ secrets.ALPHA_TEST_AUTH_TOKEN }}
-  TEST_CACHE_DEFAULT: "cache-default"
+  TEST_CACHE_DEFAULT: "default-cache"
   TEST_CACHE_WITH_PROFILE: "cache-with-profile"
   TEST_PROFILE: "test-profile"
 
@@ -41,9 +41,18 @@ jobs:
           toolchain: stable
           components: rustfmt
           override: true
-      - name: Create .momento directory and create credential file
+      - name: Build
+        run: cargo build --verbose
+      - name: Create .momento directory
+        run: mkdir ~/.momento
+      - name: Run momento configure test with default profile created initially
+        run: cargo test --test configure_profiles_test
+      - name: Remove credentials and config files to prepare for the integration tests
         run: |
-          mkdir ~/.momento
+          rm ~/.momento/credentials
+          rm ~/.momento/config
+      - name: Create credential file
+        run: |
           cat <<EOF > ~/.momento/credentials 
           [default]
           token=$TEST_AUTH_TOKEN_DEFAULT
@@ -62,7 +71,5 @@ jobs:
           ttl=1000
           EOF
           cat ~/.momento/config
-      - name: Build
-        run: cargo build --verbose
       - name: Run Integration Tests
         run: ./run_test_sequentially.sh

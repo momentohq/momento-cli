@@ -29,7 +29,9 @@ momento account signup --email <ご自身のメールアドレス> --region <ご
 
 上記のコマンドはアクセストークンを発行し、提供していただいたメールアドレスに送付します。こちらのトークンは独自にキャッシュインタラクションを識別します。トークンはセンシティブなパスワードの様に扱ってください。また、秘密を確信するため全ての必要不可欠な対応をお願いします。AWS Secrets Manager の様なシークレット管理サービスにトークンを保管する事をお勧めします。
 
-## コンフィギュア
+## コンフィグ
+
+### 初回コンフィグ
 
 ```
 
@@ -39,14 +41,35 @@ momento configure
 
 上記コマンドは Momento オーストークン、デフォルトのキャッシュ名、デフォルトの TTL の入力を要求します。入力後、トークンは保存され、あなたの”デフォルト”プロファイルとして使用されます。
 
+```
+momento configure --profile new-profile
+```
+
+上記コマンドも Momento オーストークン、デフォルトのキャッシュ名、デフォルトの TTL の入力を要求します。入力後、トークンは保存され、あなたの”new-profile”プロファイルとして使用されます。
+
+<br>
+
+### 既存のコンフィグをアップデート
+
+ご希望のプロファイルをアップデートするには、上記と同様のコマンドをご使用ください。
+
 ## CLI 使用方法
 
 ```
-
+#　デフォルトプロファイルが使用される
 momento cache create --name example-cache
 momento cache set --key key --value value --ttl 100 --name example-cache
 momento cache get --key key --name example-cache
 
+```
+
+ご希望のプロファイルを指定する事もできます。
+
+```
+# new-profileが使用される
+momento cache create --name example-cache --profile new-profile
+momento cache set --key key --value value --ttl 100 --name example-cache --profile new-profile
+momento cache get --key key --name example-cache --profile new-profile
 ```
 
 ## ご自身のプロジェクト内での Momento 使用方法

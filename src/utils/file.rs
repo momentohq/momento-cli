@@ -1,5 +1,4 @@
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
 
 use configparser::ini::Ini;
 use home::home_dir;
@@ -26,6 +25,21 @@ pub fn get_momento_dir() -> String {
     return format!("{}/.momento", home.display());
 }
 
+pub async fn open_file(path: &str) -> Result<File, CliError> {
+    let res = File::open(path).await;
+    match res {
+        Ok(f) => {
+            debug!("opened file {}", path);
+            Ok(f)
+        }
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to create file {}, error: {}", path, e),
+            })
+        }
+    }
+}
+
 pub async fn read_file(path: &str) -> Result<Ini, CliError> {
     let mut config = Ini::new_cs();
     match config.load(path) {
@@ -36,25 +50,63 @@ pub async fn read_file(path: &str) -> Result<Ini, CliError> {
     }
 }
 
-pub async fn create_file_if_not_exists(path: &str, file_name: &str) -> Result<(), CliError> {
-    if !Path::new(path).exists() {
-        let res = File::create(path).await;
-        match res {
-            Ok(_) => {
-                debug!("created file {}", path);
-                Ok(())
-            }
+pub async fn read_file_contents(file: File) -> Vec<String> {
+    let reader = BufReader::new(file);
+    let mut contents = reader.lines();
+    // Put each line read from file to a vector
+    let mut file_contents: Vec<String> = vec![];
+    while let Some(line) = contents.next_line().await.unwrap() {
+        file_contents.push(format!("{}\n", line));
+    }
+    file_contents
+}
+
+pub async fn create_file(path: &str) -> Result<(), CliError> {
+    let res = File::create(path).await;
+    match res {
+        Ok(_) => {
+            debug!("created file {}", path);
+            Ok(())
+        }
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to create file {}, error: {}", path, e),
+            })
+        }
+    }
+}
+
+pub async fn write_to_file(path: &str, file_contents: Vec<String>) -> Result<(), CliError> {
+    let mut file = match fs::File::create(path).await {
+        Ok(f) => f,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to write to file {}, error: {}", path, e),
+            })
+        }
+    };
+    // Write to file
+    for line in file_contents.iter() {
+        match file.write(line.as_bytes()).await {
+            Ok(_) => {}
             Err(e) => {
                 return Err(CliError {
-                    msg: format!("failed to create file {}, error: {}", path, e),
+                    msg: format!("failed to write to file {}, error: {}", path, e),
                 })
             }
+        };
+    }
+    Ok(())
+}
+
+pub async fn ini_write_to_file(ini_map: Ini, path: &str) -> Result<(), CliError> {
+    match ini_map.write(path) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to write to file {} with ini, error: {}", path, e),
+            })
         }
-    } else {
-        // Throw error if credentials or config files already exists
-        return Err(CliError {
-            msg: format!("Existing {} file detected, please edit $HOME/.momento/{} directly to add or modify profiles", file_name, file_name),
-        });
     }
 }
 
