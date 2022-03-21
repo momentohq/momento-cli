@@ -117,4 +117,9 @@ jobs:
           SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
           PR_ARG="chore: bump cargo version ${{ github.ref }} v${{ steps.semrel.outputs.version }} -l \"automation\""
           COMMAND="hub pull-request -b $DESTINATION_BRANCH -h $SOURCE_BRANCH --no-edit $PR_ARG || true"
+          PR_URL=$(sh -c "$COMMAND")
+          if [[ "$?" != "0" ]]; then
+            exit 1
+          fi
+          echo ${PR_URL}
         shell: bash
