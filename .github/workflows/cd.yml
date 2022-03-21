@@ -57,6 +57,7 @@ jobs:
           git config user.name "momentobot"
           git add Cargo.toml
           git commit -m "chore: bump cargo version v${{ steps.semrel.outputs.version }}"
+          git checkout -b $SOURCE_BRANCH
           git push origin $SOURCE_BRANCH
           # Workaround for `hub` auth error https://github.com/github/hub/issues/2149#issuecomment-513214342
           export GITHUB_USER="$GITHUB_ACTOR"
