@@ -48,7 +48,7 @@ jobs:
           allow-initial-development-versions: true
           force-bump-patch-version: true
 
-      - name: Update Cargo Version and create version update pull request
+      - name: Update Cargo Version and create version-update branch and push to main
         run: |
           git checkout -b version-update/v${{ steps.semrel.outputs.version }}
           chmod +x set_cargo_version.sh
@@ -62,6 +62,18 @@ jobs:
 
       - name: Build
         run: cargo build --verbose
+
+      - name: Create pr in the version-update branch
+        id: cpr
+        uses: repo-sync/pull-request@v2
+        with:
+          destination_branch: "version-update/v${{ steps.semrel.outputs.version }}"
+          pr_title: "momento-cli version update ${{ github.ref }}"
+          pr_body: ":crown: *Automated PR*"
+          pr_label: "automation"
+          pr_draft: false
+          pr_allow_empty: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build tar.gz
         run: |

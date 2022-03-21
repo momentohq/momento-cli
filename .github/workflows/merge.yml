@@ -1,10 +1,11 @@
 name: Merge momento-cli version update pr to main
 on:
-  push:
-    branches:
-      - "version-update/**"
+  pull_request_target:
+    types:
+      - labeled
 jobs:
   merge-branch:
+    if: contains(github.event.pull_request.labels.*.name, 'automation')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
