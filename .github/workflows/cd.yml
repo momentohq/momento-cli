@@ -24,6 +24,8 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.release }}
     steps:
       - uses: actions/checkout@v2
         with:
