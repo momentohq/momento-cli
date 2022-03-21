@@ -63,18 +63,6 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
-      - name: Create pr in the version-update branch
-        id: cpr
-        uses: repo-sync/pull-request@v2
-        with:
-          destination_branch: "version-update/v${{ steps.semrel.outputs.version }}"
-          pr_title: "momento-cli version update ${{ github.ref }}"
-          pr_body: ":crown: *Automated PR*"
-          pr_label: "automation"
-          pr_draft: false
-          pr_allow_empty: true
-          github_token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
-
       - name: Build tar.gz
         run: |
           STASH_SHA=$(git stash create)
@@ -114,3 +102,19 @@ jobs:
           git add Cargo.toml
           git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
           git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
+
+      - name: Create pr to bump Cargo.toml version
+        run: |
+          SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add Cargo.toml
+          git commit -m "chore: bump cargo version v${{ steps.semrel.outputs.version }}"
+          git push origin $SOURCE_BRANCH
+          # Workaround for `hub` auth error https://github.com/github/hub/issues/2149#issuecomment-513214342
+          export GITHUB_USER="$GITHUB_ACTOR"
+          DESTINATION_BRANCH="main"
+          SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
+          PR_ARG="chore: bump cargo version ${{ github.ref }} v${{ steps.semrel.outputs.version }} -l \"automation\""
+          COMMAND="hub pull-request -b $DESTINATION_BRANCH -h $SOURCE_BRANCH --no-edit $PR_ARG || true"
+        shell: bash
