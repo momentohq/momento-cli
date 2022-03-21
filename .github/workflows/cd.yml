@@ -22,7 +22,7 @@ jobs:
       - name: rustfmt
         run: cargo fmt -- --check
 
-  build:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -52,24 +52,6 @@ jobs:
         run: |
           chmod +x set_cargo_version.sh
           ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
-          SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
-          git config user.email "momentobot@users.noreply.github.com"
-          git config user.name "momentobot"
-          git add Cargo.toml
-          git commit -m "chore: bump cargo version v${{ steps.semrel.outputs.version }}"
-          git checkout -b $SOURCE_BRANCH
-          git push origin $SOURCE_BRANCH
-          # Workaround for `hub` auth error https://github.com/github/hub/issues/2149#issuecomment-513214342
-          export GITHUB_USER="$GITHUB_ACTOR"
-          DESTINATION_BRANCH="main"
-          SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
-          PR_ARG="chore: bump cargo version ${{ github.ref }} v${{ steps.semrel.outputs.version }} -l \"automation\""
-          COMMAND="hub pull-request -b $DESTINATION_BRANCH -h $SOURCE_BRANCH --no-edit $PR_ARG || true"
-          PR_URL=$(sh -c "$COMMAND")
-          if [[ "$?" != "0" ]]; then
-            exit 1
-          fi
-          echo ${PR_URL}
         shell: bash
 
       - name: Build
@@ -114,3 +96,42 @@ jobs:
           git add .
           git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
           git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
+      
+      - name: Output release
+        id: release
+        run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
+        
+  update-cargo:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+          
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+          SOURCE_BRANCH="version-update/v${{ needs.release.outputs.version }}"
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add Cargo.toml
+          git commit -m "chore: bump cargo version v${{ needs.release.outputs.version }}"
+          git checkout -b $SOURCE_BRANCH
+          git push origin $SOURCE_BRANCH
+          # Github actions no longer auto set the username and GITHUB_TOKEN
+          git remote set-url origin "https://$GITHUB_ACTOR:${{ secrets.GITHUB_TOKEN }}@${GITHUB_SERVER_URL#https://}/$GITHUB_REPOSITORY"
+          # Workaround for `hub` auth error https://github.com/github/hub/issues/2149#issuecomment-513214342
+          export GITHUB_USER="$GITHUB_ACTOR"
+          DESTINATION_BRANCH="main"
+          PR_ARG="chore: bump cargo version ${{ github.ref }} v${{ needs.release.outputs.version }} -l \"automation\""
+          COMMAND="hub pull-request -b $DESTINATION_BRANCH -h $SOURCE_BRANCH --no-edit $PR_ARG || true"
+          PR_URL=$(sh -c "$COMMAND")
+          if [[ "$?" != "0" ]]; then
+            exit 1
+          fi
+          echo ${PR_URL}
+        shell: bash
+    
