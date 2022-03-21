@@ -25,10 +25,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -62,6 +58,12 @@ jobs:
 
       - name: Build
         run: cargo build --verbose
+
+      - name: Check out rust sdk submodule
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
 
       - name: Create pr in the version-update branch
         id: cpr
@@ -111,6 +113,6 @@ jobs:
           popd
           git config user.email "momentobot@users.noreply.github.com"
           git config user.name "momentobot"
-          git add .
+          git add Cargo.toml
           git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
           git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
