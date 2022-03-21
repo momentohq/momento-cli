@@ -25,6 +25,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -59,12 +63,6 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
-      - name: Check out rust sdk submodule
-        uses: actions/checkout@v2
-        with:
-          submodules: true
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
-
       - name: Create pr in the version-update branch
         id: cpr
         uses: repo-sync/pull-request@v2
@@ -75,7 +73,7 @@ jobs:
           pr_label: "automation"
           pr_draft: false
           pr_allow_empty: true
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
 
       - name: Build tar.gz
         run: |
