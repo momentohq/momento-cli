@@ -47,17 +47,28 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allow-initial-development-versions: true
           force-bump-patch-version: true
-
-      - name: Update Cargo Version and create version-update branch and push to main
+          
+      - name: Update Cargo Version
         run: |
-          git checkout -b version-update/v${{ steps.semrel.outputs.version }}
           chmod +x set_cargo_version.sh
           ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
+          SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
           git config user.email "momentobot@users.noreply.github.com"
           git config user.name "momentobot"
-          git add .
-          git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
-          git push origin version-update/v${{ steps.semrel.outputs.version }}
+          git add Cargo.toml
+          git commit -m "chore: bump cargo version v${{ steps.semrel.outputs.version }}"
+          git push origin $SOURCE_BRANCH
+          # Workaround for `hub` auth error https://github.com/github/hub/issues/2149#issuecomment-513214342
+          export GITHUB_USER="$GITHUB_ACTOR"
+          DESTINATION_BRANCH="main"
+          SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
+          PR_ARG="chore: bump cargo version ${{ github.ref }} v${{ steps.semrel.outputs.version }} -l \"automation\""
+          COMMAND="hub pull-request -b $DESTINATION_BRANCH -h $SOURCE_BRANCH --no-edit $PR_ARG || true"
+          PR_URL=$(sh -c "$COMMAND")
+          if [[ "$?" != "0" ]]; then
+            exit 1
+          fi
+          echo ${PR_URL}
         shell: bash
 
       - name: Build
@@ -99,27 +110,6 @@ jobs:
           popd
           git config user.email "momentobot@users.noreply.github.com"
           git config user.name "momentobot"
-          git add Cargo.toml
+          git add .
           git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
           git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
-
-      - name: Create pr to bump Cargo.toml version
-        run: |
-          SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
-          git config user.email "momentobot@users.noreply.github.com"
-          git config user.name "momentobot"
-          git add Cargo.toml
-          git commit -m "chore: bump cargo version v${{ steps.semrel.outputs.version }}"
-          git push origin $SOURCE_BRANCH
-          # Workaround for `hub` auth error https://github.com/github/hub/issues/2149#issuecomment-513214342
-          export GITHUB_USER="$GITHUB_ACTOR"
-          DESTINATION_BRANCH="main"
-          SOURCE_BRANCH="version-update/v${{ steps.semrel.outputs.version }}"
-          PR_ARG="chore: bump cargo version ${{ github.ref }} v${{ steps.semrel.outputs.version }} -l \"automation\""
-          COMMAND="hub pull-request -b $DESTINATION_BRANCH -h $SOURCE_BRANCH --no-edit $PR_ARG || true"
-          PR_URL=$(sh -c "$COMMAND")
-          if [[ "$?" != "0" ]]; then
-            exit 1
-          fi
-          echo ${PR_URL}
-        shell: bash
