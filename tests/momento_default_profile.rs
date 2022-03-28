@@ -5,10 +5,18 @@ mod tests {
 
     async fn momento_cache_create_default_profile() {
         let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
-        Command::cargo_bin("momento")
+        let output = Command::cargo_bin("momento")
             .unwrap()
-            .args(&["cache", "delete", "--name", &test_cache_default])
-            .unwrap();
+            .args(&["cache", "list"])
+            .output()
+            .unwrap()
+            .stdout;
+        if output == test_cache_default.as_bytes() {
+            Command::cargo_bin("momento")
+                .unwrap()
+                .args(&["cache", "delete", "--name", &test_cache_default])
+                .unwrap();
+        }
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(&["cache", "create", "--name", &test_cache_default])
             .assert()
