@@ -10,7 +10,7 @@ use crate::{
         file::{
             create_file, get_config_file_path, get_credentials_file_path, get_momento_dir,
             open_file, prompt_user_for_input, read_file_contents, set_file_read_write,
-            set_file_readonly, write_to_file,
+            write_to_file,
         },
         ini_config::{
             add_new_profile_to_config, add_new_profile_to_credentials, update_profile_values,
@@ -219,12 +219,6 @@ async fn add_profile(
                 }
             }
         }
-        match file_types {
-            FileTypes::Credentials(_) => {
-                set_file_readonly(path).await.unwrap();
-            }
-            FileTypes::Config(_) => {}
-        }
     }
     Ok(())
 }
@@ -307,8 +301,6 @@ async fn add_new_profile_to_new_file(
                 Ok(_) => {}
                 Err(e) => return Err(e),
             }
-            // explicitly revoking that access
-            set_file_readonly(path).await.unwrap();
             Ok(())
         }
         FileTypes::Config(cf) => match add_new_profile_to_config(profile_name, path, cf).await {

@@ -2,9 +2,28 @@
 mod tests {
 
     use assert_cmd::Command;
+    use std::str;
 
     async fn momento_cache_create_default_profile() {
         let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
+        let output = Command::cargo_bin("momento")
+            .unwrap()
+            .args(&["cache", "list"])
+            .output()
+            .unwrap()
+            .stdout;
+        if !output.is_empty() {
+            let string_output = str::from_utf8(&output).unwrap();
+            let v: Vec<&str> = string_output.split('\n').collect();
+            for cache in v.iter() {
+                if !cache.is_empty() {
+                    Command::cargo_bin("momento")
+                        .unwrap()
+                        .args(&["cache", "delete", "--name", cache])
+                        .unwrap();
+                }
+            }
+        }
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(&["cache", "create", "--name", &test_cache_default])
             .assert()
