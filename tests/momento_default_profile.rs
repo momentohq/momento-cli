@@ -12,7 +12,7 @@ mod tests {
             .output()
             .unwrap()
             .stdout;
-        if output.len() != 0 {
+        if !output.is_empty() {
             let string_output = str::from_utf8(&output).unwrap();
             let v: Vec<&str> = string_output.split('\n').collect();
             for cache in v.iter() {
