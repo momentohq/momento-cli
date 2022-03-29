@@ -15,6 +15,12 @@ brew tap momentohq/tap
 brew install momento-cli
 ```
 
+## Upgrading
+```
+brew update momento-cli
+brew upgrade momento-cli
+```
+
 ## Sign up
 
 **NOTE:** If you run into errors during signup, please ensure you have upgraded to the [latest version](https://github.com/momentohq/momento-cli/releases/latest) of our CLI.
