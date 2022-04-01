@@ -15,7 +15,6 @@ pub async fn create_signing_key(ttl_minutes: u32, auth_token: String) -> Result<
     let mut momento = get_momento_instance(auth_token).await?;
     match momento.create_signing_key(ttl_minutes).await {
         Ok(res) => {
-            println!("user_id = {}", res.user_id);
             println!("endpoint = {}", res.endpoint);
             println!("key = {}", res.key);
             println!("expires_at = {}", res.expires_at);
