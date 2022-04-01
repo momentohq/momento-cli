@@ -29,9 +29,14 @@ enum Subcommand {
         #[structopt(subcommand)]
         operation: CacheCommand,
     },
+    #[structopt(about = "Signing Key Operations")]
+    Signingkey {
+        #[structopt(subcommand)]
+        operation: SigningKeyCommand,
+    },
     #[structopt(about = "Configure Momento Credentials")]
     Configure {
-        #[structopt(name = "profile", long, short, default_value = "default")]
+        #[structopt(long, short, default_value = "default")]
         profile: String,
     },
     #[structopt(about = "Manage Accounts")]
@@ -45,10 +50,9 @@ enum Subcommand {
 enum AccountCommand {
     #[structopt(about = "Sign up for Momento")]
     Signup {
-        #[structopt(name = "email", long, short)]
+        #[structopt(long, short)]
         email: String,
         #[structopt(
-            name = "region",
             long,
             short,
             default_value = "us-west-2",
@@ -62,15 +66,15 @@ enum AccountCommand {
 enum CacheCommand {
     #[structopt(about = "Creates a Momento Cache")]
     Create {
-        #[structopt(name = "name", long, short)]
+        #[structopt(long = "name", short = 'n')]
         cache_name: String,
-        #[structopt(name = "profile", long, short, default_value = "default")]
+        #[structopt(long, short, default_value = "default")]
         profile: String,
     },
 
     #[structopt(about = "Stores a given item in cache")]
     Set {
-        #[structopt(name = "name", long, short)]
+        #[structopt(long = "name", short = 'n')]
         cache_name: Option<String>,
         // TODO: Add support for non-string key-value
         #[structopt(long, short)]
@@ -83,32 +87,55 @@ enum CacheCommand {
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
         ttl_seconds: Option<u32>,
-        #[structopt(name = "profile", long, short, default_value = "default")]
+        #[structopt(long, short, default_value = "default")]
         profile: String,
     },
 
     #[structopt(about = "Gets item from the cache")]
     Get {
-        #[structopt(name = "name", long, short)]
+        #[structopt(long = "name", short = 'n')]
         cache_name: Option<String>,
         // TODO: Add support for non-string key-value
         #[structopt(long, short)]
         key: String,
-        #[structopt(name = "profile", long, short, default_value = "default")]
+        #[structopt(long, short, default_value = "default")]
         profile: String,
     },
 
     #[structopt(about = "Deletes the cache")]
     Delete {
-        #[structopt(name = "name", long, short)]
+        #[structopt(long = "name", short = 'n')]
         cache_name: String,
-        #[structopt(name = "profile", long, short, default_value = "default")]
+        #[structopt(long, short, default_value = "default")]
         profile: String,
     },
 
     #[structopt(about = "Lists all momento caches")]
     List {
-        #[structopt(name = "profile", long, short, default_value = "default")]
+        #[structopt(long, short, default_value = "default")]
+        profile: String,
+    },
+}
+
+#[derive(Debug, StructOpt)]
+enum SigningKeyCommand {
+    #[structopt(about = "Creates a Momento Signing Key")]
+    Create {
+        #[structopt(
+            long = "ttl",
+            short = 't',
+            help = "Timespan, in minutes, that the signing key will be valid"
+        )]
+        ttl_minutes: u32,
+        #[structopt(long, short, default_value = "default")]
+        profile: String,
+    },
+
+    #[structopt(about = "Revokes the Signing Key")]
+    Revoke {
+        #[structopt(long = "kid", short, help = "Signing Key ID")]
+        key_id: String,
+        #[structopt(long, short, default_value = "default")]
         profile: String,
     },
 }
@@ -176,6 +203,25 @@ async fn entrypoint() -> Result<(), CliError> {
             CacheCommand::List { profile } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::list_caches(creds.token).await?
+            }
+        },
+        Subcommand::Signingkey { operation } => match operation {
+            SigningKeyCommand::Create {
+                ttl_minutes,
+                profile,
+            } => {
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::signingkey::signingkey_cli::create_signing_key(ttl_minutes, creds.token)
+                    .await?;
+            }
+            SigningKeyCommand::Revoke { key_id, profile } => {
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::signingkey::signingkey_cli::revoke_signing_key(
+                    key_id.clone(),
+                    creds.token,
+                )
+                .await?;
+                info!("revoked signing key {}", key_id)
             }
         },
         Subcommand::Configure { profile } => {
