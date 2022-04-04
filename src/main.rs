@@ -24,7 +24,7 @@ struct Momento {
 
 #[derive(Debug, StructOpt)]
 enum Subcommand {
-    #[structopt(about = "Cache Operations")]
+    #[structopt(about = "Interact with Momento Caches")]
     Cache {
         #[structopt(subcommand)]
         operation: CacheCommand,
@@ -34,7 +34,7 @@ enum Subcommand {
         #[structopt(long, short, default_value = "default")]
         profile: String,
     },
-    #[structopt(about = "Account Managements")]
+    #[structopt(about = "Manage Accounts")]
     Account {
         #[structopt(subcommand)]
         operation: AccountCommand,
@@ -88,7 +88,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "Store a given item in cache")]
+    #[structopt(about = "Store a given item in the cache")]
     Set {
         #[structopt(long = "name", short = 'n')]
         cache_name: Option<String>,
@@ -107,7 +107,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "Get item from the cache")]
+    #[structopt(about = "Get an item from the cache")]
     Get {
         #[structopt(long = "name", short = 'n')]
         cache_name: Option<String>,
@@ -118,7 +118,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "Delete the cache")]
+    #[structopt(about = "Delete the given Momento Cache")]
     Delete {
         #[structopt(long = "name", short = 'n')]
         cache_name: String,
@@ -126,7 +126,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "List all momento caches")]
+    #[structopt(about = "List all Momento Caches")]
     List {
         #[structopt(long, short, default_value = "default")]
         profile: String,
