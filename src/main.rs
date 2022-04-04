@@ -56,7 +56,7 @@ enum AccountCommand {
         region: String,
     },
 
-    #[structopt(about = "Creates a Momento Signing Key")]
+    #[structopt(about = "Create a Momento Signing Key")]
     CreateSigningKey {
         #[structopt(
             long = "ttl",
@@ -69,7 +69,7 @@ enum AccountCommand {
         profile: String,
     },
 
-    #[structopt(about = "Revokes the given Momento Signing Key")]
+    #[structopt(about = "Revoke the given Momento Signing Key")]
     RevokeSigningKey {
         #[structopt(long = "key-id", short, help = "Signing Key ID")]
         key_id: String,
@@ -80,7 +80,7 @@ enum AccountCommand {
 
 #[derive(Debug, StructOpt)]
 enum CacheCommand {
-    #[structopt(about = "Creates a Momento Cache")]
+    #[structopt(about = "Create a Momento Cache")]
     Create {
         #[structopt(long = "name", short = 'n')]
         cache_name: String,
@@ -88,7 +88,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "Stores a given item in cache")]
+    #[structopt(about = "Store a given item in cache")]
     Set {
         #[structopt(long = "name", short = 'n')]
         cache_name: Option<String>,
@@ -107,7 +107,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "Gets item from the cache")]
+    #[structopt(about = "Get item from the cache")]
     Get {
         #[structopt(long = "name", short = 'n')]
         cache_name: Option<String>,
@@ -118,7 +118,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "Deletes the cache")]
+    #[structopt(about = "Delete the cache")]
     Delete {
         #[structopt(long = "name", short = 'n')]
         cache_name: String,
@@ -126,7 +126,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "Lists all momento caches")]
+    #[structopt(about = "List all momento caches")]
     List {
         #[structopt(long, short, default_value = "default")]
         profile: String,
