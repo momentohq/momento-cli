@@ -3,7 +3,7 @@ use std::{panic, process::exit};
 use clap::StructOpt;
 use env_logger::Env;
 use error::CliError;
-use log::{error, debug};
+use log::{debug, error};
 use utils::user::get_creds_and_config;
 
 pub mod commands;
@@ -210,11 +210,8 @@ async fn entrypoint() -> Result<(), CliError> {
                 profile,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::signingkey::signingkey_cli::create_signing_key(
-                    ttl_minutes,
-                    creds.token,
-                )
-                .await?;
+                commands::signingkey::signingkey_cli::create_signing_key(ttl_minutes, creds.token)
+                    .await?;
             }
             AccountCommand::RevokeSigningKey { key_id, profile } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;

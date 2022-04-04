@@ -1,4 +1,4 @@
-use log::{info, debug};
+use log::{debug, info};
 use momento::simple_cache_client::SimpleCacheClient;
 
 use crate::error::CliError;
