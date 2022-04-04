@@ -1,4 +1,4 @@
-use log::info;
+use log::{info, debug};
 use momento::simple_cache_client::SimpleCacheClient;
 
 use crate::error::CliError;
@@ -11,7 +11,7 @@ async fn get_momento_instance(auth_token: String) -> Result<SimpleCacheClient, C
 }
 
 pub async fn create_cache(cache_name: String, auth_token: String) -> Result<(), CliError> {
-    info!("creating cache...");
+    debug!("creating cache...");
     let mut momento = get_momento_instance(auth_token).await?;
     match momento.create_cache(&cache_name).await {
         Ok(_) => (),
@@ -21,7 +21,7 @@ pub async fn create_cache(cache_name: String, auth_token: String) -> Result<(), 
 }
 
 pub async fn delete_cache(cache_name: String, auth_token: String) -> Result<(), CliError> {
-    info!("deleting cache...");
+    debug!("deleting cache...");
     let mut momento = get_momento_instance(auth_token).await?;
     match momento.delete_cache(&cache_name).await {
         Ok(_) => (),
@@ -31,7 +31,7 @@ pub async fn delete_cache(cache_name: String, auth_token: String) -> Result<(), 
 }
 
 pub async fn list_caches(auth_token: String) -> Result<(), CliError> {
-    info!("list cache called");
+    debug!("list cache called");
     let mut momento = get_momento_instance(auth_token).await?;
     match momento.list_caches(None).await {
         Ok(res) => {
@@ -51,20 +51,20 @@ pub async fn set(
     value: String,
     ttl_seconds: u32,
 ) -> Result<(), CliError> {
-    info!("setting key: {} into cache: {}", key, cache_name);
+    debug!("setting key: {} into cache: {}", key, cache_name);
     let mut momento = get_momento_instance(auth_token).await?;
     match momento
         .set(&cache_name, key, value, Some(ttl_seconds))
         .await
     {
-        Ok(_) => info!("set success"),
+        Ok(_) => debug!("set success"),
         Err(e) => return Err(CliError { msg: e.to_string() }),
     };
     Ok(())
 }
 
 pub async fn get(cache_name: String, auth_token: String, key: String) -> Result<(), CliError> {
-    info!("getting key: {} from cache: {}", key, cache_name);
+    debug!("getting key: {} from cache: {}", key, cache_name);
     let mut momento = get_momento_instance(auth_token).await?;
     match momento.get(&cache_name, key).await {
         Ok(r) => {

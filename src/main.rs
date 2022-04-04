@@ -3,7 +3,7 @@ use std::{panic, process::exit};
 use clap::StructOpt;
 use env_logger::Env;
 use error::CliError;
-use log::{error, info};
+use log::{error, debug};
 use utils::user::get_creds_and_config;
 
 pub mod commands;
@@ -29,17 +29,12 @@ enum Subcommand {
         #[structopt(subcommand)]
         operation: CacheCommand,
     },
-    #[structopt(about = "Signing Key Operations")]
-    SigningKey {
-        #[structopt(subcommand)]
-        operation: SigningKeyCommand,
-    },
     #[structopt(about = "Configure Momento Credentials")]
     Configure {
         #[structopt(long, short, default_value = "default")]
         profile: String,
     },
-    #[structopt(about = "Manage Accounts")]
+    #[structopt(about = "Account Managements")]
     Account {
         #[structopt(subcommand)]
         operation: AccountCommand,
@@ -59,6 +54,27 @@ enum AccountCommand {
             help = "e.g. us-west-2, us-east-1, ap-northeast-1"
         )]
         region: String,
+    },
+
+    #[structopt(about = "Creates a Momento Signing Key")]
+    CreateSigningKey {
+        #[structopt(
+            long = "ttl",
+            short = 't',
+            default_value = "86400",
+            help = "Duration, in minutes, that the signing key will be valid"
+        )]
+        ttl_minutes: u32,
+        #[structopt(long, short, default_value = "default")]
+        profile: String,
+    },
+
+    #[structopt(about = "Revokes the given Momento Signing Key")]
+    RevokeSigningKey {
+        #[structopt(long = "key-id", short, help = "Signing Key ID")]
+        key_id: String,
+        #[structopt(long, short, default_value = "default")]
+        profile: String,
     },
 }
 
@@ -117,29 +133,6 @@ enum CacheCommand {
     },
 }
 
-#[derive(Debug, StructOpt)]
-enum SigningKeyCommand {
-    #[structopt(about = "Creates a Momento Signing Key")]
-    Create {
-        #[structopt(
-            long = "ttl",
-            short = 't',
-            help = "Duration, in minutes, that the signing key will be valid. Default value is 86400 minutes (60 days)."
-        )]
-        ttl_minutes: Option<u32>,
-        #[structopt(long, short, default_value = "default")]
-        profile: String,
-    },
-
-    #[structopt(about = "Revokes the given Momento Signing Key")]
-    Revoke {
-        #[structopt(long = "kid", short, help = "Signing Key ID")]
-        key_id: String,
-        #[structopt(long, short, default_value = "default")]
-        profile: String,
-    },
-}
-
 async fn entrypoint() -> Result<(), CliError> {
     let args = Momento::parse();
 
@@ -160,7 +153,7 @@ async fn entrypoint() -> Result<(), CliError> {
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token).await?;
-                info!("created cache {cache_name}")
+                debug!("created cache {cache_name}")
             }
             CacheCommand::Set {
                 cache_name,
@@ -198,34 +191,11 @@ async fn entrypoint() -> Result<(), CliError> {
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token).await?;
-                info!("deleted cache {}", cache_name)
+                debug!("deleted cache {}", cache_name)
             }
             CacheCommand::List { profile } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::list_caches(creds.token).await?
-            }
-        },
-        Subcommand::SigningKey { operation } => match operation {
-            SigningKeyCommand::Create {
-                ttl_minutes,
-                profile,
-            } => {
-                let (creds, _config) = get_creds_and_config(&profile).await?;
-                let default_ttl_minutes = 60 * 24 * 60; // 60 days
-                commands::signingkey::signingkey_cli::create_signing_key(
-                    ttl_minutes.unwrap_or(default_ttl_minutes),
-                    creds.token,
-                )
-                .await?;
-            }
-            SigningKeyCommand::Revoke { key_id, profile } => {
-                let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::signingkey::signingkey_cli::revoke_signing_key(
-                    key_id.clone(),
-                    creds.token,
-                )
-                .await?;
-                info!("revoked signing key {}", key_id)
             }
         },
         Subcommand::Configure { profile } => {
@@ -234,6 +204,26 @@ async fn entrypoint() -> Result<(), CliError> {
         Subcommand::Account { operation } => match operation {
             AccountCommand::Signup { email, region } => {
                 commands::account::signup_user(email, region).await?;
+            }
+            AccountCommand::CreateSigningKey {
+                ttl_minutes,
+                profile,
+            } => {
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::signingkey::signingkey_cli::create_signing_key(
+                    ttl_minutes,
+                    creds.token,
+                )
+                .await?;
+            }
+            AccountCommand::RevokeSigningKey { key_id, profile } => {
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::signingkey::signingkey_cli::revoke_signing_key(
+                    key_id.clone(),
+                    creds.token,
+                )
+                .await?;
+                debug!("revoked signing key {}", key_id)
             }
         },
     }
