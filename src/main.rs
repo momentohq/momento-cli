@@ -24,17 +24,17 @@ struct Momento {
 
 #[derive(Debug, StructOpt)]
 enum Subcommand {
-    #[structopt(about = "Interact with Momento Caches")]
+    #[structopt(about = "Interact with caches")]
     Cache {
         #[structopt(subcommand)]
         operation: CacheCommand,
     },
-    #[structopt(about = "Configure Momento Credentials")]
+    #[structopt(about = "Configure credentials")]
     Configure {
         #[structopt(long, short, default_value = "default")]
         profile: String,
     },
-    #[structopt(about = "Manage Accounts")]
+    #[structopt(about = "Manage accounts")]
     Account {
         #[structopt(subcommand)]
         operation: AccountCommand,
@@ -56,7 +56,7 @@ enum AccountCommand {
         region: String,
     },
 
-    #[structopt(about = "Create a Momento Signing Key")]
+    #[structopt(about = "Create a signing key")]
     CreateSigningKey {
         #[structopt(
             long = "ttl",
@@ -69,7 +69,7 @@ enum AccountCommand {
         profile: String,
     },
 
-    #[structopt(about = "Revoke the given Momento Signing Key")]
+    #[structopt(about = "Revoke the signing key")]
     RevokeSigningKey {
         #[structopt(long = "key-id", short, help = "Signing Key ID")]
         key_id: String,
@@ -80,7 +80,7 @@ enum AccountCommand {
 
 #[derive(Debug, StructOpt)]
 enum CacheCommand {
-    #[structopt(about = "Create a Momento Cache")]
+    #[structopt(about = "Create a cache")]
     Create {
         #[structopt(long = "name", short = 'n')]
         cache_name: String,
@@ -118,7 +118,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "Delete the given Momento Cache")]
+    #[structopt(about = "Delete the cache")]
     Delete {
         #[structopt(long = "name", short = 'n')]
         cache_name: String,
@@ -126,7 +126,7 @@ enum CacheCommand {
         profile: String,
     },
 
-    #[structopt(about = "List all Momento Caches")]
+    #[structopt(about = "List all caches")]
     List {
         #[structopt(long, short, default_value = "default")]
         profile: String,
