@@ -40,6 +40,9 @@ features = [ "full",]
 version = "1.0"
 features = [ "derive",]
 
+[dependencies.serde_json]
+version = "1.0.79"
+
 [dependencies.reqwest]
 version = "0.11"
 features = [ "json", "rustls-tls",]
