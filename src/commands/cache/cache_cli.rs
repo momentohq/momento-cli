@@ -49,7 +49,7 @@ pub async fn set(
     auth_token: String,
     key: String,
     value: String,
-    ttl_seconds: u32,
+    ttl_seconds: u64,
 ) -> Result<(), CliError> {
     debug!("setting key: {} into cache: {}", key, cache_name);
     let mut momento = get_momento_instance(auth_token).await?;

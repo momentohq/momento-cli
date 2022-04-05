@@ -112,7 +112,7 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
         false,
     )
     .await?
-    .parse::<u32>()
+    .parse::<u64>()
     {
         Ok(ttl) => ttl,
         Err(e) => {

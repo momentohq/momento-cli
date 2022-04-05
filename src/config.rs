@@ -9,7 +9,7 @@ pub enum FileTypes {
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct Config {
     pub cache: String,
-    pub ttl: u32,
+    pub ttl: u64,
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]
