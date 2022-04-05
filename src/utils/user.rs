@@ -65,6 +65,6 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
 
     Ok(Config {
         cache: cache_result,
-        ttl: ttl_result.parse::<u32>().unwrap(),
+        ttl: ttl_result.parse::<u64>().unwrap(),
     })
 }
