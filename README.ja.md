@@ -2,16 +2,33 @@ _他言語バージョンもあります_: [English](README.md)
 
 <br>
 
-## 必要条件
-
-- MacOS もしくは Linux
-- [Homebrew](https://brew.sh/)
-
-## インストール方法
+## クイックスタート
 
 ```
+# インストール
 brew tap momentohq/tap
 brew install momento-cli
+
+# サインアップ [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
+momento account signup --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
+
+# 上記のメールアドレスに送付されたトークンであなたのアカウントコンフィグ
+momento configure
+
+# キャッシュ作成
+momento cache create --name example-cache
+
+# キャッシュからSet・Getでバリューを取得
+momento cache set --key key --value value --ttl 100 --name example-cache
+momento cache get --key key --name example-cache
+
+```
+
+## アップグレード
+
+```
+brew update momento-cli
+brew upgrade momento-cli
 ```
 
 ## サインアップ方法
