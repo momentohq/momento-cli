@@ -662,7 +662,9 @@ dependencies = [
 
 [[package]]
 name = "momento"
-version = "0.1.0"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ef16a31c0c3d9f1791eb066a4a7e224b5c5dda0a30ea9bfc768c65b1c841632"
 dependencies = [
  "base64-url",
  "jsonwebtoken",

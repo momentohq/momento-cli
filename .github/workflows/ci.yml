@@ -18,10 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          # this is temporary until we publish the rust sdk
-          submodules: true
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - name: rustfmt
         run: cargo fmt -- --check
       - name: Rigorous lint via Clippy
@@ -32,10 +28,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        with:
-          # 🤮
-          submodules: true
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
