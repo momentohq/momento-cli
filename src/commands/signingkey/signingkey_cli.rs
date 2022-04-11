@@ -1,10 +1,11 @@
 use log::debug;
 use momento::simple_cache_client::SimpleCacheClient;
+use std::num::NonZeroU64;
 
 use crate::error::CliError;
 
 async fn get_momento_instance(auth_token: String) -> Result<SimpleCacheClient, CliError> {
-    match SimpleCacheClient::new(auth_token, 100).await {
+    match SimpleCacheClient::new(auth_token, NonZeroU64::new(100).unwrap()).await {
         Ok(m) => Ok(m),
         Err(e) => Err(CliError { msg: e.to_string() }),
     }

@@ -16,9 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - name: rustfmt
         run: cargo fmt -- --check
 
@@ -28,9 +25,6 @@ jobs:
       version: ${{ steps.release.outputs.release }}
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -49,7 +43,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allow-initial-development-versions: true
           force-bump-patch-version: true
-          
+
       - name: Update Cargo Version
         run: |
           chmod +x set_cargo_version.sh
@@ -66,7 +60,7 @@ jobs:
           ARCHIVE_FILE=archive-$VERSION.tar.gz
           echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
           pip install git-archive-all
-          git-archive-all --force-submodules $ARCHIVE_FILE
+          git-archive-all $ARCHIVE_FILE
           SHA=$(openssl sha256 < ${ARCHIVE_FILE} | sed 's/.* //')
           echo "SHA="$SHA >> $GITHUB_ENV
           echo "sha is: ${SHA}"
@@ -98,20 +92,17 @@ jobs:
           git add .
           git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
           git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
-      
+
       - name: Output release
         id: release
         run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
-        
+
   update-cargo:
     runs-on: ubuntu-latest
     needs: release
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
-          
+
       - name: Update Cargo Version
         run: |
           chmod +x set_cargo_version.sh
@@ -136,4 +127,3 @@ jobs:
           fi
           echo ${PR_URL}
         shell: bash
-    

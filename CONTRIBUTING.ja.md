@@ -1,11 +1,3 @@
-### 開始方法
-
-```
-git submodule init
-git submodule sync
-git submodule update --recursive --remote
-```
-
 ## ビルド
 
 ```
