@@ -1,6 +1,8 @@
+use log::debug;
 use log::info;
 use std::path::Path;
 use tokio::fs;
+use tokio::io::{self, AsyncWriteExt};
 
 use crate::{
     commands::cache::cache_cli::create_cache,
@@ -91,6 +93,19 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
         "default-cache"
     } else {
         current_config.cache.as_str()
+    };
+
+    let mut stdout = io::stdout();
+    let configure_desc = String::from(
+        "\nPress Enter/Return to use default cache name and ttl which are displayed in []\n",
+    );
+    match stdout.write(configure_desc.as_bytes()).await {
+        Ok(_) => debug!("wrote prompt '{}' to stdout", configure_desc),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to write prompt to stdout: {}", e),
+            })
+        }
     };
     let cache_name = match prompt_user_for_input("Default Cache", prompt_cache, false).await {
         Ok(s) => s,
