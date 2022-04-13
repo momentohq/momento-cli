@@ -1,6 +1,7 @@
-use log::{debug, info};
+use log::debug;
 use momento::simple_cache_client::SimpleCacheClient;
 use std::num::NonZeroU64;
+use std::process::exit;
 
 use crate::error::CliError;
 
@@ -80,7 +81,8 @@ pub async fn get(cache_name: String, auth_token: String, key: String) -> Result<
             ) {
                 println!("{}", r.as_string());
             } else {
-                info!("cache miss");
+                debug!("cache miss");
+                exit(1);
             }
         }
         Err(e) => {
