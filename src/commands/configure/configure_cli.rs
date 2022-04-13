@@ -59,14 +59,15 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
             return Err(e);
         }
     }
-    match create_cache(config.cache, credentials.token).await {
+    match create_cache(config.cache.clone(), credentials.token).await {
         Ok(_) => info!(
-            "default-cache successfully created with default TTL of {}s",
+            "{} successfully created as the default with default TTL of {}s",
+            config.cache.clone(),
             config.ttl
         ),
         Err(e) => {
             if e.msg.contains("already exists") {
-                info!("default-cache already exists");
+                info!("{} as the default already exists", config.cache);
             } else {
                 return Err(e);
             }
