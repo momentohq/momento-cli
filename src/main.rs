@@ -118,8 +118,6 @@ enum CacheCommand {
         key: String,
         #[structopt(long, short, default_value = "default")]
         profile: String,
-        #[structopt(long, short)]
-        quiet: bool,
     },
 
     #[structopt(about = "Delete the cache")]
@@ -180,14 +178,12 @@ async fn entrypoint() -> Result<(), CliError> {
                 cache_name,
                 key,
                 profile,
-                quiet,
             } => {
                 let (creds, config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::get(
                     cache_name.unwrap_or(config.cache),
                     creds.token,
                     key,
-                    quiet,
                 )
                 .await?;
             }

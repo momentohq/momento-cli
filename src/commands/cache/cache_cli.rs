@@ -1,4 +1,4 @@
-use log::{debug, info};
+use log::debug;
 use momento::simple_cache_client::SimpleCacheClient;
 use std::num::NonZeroU64;
 use std::process::exit;
@@ -70,12 +70,7 @@ pub async fn set(
     Ok(())
 }
 
-pub async fn get(
-    cache_name: String,
-    auth_token: String,
-    key: String,
-    quiet: bool,
-) -> Result<(), CliError> {
+pub async fn get(cache_name: String, auth_token: String, key: String) -> Result<(), CliError> {
     debug!("getting key: {} from cache: {}", key, cache_name);
     let mut momento = get_momento_instance(auth_token).await?;
     match momento.get(&cache_name, key).await {
@@ -86,9 +81,7 @@ pub async fn get(
             ) {
                 println!("{}", r.as_string());
             } else {
-                if !quiet {
-                    info!("cache miss");
-                }
+                debug!("cache miss");
                 exit(1);
             }
         }
