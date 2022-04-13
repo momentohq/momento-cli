@@ -12,7 +12,7 @@ brew install momento-cli
 # Sign Up [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
 momento account signup --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
-# Configure your account with the credentials in your email and default cache name and TTL
+# Configure your account with the credentials in your email, plus default cache name and TTL
 momento configure --quick
 
 # Make a cache
