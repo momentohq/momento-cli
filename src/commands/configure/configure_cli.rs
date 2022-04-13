@@ -1,8 +1,6 @@
-use log::debug;
 use log::info;
 use std::path::Path;
 use tokio::fs;
-use tokio::io::{self, AsyncWriteExt};
 
 use crate::{
     commands::cache::cache_cli::create_cache,
@@ -21,9 +19,9 @@ use crate::{
     },
 };
 
-pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
+pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), CliError> {
     let credentials = prompt_user_for_creds(profile_name).await?;
-    let config = prompt_user_for_config(profile_name).await?;
+    let config = prompt_user_for_config(quick, profile_name).await?;
 
     let momento_dir = get_momento_dir();
     let credentials_file_path = get_credentials_file_path();
@@ -62,10 +60,13 @@ pub async fn configure_momento(profile_name: &str) -> Result<(), CliError> {
         }
     }
     match create_cache(config.cache, credentials.token).await {
-        Ok(_) => info!("default cache successfully created"),
+        Ok(_) => info!(
+            "default-cache successfully created with default TTL of {}s",
+            config.ttl
+        ),
         Err(e) => {
             if e.msg.contains("already exists") {
-                info!("default cache already exists");
+                info!("default-cache already exists");
             } else {
                 return Err(e);
             }
@@ -84,7 +85,7 @@ async fn prompt_user_for_creds(profile_name: &str) -> Result<Credentials, CliErr
     Ok(Credentials { token })
 }
 
-async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> {
+async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Config, CliError> {
     let current_config = get_config_for_profile(profile_name)
         .await
         .unwrap_or_default();
@@ -94,23 +95,13 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     } else {
         current_config.cache.as_str()
     };
-
-    let mut stdout = io::stdout();
-    let configure_desc = String::from(
-        "\nPress Enter/Return to use default cache name and ttl which are displayed in []\n",
-    );
-    match stdout.write(configure_desc.as_bytes()).await {
-        Ok(_) => debug!("wrote prompt '{}' to stdout", configure_desc),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to write prompt to stdout: {}", e),
-            })
-        }
-    };
-    let cache_name = match prompt_user_for_input("Default Cache", prompt_cache, false).await {
-        Ok(s) => s,
-        Err(e) => return Err(e),
-    };
+    let mut cache_name = prompt_cache.to_string();
+    if !quick {
+        cache_name = match prompt_user_for_input("Default Cache", prompt_cache, false).await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+    }
     let cache_name_to_use = if cache_name.is_empty() {
         "default-cache".to_string()
     } else {
@@ -121,21 +112,24 @@ async fn prompt_user_for_config(profile_name: &str) -> Result<Config, CliError> 
     } else {
         current_config.ttl
     };
-    let ttl = match prompt_user_for_input(
-        "Default Ttl Seconds",
-        prompt_ttl.to_string().as_str(),
-        false,
-    )
-    .await?
-    .parse::<u64>()
-    {
-        Ok(ttl) => ttl,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to parse ttl: {}", e),
-            })
-        }
-    };
+    let mut ttl = prompt_ttl;
+    if !quick {
+        ttl = match prompt_user_for_input(
+            "Default Ttl Seconds",
+            prompt_ttl.to_string().as_str(),
+            false,
+        )
+        .await?
+        .parse::<u64>()
+        {
+            Ok(ttl) => ttl,
+            Err(e) => {
+                return Err(CliError {
+                    msg: format!("failed to parse ttl: {}", e),
+                })
+            }
+        };
+    }
 
     Ok(Config {
         cache: cache_name_to_use,

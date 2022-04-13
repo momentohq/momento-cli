@@ -31,6 +31,8 @@ enum Subcommand {
     },
     #[structopt(about = "Configure credentials")]
     Configure {
+        #[structopt(long, short)]
+        quick: bool,
         #[structopt(long, short, default_value = "default")]
         profile: String,
     },
@@ -198,8 +200,8 @@ async fn entrypoint() -> Result<(), CliError> {
                 commands::cache::cache_cli::list_caches(creds.token).await?
             }
         },
-        Subcommand::Configure { profile } => {
-            commands::configure::configure_cli::configure_momento(&profile).await?
+        Subcommand::Configure { quick, profile } => {
+            commands::configure::configure_cli::configure_momento(quick, &profile).await?
         }
         Subcommand::Account { operation } => match operation {
             AccountCommand::Signup { email, region } => {
