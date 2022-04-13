@@ -12,8 +12,8 @@ brew install momento-cli
 # サインアップ [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
 momento account signup --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
-# 上記のメールアドレスに送付されたトークンであなたのアカウントコンフィグ
-momento configure
+# 上記のメールアドレスに送付されたトークンとデフォルトのキャッシュ名とTTLであなたのアカウントコンフィグ
+momento configure --quick
 
 # キャッシュ作成
 momento cache create --name example-cache
