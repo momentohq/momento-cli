@@ -2,22 +2,18 @@
 
 Japanese: [日本語](README.ja.md)
 
-
-
-
-
-
 ## Quick Start
+
 ```
-# Install 
+# Install
 brew tap momentohq/tap
 brew install momento-cli
 
 # Sign Up [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
 momento account signup --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
-# Configure your account with the credentials in your email
-momento configure
+# Configure your account with the credentials in your email, plus default cache name and TTL
+momento configure --quick
 
 # Make a cache
 momento cache create --name example-cache
@@ -29,13 +25,13 @@ momento cache get --key key --name example-cache
 ```
 
 ## Upgrading
+
 ```
 brew update momento-cli
 brew upgrade momento-cli
 ```
 
-## Sign up 
-
+## Sign up
 
 **NOTE:** If you run into errors during signup, please ensure you have upgraded to the [latest version](https://github.com/momentohq/momento-cli/releases/latest) of our CLI.
 
