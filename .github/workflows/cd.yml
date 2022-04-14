@@ -112,6 +112,7 @@ jobs:
 
       - name: Build tar.gz and publish asset
         run: |
+          yum install jq -y
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE=momento-cli-$VERSION.x86_64_linux.tar.gz
           BINARY_DIR=momento-cli
