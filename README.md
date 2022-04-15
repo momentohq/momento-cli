@@ -31,7 +31,7 @@ momento cache get --key key --name example-cache
 ### Linux
 
 1. Download the latest linux tar.gz file from [https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)
-2. Unzip the file: `tar -xvf momento-cli-X.X.X_linux_x86_64.tar.gz`
+2. Unzip the file: `tar -xvf momento-cli-X.X.X.linux_x86_64.tar.gz`
 3. Move `./momento` to your execution path.
 
 ## Upgrading
