@@ -4,7 +4,7 @@ Japanese: [日本語](README.ja.md)
 
 ## Quick Start
 
-Please refer to the installation instructions for Linux [here](https://github.com/momentohq/momento-cli#linux).
+Please refer to the installation instructions for Linux [here](https://github.com/momentohq/momento-cli/blob/main/README.md#linux).
 
 ```
 # Install
