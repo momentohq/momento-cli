@@ -114,7 +114,7 @@ jobs:
         run: |
           yum install jq -y
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE=momento-cli-$VERSION.x86_64_linux.tar.gz
+          BINARY_FILE=momento-cli-$VERSION_linux_x86_64.tar.gz
           cargo build --release
           tar zcvf $BINARY_FILE ./target/release/momento
           AUTH="Authorization: token ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
