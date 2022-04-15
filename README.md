@@ -4,6 +4,8 @@ Japanese: [日本語](README.ja.md)
 
 ## Quick Start
 
+Please refer to the installation instructions for Linux [here](https://github.com/momentohq/momento-cli#linux).
+
 ```
 # Install
 brew tap momentohq/tap
@@ -23,6 +25,14 @@ momento cache set --key key --value value --ttl 100 --name example-cache
 momento cache get --key key --name example-cache
 
 ```
+
+## Installation
+
+### Linux
+
+1. Download the latest linux tar.gz file from [https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)
+2. Unzip the file: `tar -xvf momento-cli-X.X.X_linux_x86_64.tar.gz`
+3. Move `./momento` to your execution path.
 
 ## Upgrading
 
