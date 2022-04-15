@@ -4,6 +4,8 @@ _他言語バージョンもあります_: [English](README.md)
 
 ## クイックスタート
 
+Linux のインストールマニュアルは[こちら](https://github.com/momentohq/momento-cli#linux)を参照してください。
+
 ```
 # インストール
 brew tap momentohq/tap
@@ -23,6 +25,14 @@ momento cache set --key key --value value --ttl 100 --name example-cache
 momento cache get --key key --name example-cache
 
 ```
+
+## インストール
+
+### Linux
+
+1. 最新の linux tar.gz ファイルを[https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)よりダウンロードする。
+2. `tar -xvf momento-cli-X.X.X.x86_64_linux.tar.gz`ファイルを展開する。
+3. `./momento`を実行パスに置く。
 
 ## アップグレード
 
