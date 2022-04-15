@@ -4,7 +4,7 @@ _他言語バージョンもあります_: [English](README.md)
 
 ## クイックスタート
 
-Linux のインストールマニュアルは[こちら](https://github.com/momentohq/momento-cli#linux)を参照してください。
+Linux のインストールマニュアルは[こちら](https://github.com/momentohq/momento-cli/blob/main/README.ja.md#linux)を参照してください。
 
 ```
 # インストール
