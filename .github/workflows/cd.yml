@@ -142,13 +142,15 @@ jobs:
           $env:BinaryFile64 = "momento-cli-" + $env:VERSION + ".windows_x86_64.zip"
           rustup target add x86_64-pc-windows-gnu
           cargo build --release --target x86_64-pc-windows-gnu
-          Compress-Archive -LiteralPath ./target/x86_64-pc-windows-gnu/release/momento -DestinationPath $env:BinaryFile64
+          $env:CurrentDir = Get-Location
+          $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile64
+          Compress-Archive -LiteralPath $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento" -DestinationPath $env:DestinationPath
           $env:AccessToken = "${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
           $env:LatestRelease = Invoke-WebRequest -Uri "https://api.github.com/repos/" + $GITHUB_REPOSITORY + "/releases/tags/v" + $env:Version -Method Get -Headers @{"Authorization" = "Bearer " +  $env:AccessToken} 
           $env:ReleaseId = $env:LatestRelease | jq -r .id
           $GhAsset64="https://uploads.github.com/repos/" + $GITHUB_REPOSITORY + "/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
           $GhAsset64
-          Invoke-WebRequest -Uri $GhAsset64 -Method Post -Headers @{"Authorization" = "Bearer " +  $env:AccessToken; "Content-Type" = "application/octet-stream"} -InFile $env:BinaryFile64
+          Invoke-WebRequest -Uri $GhAsset64 -Method Post -Headers @{"Authorization" = "Bearer " +  $env:AccessToken; "Content-Type" = "application/octet-stream"} -InFile $env:DestinationPath
         shell: pwsh
 
       # - name: Build zip for windows_i686/windows_x86_64 and publish asset
