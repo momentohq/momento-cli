@@ -23,9 +23,18 @@ jobs:
       - name: Rigorous lint via Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
+  rustfmt-windows:
+    name: Style & Lint - Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: rustfmt
+        run: cargo fmt -- --check
+      - name: Rigorous lint via Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -65,3 +74,15 @@ jobs:
           cat ~/.momento/config
       - name: Run Integration Tests
         run: ./run_test_sequentially.sh
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+      - name: Build
+        run: cargo build --verbose

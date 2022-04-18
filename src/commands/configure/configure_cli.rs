@@ -202,7 +202,6 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
 
 #[cfg(target_os = "windows")]
 async fn set_file_read_write(path: &str) -> Result<(), CliError> {
-    use std::os::windows::fs::PermissionExt;
     let mut perms = match fs::metadata(path).await {
         Ok(p) => p,
         Err(e) => {
@@ -212,7 +211,7 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
         }
     }
     .permissions();
-    perms.set_mode(0o600);
+    perms.set_readonly(false);
     match fs::set_permissions(path, perms).await {
         Ok(_) => Ok(()),
         Err(e) => Err(CliError {
