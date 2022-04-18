@@ -143,8 +143,9 @@ jobs:
           rustup target add x86_64-pc-windows-gnu
           cargo build --release --target x86_64-pc-windows-gnu
           $env:CurrentDir = Get-Location
+          $env:LiteralPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento"
           $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile64
-          Compress-Archive -LiteralPath $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento" -DestinationPath $env:DestinationPath
+          Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
           $env:AccessToken = "${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
           $env:LatestRelease = Invoke-WebRequest -Uri "https://api.github.com/repos/" + $GITHUB_REPOSITORY + "/releases/tags/v" + $env:Version -Method Get -Headers @{"Authorization" = "Bearer " +  $env:AccessToken} 
           $env:ReleaseId = $env:LatestRelease | jq -r .id
