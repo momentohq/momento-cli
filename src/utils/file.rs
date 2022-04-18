@@ -1,5 +1,3 @@
-use std::os::unix::fs::PermissionsExt;
-
 use configparser::ini::Ini;
 use home::home_dir;
 use log::debug;
@@ -107,25 +105,6 @@ pub async fn ini_write_to_file(ini_map: Ini, path: &str) -> Result<(), CliError>
                 msg: format!("failed to write to file {} with ini, error: {}", path, e),
             })
         }
-    }
-}
-
-pub async fn set_file_read_write(path: &str) -> Result<(), CliError> {
-    let mut perms = match fs::metadata(path).await {
-        Ok(p) => p,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to get file permissions {}", e),
-            })
-        }
-    }
-    .permissions();
-    perms.set_mode(0o600);
-    match fs::set_permissions(path, perms).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {}", e),
-        }),
     }
 }
 

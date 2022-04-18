@@ -1,4 +1,5 @@
 use log::info;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use tokio::fs;
 
@@ -9,8 +10,7 @@ use crate::{
     utils::{
         file::{
             create_file, get_config_file_path, get_credentials_file_path, get_momento_dir,
-            open_file, prompt_user_for_input, read_file_contents, set_file_read_write,
-            write_to_file,
+            open_file, prompt_user_for_input, read_file_contents, write_to_file,
         },
         ini_config::{
             add_new_profile_to_config, add_new_profile_to_credentials, update_profile_values,
@@ -136,6 +136,46 @@ async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Confi
         cache: cache_name_to_use,
         ttl,
     })
+}
+
+async fn set_file_read_write(path: &str) -> Result<(), CliError> {
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to get file permissions {}", e),
+            })
+        }
+    }
+    .permissions();
+    perms.set_mode(0o600);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError {
+            msg: format!("failed to set file permissions {}", e),
+        }),
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn set_file_read_write(path: &str) -> Result<(), CliError> {
+    use std::os::windows::fs::PermissionExt;
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to get file permissions {}", e),
+            })
+        }
+    }
+    .permissions();
+    perms.set_mode(0o600);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError {
+            msg: format!("failed to set file permissions {}", e),
+        }),
+    }
 }
 
 async fn add_profile(
