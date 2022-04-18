@@ -1,4 +1,5 @@
 use log::info;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use tokio::fs;
 
@@ -137,9 +138,7 @@ async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Confi
     })
 }
 
-#[cfg(target_os = "ubuntu")]
 async fn set_file_read_write(path: &str) -> Result<(), CliError> {
-    use std::os::ubuntu::fs::PermissionExt;
     let mut perms = match fs::metadata(path).await {
         Ok(p) => p,
         Err(e) => {
