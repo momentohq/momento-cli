@@ -142,8 +142,9 @@ jobs:
           $env:BinaryFile64 = "momento-cli-" + $env:VERSION + ".windows_x86_64.zip"
           rustup target add x86_64-pc-windows-gnu
           cargo build --release --target x86_64-pc-windows-gnu
-          Get-ChildItem
           $env:CurrentDir = Get-Location
+          $env:TargetDir = $env:CurrentDir + "\target"
+          Get-ChildItem -Path $env:TargetDir
           $env:LiteralPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento"
           $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile64
           Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
