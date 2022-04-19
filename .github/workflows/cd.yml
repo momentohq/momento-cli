@@ -147,9 +147,10 @@ jobs:
           $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile64
           Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
           $env:AccessToken = "${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
-          $env:LatestRelease = Invoke-WebRequest -Uri "https://api.github.com/repos/" + $GITHUB_REPOSITORY + "/releases/tags/v" + $env:Version -Method Get -Headers @{"Authorization" = "Bearer " +  $env:AccessToken} 
+          $env:LatestReleaseUri = "https://api.github.com/repos/" + $GITHUB_REPOSITORY + "/releases/tags/v" + $env:Version
+          $env:LatestRelease = Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get -Headers @{"Authorization" = "Bearer " +  $env:AccessToken} 
           $env:ReleaseId = $env:LatestRelease | jq -r .id
-          $GhAsset64="https://uploads.github.com/repos/" + $GITHUB_REPOSITORY + "/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
+          $GhAsset64 = "https://uploads.github.com/repos/" + $GITHUB_REPOSITORY + "/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
           $GhAsset64
           Invoke-WebRequest -Uri $GhAsset64 -Method Post -Headers @{"Authorization" = "Bearer " +  $env:AccessToken; "Content-Type" = "application/octet-stream"} -InFile $env:DestinationPath
         shell: pwsh
