@@ -150,7 +150,7 @@ jobs:
           $env:LatestReleaseUri
           $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get | Select-Object -Property Content).Content
           $env:ReleaseId = $env:LatestRelease | jq -r .id
-          $GhAsset64 = "https://uploads.github.com/repos/" + $GITHUB_REPOSITORY + "/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
+          $GhAsset64 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
           $GhAsset64
           Invoke-WebRequest -Uri $GhAsset64 -Method Post -Headers @{"Content-Type" = "application/octet-stream"} -InFile $env:DestinationPath
         shell: pwsh
