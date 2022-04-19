@@ -136,7 +136,8 @@ jobs:
           components: rustfmt
           override: true
 
-      - name: Build zip for windows_x86_64 and publish asset
+      - name: Build zip for windows_x86_64 and create release
+        id: create_release
         run: |
           $env:Version = "${{ needs.release.outputs.version }}"
           $env:BinaryFile64 = "momento-cli-" + $env:VERSION + ".windows_x86_64.zip"
@@ -152,8 +153,20 @@ jobs:
           $env:ReleaseId = $env:LatestRelease | jq -r .id
           $GhAsset64 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
           $GhAsset64
-          Invoke-WebRequest -Uri $GhAsset64 -Method Post -Headers @{"Content-Type" = "application/octet-stream"} -InFile $env:DestinationPath
+          echo "::set-output name=upload_url::$GhAsset64"
+          echo "::set-output name=asset_path::$env:DestinationPath"
+          echo "::set-output name=asset_name::$env:BinaryFile64"
         shell: pwsh
+
+      - name: Upload windows_x86_64 zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.create_release.outputs.asset_path }}
+          asset_name: ${{ steps.create_release.outputs.asset_name }}
+          asset_content_type: application/zip
 
       # - name: Build zip for windows_i686/windows_x86_64 and publish asset
       #   run: |
