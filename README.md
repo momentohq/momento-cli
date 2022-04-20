@@ -4,7 +4,7 @@ Japanese: [日本語](README.ja.md)
 
 ## Quick Start
 
-Please refer to the installation instructions for Linux [here](https://github.com/momentohq/momento-cli/blob/main/README.md#linux).
+Please refer to the installation instructions for Linux [here](https://github.com/momentohq/momento-cli/blob/main/README.md#linux) and Windows [here](https://github.com/momentohq/momento-cli/blob/main/README.md#windows).
 
 ```
 # Install
@@ -33,6 +33,12 @@ momento cache get --key key --name example-cache
 1. Download the latest linux tar.gz file from [https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)
 2. Unzip the file: `tar -xvf momento-cli-X.X.X.linux_x86_64.tar.gz`
 3. Move `./momento` to your execution path.
+
+### Windows
+
+1. Download the latest windows zip file from [https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)
+2. Unzip the `momento-cli-X.X.X.windows_x86_64.zip` file
+3. Run the unzipped .exe file
 
 ## Upgrading
 

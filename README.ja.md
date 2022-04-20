@@ -4,7 +4,7 @@ _他言語バージョンもあります_: [English](README.md)
 
 ## クイックスタート
 
-Linux のインストールマニュアルは[こちら](https://github.com/momentohq/momento-cli/blob/main/README.ja.md#linux)を参照してください。
+Linux のインストールマニュアルは[こちら](https://github.com/momentohq/momento-cli/blob/main/README.ja.md#linux)、Windows のインストールマニュアルは[こちら](https://github.com/momentohq/momento-cli/blob/main/README.ja.md#windows)を参照してください。
 
 ```
 # インストール
@@ -30,9 +30,15 @@ momento cache get --key key --name example-cache
 
 ### Linux
 
-1. 最新の linux tar.gz ファイルを[https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)よりダウンロードする。
+1. 最新の linux tar.gz ファイルを[https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)からダウンロードする。
 2. `tar -xvf momento-cli-X.X.X.linux_x86_64.tar.gz`ファイルを展開する。
 3. `./momento`を実行パスに置く。
+
+### Windows
+
+1. 最新の windows zip ファイルを[https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)からダウンロードする。
+2. `momento-cli-X.X.X.windows_x86_64.zip`ファイルを展開する。
+3. 展開した.exe file を実行する。
 
 ## アップグレード
 

@@ -168,50 +168,45 @@ jobs:
           asset_name: ${{ steps.create_release.outputs.asset_name }}
           asset_content_type: application/zip
 
-      - name: Add mingw32 to path
-        shell: bash
-        run: |
-          echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
+      # Commenting out building i686 since the machine doesn't seem to have i686-w64-mingw32-gcc.exe compiler installed by default.
+      # Come back and work on this when customers ask 32-bit build.
+      #
+      # - name: Add mingw32 to path
+      #   shell: bash
+      #   run: |
+      #     echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
 
-      - run: |
-          Get-ChildItem -Path C:\msys64
-        shell: pwsh
+      # - name: Build zip for windows_i686 and create release
+      #   id: create_release_32
+      #   run: |
+      #     $env:Version = "${{ needs.release.outputs.version }}"
+      #     $env:BinaryFile32 = "momento-cli-" + $env:VERSION + ".windows_i686.zip"
+      #     rustup target add i686-pc-windows-gnu
+      #     cargo build --release --target i686-pc-windows-gnu
+      #     $env:CurrentDir = Get-Location
+      #     $env:LiteralPath = $env:CurrentDir + "\target\i686-pc-windows-gnu\release\momento.exe"
+      #     $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile32
+      #     Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
+      #     $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v" + $env:Version
+      #     $env:LatestReleaseUri
+      #     $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get | Select-Object -Property Content).Content
+      #     $env:ReleaseId = $env:LatestRelease | jq -r .id
+      #     $GhAsset32 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile32
+      #     $GhAsset32
+      #     echo "::set-output name=upload_url::$GhAsset32"
+      #     echo "::set-output name=asset_path::$env:DestinationPath"
+      #     echo "::set-output name=asset_name::$env:BinaryFile32"
+      #   shell: pwsh
 
-      - run: |
-          Get-ChildItem -Path C:\msys64\mingw32
-        shell: pwsh
-
-      - name: Build zip for windows_i686 and create release
-        id: create_release_32
-        run: |
-          $env:Version = "${{ needs.release.outputs.version }}"
-          $env:BinaryFile32 = "momento-cli-" + $env:VERSION + ".windows_i686.zip"
-          rustup target add i686-pc-windows-gnu
-          cargo build --release --target i686-pc-windows-gnu
-          $env:CurrentDir = Get-Location
-          $env:LiteralPath = $env:CurrentDir + "\target\i686-pc-windows-gnu\release\momento.exe"
-          $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile32
-          Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
-          $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v" + $env:Version
-          $env:LatestReleaseUri
-          $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get | Select-Object -Property Content).Content
-          $env:ReleaseId = $env:LatestRelease | jq -r .id
-          $GhAsset32 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile32
-          $GhAsset32
-          echo "::set-output name=upload_url::$GhAsset32"
-          echo "::set-output name=asset_path::$env:DestinationPath"
-          echo "::set-output name=asset_name::$env:BinaryFile32"
-        shell: pwsh
-
-      - name: Upload windows_i686 zip
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release_32.outputs.upload_url }}
-          asset_path: ${{ steps.create_release_32.outputs.asset_path }}
-          asset_name: ${{ steps.create_release_32.outputs.asset_name }}
-          asset_content_type: application/zip
+      # - name: Upload windows_i686 zip
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release_32.outputs.upload_url }}
+      #     asset_path: ${{ steps.create_release_32.outputs.asset_path }}
+      #     asset_name: ${{ steps.create_release_32.outputs.asset_name }}
+      #     asset_content_type: application/zip
 
   update-cargo:
     runs-on: ubuntu-latest
