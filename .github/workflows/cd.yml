@@ -168,18 +168,22 @@ jobs:
           asset_name: ${{ steps.create_release.outputs.asset_name }}
           asset_content_type: application/zip
 
-      - name: add mingw32 to path
+      - name: Add mingw32 to path
         shell: bash
         run: |
           echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
 
-      - run: i686-w64-mingw32-gcc --version
-        shell: bash
+      - run: |
+          Get-ChildItem -Path C:\msys64
+        shell: pwsh
+
+      - run: |
+          Get-ChildItem -Path C:\msys64\mingw32
+        shell: pwsh
 
       - name: Build zip for windows_i686 and create release
         id: create_release_32
         run: |
-          choco install winlibs --x86
           $env:Version = "${{ needs.release.outputs.version }}"
           $env:BinaryFile32 = "momento-cli-" + $env:VERSION + ".windows_i686.zip"
           rustup target add i686-pc-windows-gnu
