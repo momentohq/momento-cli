@@ -15,6 +15,7 @@ struct CreateTokenResponse {
 #[derive(Serialize, Deserialize, Debug)]
 struct CreateTokenBody {
     email: String,
+    cloud: String,
     region: String,
 }
 
@@ -30,11 +31,11 @@ fn get_signup_endpoint() -> String {
     env::var("MOMENTO_SIGNUP_ENDPOINT").unwrap_or_else(|_| String::from(SIGNUP_ENDPOINT))
 }
 
-pub async fn signup_user(email: String, region: String) -> Result<(), CliError> {
+pub async fn signup_user(email: String, cloud: String, region: String) -> Result<(), CliError> {
     let endpoint = get_signup_endpoint();
     let url = format!("{}/token/create", endpoint);
 
-    let body = &CreateTokenBody { email, region };
+    let body = &CreateTokenBody { email, cloud, region };
     info!("Signing up for Momento...");
     match Client::new().post(url).json(body).send().await {
         Ok(resp) => {

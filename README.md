@@ -11,8 +11,14 @@ Please refer to the installation instructions for Linux [here](https://github.co
 brew tap momentohq/tap
 brew install momento-cli
 
-# Sign Up [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
-momento account signup --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
+# Sign Up
+
+## AWS [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
+momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
+
+## GCP [available regions are us-east1, ap-northeast1, default is us-east1]
+momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
+
 
 # Configure your account with the credentials in your email, plus default cache name and TTL
 momento configure --quick
@@ -51,17 +57,30 @@ brew upgrade momento-cli
 
 **NOTE:** If you run into errors during signup, please ensure you have upgraded to the [latest version](https://github.com/momentohq/momento-cli/releases/latest) of our CLI.
 
+### Momento on AWS
 ```
 # default region is us-west-2
-momento account signup --email <TYPE_YOUR_EMAIL_HERE>
+momento account signup aws --email <TYPE_YOUR_EMAIL_HERE>
 
 # (optional) view help to see all available regions, and sign up for a specific region
-momento account signup --help
-momento account signup --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
+momento account signup aws --help
+momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 # Configure CLI
 momento configure
+```
 
+### Momento on GCP
+```
+# default region is us-east1
+momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE>
+
+# (optional) view help to see all available regions, and sign up for a specific region
+momento account signup gcp --help
+momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
+
+# Configure CLI
+momento configure
 ```
 
 Upon signing up, Momento sends a token to the email provided. This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager.
