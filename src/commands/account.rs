@@ -35,7 +35,11 @@ pub async fn signup_user(email: String, cloud: String, region: String) -> Result
     let endpoint = get_signup_endpoint();
     let url = format!("{}/token/create", endpoint);
 
-    let body = &CreateTokenBody { email, cloud, region };
+    let body = &CreateTokenBody {
+        email,
+        cloud,
+        region,
+    };
     info!("Signing up for Momento...");
     match Client::new().post(url).json(body).send().await {
         Ok(resp) => {

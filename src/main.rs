@@ -75,16 +75,15 @@ enum AccountCommand {
 
 #[derive(Debug, StructOpt)]
 enum CloudSignupCommand {
-
     #[structopt(about = "Signup for Momento on GCP")]
     Gcp {
         #[structopt(long, short)]
         email: String,
         #[structopt(
-        long,
-        short,
-        default_value = "us-east1",
-        help = "e.g. us-east1, ap-northeast1"
+            long,
+            short,
+            default_value = "us-east1",
+            help = "e.g. us-east1, ap-northeast1"
         )]
         region: String,
     },
@@ -93,13 +92,13 @@ enum CloudSignupCommand {
         #[structopt(long, short)]
         email: String,
         #[structopt(
-        long,
-        short,
-        default_value = "us-west-2",
-        help = "e.g. us-west-2, us-east-1, ap-northeast-1"
+            long,
+            short,
+            default_value = "us-west-2",
+            help = "e.g. us-west-2, us-east-1, ap-northeast-1"
         )]
         region: String,
-    }
+    },
 }
 
 #[derive(Debug, StructOpt)]
@@ -226,14 +225,14 @@ async fn entrypoint() -> Result<(), CliError> {
             commands::configure::configure_cli::configure_momento(quick, &profile).await?
         }
         Subcommand::Account { operation } => match operation {
-            AccountCommand::Signup { signup_operation } =>  match signup_operation {
-                CloudSignupCommand::Gcp { email, region} => {
+            AccountCommand::Signup { signup_operation } => match signup_operation {
+                CloudSignupCommand::Gcp { email, region } => {
                     commands::account::signup_user(email, "gcp".to_string(), region).await?
                 }
-                CloudSignupCommand::Aws {email, region} => {
+                CloudSignupCommand::Aws { email, region } => {
                     commands::account::signup_user(email, "aws".to_string(), region).await?
                 }
-            }
+            },
             AccountCommand::CreateSigningKey {
                 ttl_minutes,
                 profile,
