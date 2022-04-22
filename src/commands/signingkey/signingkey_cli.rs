@@ -32,3 +32,18 @@ pub async fn revoke_signing_key(key_id: String, auth_token: String) -> Result<()
     };
     Ok(())
 }
+
+pub async fn list_signing_keys(auth_token: String) -> Result<(), CliError> {
+    debug!("listing signing keys...");
+    let mut momento = get_momento_instance(auth_token).await?;
+    match momento.list_signing_keys(None).await {
+        Ok(res) => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&res.signing_keys).unwrap()
+            );
+        }
+        Err(e) => return Err(CliError { msg: e.to_string() }),
+    };
+    Ok(())
+}

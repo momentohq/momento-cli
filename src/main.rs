@@ -78,6 +78,12 @@ enum AccountCommand {
         #[structopt(long, short, default_value = "default")]
         profile: String,
     },
+
+    #[structopt(about = "List all signing keys")]
+    ListSigningKeys {
+        #[structopt(long, short, default_value = "default")]
+        profile: String,
+    },
 }
 
 #[derive(Debug, StructOpt)]
@@ -223,6 +229,10 @@ async fn entrypoint() -> Result<(), CliError> {
                 )
                 .await?;
                 debug!("revoked signing key {}", key_id)
+            }
+            AccountCommand::ListSigningKeys { profile } => {
+                let (creds, _config) = get_creds_and_config(&profile).await?;
+                commands::signingkey::signingkey_cli::list_signing_keys(creds.token).await?;
             }
         },
     }
