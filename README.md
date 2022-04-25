@@ -13,10 +13,10 @@ brew install momento-cli
 
 # Sign Up
 
-## AWS [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
+## AWS [available regions are us-west-2, us-east-1, ap-northeast-1]
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
-## GCP [available regions are us-east1, ap-northeast1, default is us-east1]
+## GCP [available regions are us-east1, ap-northeast1]
 momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 
@@ -59,10 +59,7 @@ brew upgrade momento-cli
 
 ### Momento on AWS
 ```
-# default region is us-west-2
-momento account signup aws --email <TYPE_YOUR_EMAIL_HERE>
-
-# (optional) view help to see all available regions, and sign up for a specific region
+# View help to see all available regions, and sign up for a specific region
 momento account signup aws --help
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
@@ -72,10 +69,7 @@ momento configure
 
 ### Momento on GCP
 ```
-# default region is us-east1
-momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE>
-
-# (optional) view help to see all available regions, and sign up for a specific region
+# View help to see all available regions, and sign up for a specific region
 momento account signup gcp --help
 momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
