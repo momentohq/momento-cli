@@ -1,6 +1,7 @@
 # Momento CLI
 
 Japanese: [日本語](README.ja.md)
+Portuguese: [Português](README.pt.md)
 
 ## Quick Start
 
