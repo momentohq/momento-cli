@@ -1,5 +1,8 @@
 _他言語バージョンもあります_: [English](README.md)
 
+_ポルトガル語: [Português](README.pt.md)
+
+
 <br>
 
 ## クイックスタート
