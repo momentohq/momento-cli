@@ -9,8 +9,11 @@ Japonês: [日本語](README.ja.md)
 brew tap momentohq/tap
 brew install momento-cli
 
-# Cadastre-se [regiões disponíveis são us-west-2, us-east-1, ap-northeast-1. Padrão é us-west-2]
-momento account signup --email <insira_seu_email_aqui> --region <regiao_desejada>
+## AWS [regiões disponíveis são us-west-2, us-east-1, ap-northeast-1]
+momento account signup aws --email <insira_seu_email_aqui> --region <regiao_desejada>
+
+## GCP [regiões disponíveis são us-east1, ap-northeast1]
+momento account signup gcp --email <insira_seu_email_aqui> --region <regiao_desejada>
 
 # Configure sua conta com as credenciais recebidas por email
 momento configure
@@ -35,13 +38,24 @@ brew upgrade momento-cli
 
 **NOTA:** Se você encontrar erros durante o cadastro, por favor garanta que você atualizou para [latest version](https://github.com/momentohq/momento-cli/releases/latest) da nossa ferramenta de linha de comando (CLI).
 
-```
-# região padrão é us-west-2
-momento account signup --email <insira_seu_email_aqui>
+### Momento na AWS
 
-# (opcional) cheque a ajuda para ver todas as regiões disponíveis e se cadastre para uma região específica
-momento account signup --help
-momento account signup --email <insira_seu_email_aqui> --region <regiao_desejada>
+```
+# Cheque a ajuda para ver todas as regiões disponíveis e se cadastre para uma região específica
+momento account signup aws --help
+momento account signup aws --email <insira_seu_email_aqui> --region <regiao_desejada>
+
+# Configure a linha de comando (CLI)
+momento configure
+
+```
+
+### Momento na GCP
+
+```
+# Cheque a ajuda para ver todas as regiões disponíveis e se cadastre para uma região específica
+momento account signup gcp --help
+momento account signup gcp --email <insira_seu_email_aqui> --region <regiao_desejada>
 
 # Configure a linha de comando (CLI)
 momento configure
