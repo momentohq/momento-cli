@@ -1,5 +1,3 @@
-_他言語バージョンもあります_: [English](README.md)
-
 _他言語バージョンもあります_: [English](README.md)、[Português](README.pt.md)
 
 
