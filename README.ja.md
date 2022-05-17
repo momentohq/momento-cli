@@ -16,7 +16,7 @@ brew tap momentohq/tap
 brew install momento-cli
 
 # サインアップ [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
-momento account signup --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
+momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 # 上記のメールアドレスに送付されたトークンとデフォルトのキャッシュ名とTTLであなたのアカウントコンフィグ
 momento configure --quick
@@ -57,7 +57,7 @@ brew upgrade momento-cli
 
 ```
 # デフォルトのリージョンはus-west-2です
-momento account signup --email <ご自身のメールアドレス>
+momento account signup aws --email <ご自身のメールアドレス>
 
 # (オプション) help機能を使って、利用可能なリージョンを確認し、サインアップの際に特定のリージョンを選択して下さい。
 momento account signup --help
