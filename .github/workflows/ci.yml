@@ -23,16 +23,6 @@ jobs:
       - name: Rigorous lint via Clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-  rustfmt-windows:
-    name: Style & Lint - Windows
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: rustfmt
-        run: cargo fmt -- --check
-      - name: Rigorous lint via Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
   build:
     runs-on: ubuntu-latest
     steps:
@@ -79,12 +69,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
+      - name: i guess windows-latest does not have protoc or cmake but we need protoc
+        run: choco install protoc
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           components: rustfmt
           override: true
-      - name: chocolate is the same color as
-        run: choco install protoc
       - name: Build
         run: cargo build --verbose
