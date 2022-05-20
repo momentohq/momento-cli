@@ -79,10 +79,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      # - uses: actions-rs/toolchain@v1
-      #   with:
-      #     toolchain: stable
-      #     components: rustfmt
-      #     override: true
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+      - name: chocolate is the same color as
+        run: choco install protoc
       - name: Build
         run: cargo build --verbose
