@@ -1,48 +1,32 @@
 use log::debug;
-use momento::simple_cache_client::SimpleCacheClient;
 use std::num::NonZeroU64;
 use std::process::exit;
 
 use crate::error::CliError;
-
-async fn get_momento_instance(auth_token: String) -> Result<SimpleCacheClient, CliError> {
-    match SimpleCacheClient::new_momento_cli(auth_token, NonZeroU64::new(100).unwrap()).await {
-        Ok(m) => Ok(m),
-        Err(e) => Err(CliError { msg: e.to_string() }),
-    }
-}
+use crate::utils::client::{get_momento_client, interact_with_momento};
 
 pub async fn create_cache(cache_name: String, auth_token: String) -> Result<(), CliError> {
-    debug!("creating cache...");
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento.create_cache(&cache_name).await {
-        Ok(_) => (),
-        Err(e) => return Err(CliError { msg: e.to_string() }),
-    };
-    Ok(())
+    let mut client = get_momento_client(auth_token).await?;
+
+    interact_with_momento("creating cache...", client.create_cache(&cache_name)).await
 }
 
 pub async fn delete_cache(cache_name: String, auth_token: String) -> Result<(), CliError> {
-    debug!("deleting cache...");
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento.delete_cache(&cache_name).await {
-        Ok(_) => (),
-        Err(e) => return Err(CliError { msg: e.to_string() }),
-    };
-    Ok(())
+    let mut client = get_momento_client(auth_token).await?;
+
+    interact_with_momento("deleting cache...", client.delete_cache(&cache_name)).await
 }
 
 pub async fn list_caches(auth_token: String) -> Result<(), CliError> {
-    debug!("list cache called");
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento.list_caches(None).await {
-        Ok(res) => {
-            res.caches
-                .into_iter()
-                .for_each(|cache| println!("{}", cache.cache_name));
-        }
-        Err(e) => return Err(CliError { msg: e.to_string() }),
-    }
+    let mut client = get_momento_client(auth_token).await?;
+
+    let list_result = interact_with_momento("listing caches...", client.list_caches(None)).await?;
+
+    list_result
+        .caches
+        .into_iter()
+        .for_each(|cache| println!("{}", cache.cache_name));
+
     Ok(())
 }
 
@@ -54,41 +38,38 @@ pub async fn set(
     ttl_seconds: u64,
 ) -> Result<(), CliError> {
     debug!("setting key: {} into cache: {}", key, cache_name);
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento
-        .set(
+    let mut client = get_momento_client(auth_token).await?;
+
+    interact_with_momento(
+        "setting...",
+        client.set(
             &cache_name,
             key,
             value,
             Some(NonZeroU64::new(ttl_seconds).unwrap()),
-        )
-        .await
-    {
-        Ok(_) => debug!("set success"),
-        Err(e) => return Err(CliError { msg: e.to_string() }),
-    };
-    Ok(())
+        ),
+    )
+    .await
+    .map(|_| ())
 }
 
 pub async fn get(cache_name: String, auth_token: String, key: String) -> Result<(), CliError> {
     debug!("getting key: {} from cache: {}", key, cache_name);
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento.get(&cache_name, key).await {
-        Ok(r) => {
-            if matches!(
-                r.result,
-                momento::response::cache_get_response::MomentoGetStatus::HIT
-            ) {
-                println!("{}", r.as_string());
-            } else {
-                debug!("cache miss");
-                exit(1);
-            }
+
+    let mut client = get_momento_client(auth_token).await?;
+
+    let response = interact_with_momento("getting...", client.get(&cache_name, key)).await?;
+    match response.result {
+        momento::response::cache_get_response::MomentoGetStatus::HIT => {
+            println!("{}", response.as_string())
         }
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to get from cache: {}", e),
-            })
+        momento::response::cache_get_response::MomentoGetStatus::MISS => {
+            debug!("cache miss");
+            exit(1)
+        }
+        momento::response::cache_get_response::MomentoGetStatus::ERROR => {
+            debug!("something terrible happened with the wire protocol");
+            exit(13)
         }
     };
     Ok(())
