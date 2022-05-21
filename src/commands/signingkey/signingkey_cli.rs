@@ -1,49 +1,39 @@
-use log::debug;
-use momento::simple_cache_client::SimpleCacheClient;
-use std::num::NonZeroU64;
-
-use crate::error::CliError;
-
-async fn get_momento_instance(auth_token: String) -> Result<SimpleCacheClient, CliError> {
-    match SimpleCacheClient::new(auth_token, NonZeroU64::new(100).unwrap()).await {
-        Ok(m) => Ok(m),
-        Err(e) => Err(CliError { msg: e.to_string() }),
-    }
-}
+use crate::{
+    error::CliError,
+    utils::client::{get_momento_client, interact_with_momento, print_whatever_this_is_as_json},
+};
 
 pub async fn create_signing_key(ttl_minutes: u32, auth_token: String) -> Result<(), CliError> {
-    debug!("creating signing key...");
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento.create_signing_key(ttl_minutes).await {
-        Ok(res) => {
-            println!("{}", serde_json::to_string_pretty(&res).unwrap());
-        }
-        Err(e) => return Err(CliError { msg: e.to_string() }),
-    };
+    let mut client = get_momento_client(auth_token).await?;
+
+    print_whatever_this_is_as_json(
+        &interact_with_momento(
+            "creating signing key...",
+            client.create_signing_key(ttl_minutes),
+        )
+        .await?,
+    );
+
     Ok(())
 }
 
 pub async fn revoke_signing_key(key_id: String, auth_token: String) -> Result<(), CliError> {
-    debug!("revoking signing key...");
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento.revoke_signing_key(&key_id).await {
-        Ok(_) => (),
-        Err(e) => return Err(CliError { msg: e.to_string() }),
-    };
-    Ok(())
+    let mut client = get_momento_client(auth_token).await?;
+
+    interact_with_momento(
+        "revoking signing key...",
+        client.revoke_signing_key(&key_id),
+    )
+    .await
 }
 
 pub async fn list_signing_keys(auth_token: String) -> Result<(), CliError> {
-    debug!("listing signing keys...");
-    let mut momento = get_momento_instance(auth_token).await?;
-    match momento.list_signing_keys(None).await {
-        Ok(res) => {
-            println!(
-                "{}",
-                serde_json::to_string_pretty(&res.signing_keys).unwrap()
-            );
-        }
-        Err(e) => return Err(CliError { msg: e.to_string() }),
-    };
+    let mut client = get_momento_client(auth_token).await?;
+
+    print_whatever_this_is_as_json(
+        &interact_with_momento("listing signing keys...", client.list_signing_keys(None))
+            .await
+            .map(|list_result| list_result.signing_keys)?,
+    );
     Ok(())
 }

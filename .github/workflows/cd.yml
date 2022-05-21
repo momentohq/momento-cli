@@ -130,6 +130,8 @@ jobs:
     needs: release
     steps:
       - uses: actions/checkout@v2
+      - name: i guess windows-latest does not have protoc or cmake but we need protoc
+        run: choco install protoc
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
