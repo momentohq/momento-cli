@@ -6,9 +6,9 @@ use error::CliError;
 use log::{debug, error};
 use utils::user::get_creds_and_config;
 
-pub mod commands;
+mod commands;
 mod config;
-pub mod error;
+mod error;
 mod utils;
 
 #[derive(Debug, StructOpt)]
@@ -41,6 +41,9 @@ enum Subcommand {
         #[structopt(subcommand)]
         operation: AccountCommand,
     },
+    #[structopt(about = "Log in to manage your Momento account")]
+    Login {
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -249,6 +252,16 @@ async fn entrypoint() -> Result<(), CliError> {
             AccountCommand::ListSigningKeys { profile } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
                 commands::signingkey::signingkey_cli::list_signing_keys(creds.token).await?;
+            }
+        },
+        Subcommand::Login {  } => {
+            match commands::login::login().await {
+                momento::momento::auth::LoginResult::LoggedIn(logged_in) => {
+                    println!("{}", logged_in.session_token)
+                },
+                momento::momento::auth::LoginResult::NotLoggedIn(not_logged_in) => {
+                    return Err(CliError { msg: format!("Failed to log in: {}", not_logged_in.error_message) })
+                },
             }
         },
     }
