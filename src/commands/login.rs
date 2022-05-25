@@ -14,10 +14,11 @@ pub async fn login() -> LoginResult {
                 //     },
                 // }
                 webbrowser::open(&open.url).expect("Unable to open browser")
-            },
+            }
             momento::momento::auth::LoginAction::ShowMessage(message) => {
                 println!("{}", message.text);
-            },
+            }
         }
-    }).await
+    })
+    .await
 }

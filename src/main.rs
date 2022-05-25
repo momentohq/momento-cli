@@ -42,8 +42,7 @@ enum Subcommand {
         operation: AccountCommand,
     },
     #[structopt(about = "Log in to manage your Momento account")]
-    Login {
-    }
+    Login {},
 }
 
 #[derive(Debug, StructOpt)]
@@ -254,14 +253,14 @@ async fn entrypoint() -> Result<(), CliError> {
                 commands::signingkey::signingkey_cli::list_signing_keys(creds.token).await?;
             }
         },
-        Subcommand::Login {  } => {
-            match commands::login::login().await {
-                momento::momento::auth::LoginResult::LoggedIn(logged_in) => {
-                    println!("{}", logged_in.session_token)
-                },
-                momento::momento::auth::LoginResult::NotLoggedIn(not_logged_in) => {
-                    return Err(CliError { msg: format!("Failed to log in: {}", not_logged_in.error_message) })
-                },
+        Subcommand::Login {} => match commands::login::login().await {
+            momento::momento::auth::LoginResult::LoggedIn(logged_in) => {
+                println!("{}", logged_in.session_token)
+            }
+            momento::momento::auth::LoginResult::NotLoggedIn(not_logged_in) => {
+                return Err(CliError {
+                    msg: format!("Failed to log in: {}", not_logged_in.error_message),
+                })
             }
         },
     }
