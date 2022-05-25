@@ -41,7 +41,9 @@ enum Subcommand {
         #[structopt(subcommand)]
         operation: AccountCommand,
     },
-    #[structopt(about = "Log in to manage your Momento account")]
+    #[structopt(
+        about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account"
+    )]
     Login {},
 }
 
@@ -259,7 +261,7 @@ async fn entrypoint() -> Result<(), CliError> {
             }
             momento::momento::auth::LoginResult::NotLoggedIn(not_logged_in) => {
                 return Err(CliError {
-                    msg: format!("Failed to log in: {}", not_logged_in.error_message),
+                    msg: not_logged_in.error_message,
                 })
             }
         },
