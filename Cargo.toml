@@ -14,7 +14,8 @@ toml = "0.5.8"
 maplit = "1.0.2"
 configparser = "3.0.0"
 regex = "1"
-momento = "0.5.0"
+momento = "0.5.1"
+webbrowser = "0.7.1"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
