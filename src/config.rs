@@ -12,7 +12,7 @@ pub struct Config {
     pub ttl: u64,
 }
 
-#[derive(Deserialize, Serialize, Clone, Default)]
+#[derive(Deserialize, Serialize, Clone, Default, Debug)]
 pub struct Credentials {
     pub token: String,
 }
