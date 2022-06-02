@@ -46,7 +46,6 @@ pub async fn clobber_session_token(session_token: Option<String>, valid_for_seco
 
 pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config), CliError> {
     let creds = get_creds_for_profile(profile).await?;
-    println!("CREDS {:?}", creds);
     let config = get_config_for_profile(profile).await?;
 
     Ok((creds, config))
