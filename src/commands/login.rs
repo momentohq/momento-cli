@@ -1,7 +1,24 @@
+use momento::momento::auth::{EarlyOutActionResult, LoginAction};
 use momento::{momento::auth::LoginResult, response::error::MomentoError};
+use qrcode::render::unicode;
+use qrcode::QrCode;
 
-pub async fn login() -> LoginResult {
-    momento::momento::auth::login(|action| match action {
+#[derive(clap::ArgEnum, Clone, Debug)]
+pub enum LoginMode {
+    Browser,
+    Qr,
+}
+
+pub async fn login(login_mode: LoginMode) -> LoginResult {
+    momento::momento::auth::login(match login_mode {
+        LoginMode::Browser => login_with_browser,
+        LoginMode::Qr => login_with_qr_code,
+    })
+    .await
+}
+
+fn login_with_browser(action: LoginAction) -> EarlyOutActionResult {
+    match action {
         momento::momento::auth::LoginAction::OpenBrowser(open) => {
             match webbrowser::open(&open.url) {
                 Ok(_) => {
@@ -18,6 +35,25 @@ pub async fn login() -> LoginResult {
             eprintln!("{}", message.text);
             None
         }
-    })
-    .await
+    }
+}
+
+fn login_with_qr_code(action: LoginAction) -> EarlyOutActionResult {
+    match action {
+        momento::momento::auth::LoginAction::OpenBrowser(open) => {
+            eprintln!("Navigate here to log in: {}", open.url);
+            let code = QrCode::new(open.url).unwrap();
+            let image = code
+                .render::<unicode::Dense1x2>()
+                .dark_color(unicode::Dense1x2::Dark)
+                .light_color(unicode::Dense1x2::Light)
+                .build();
+            eprintln!("{}", image);
+            None
+        }
+        momento::momento::auth::LoginAction::ShowMessage(message) => {
+            eprintln!("{}", message.text);
+            None
+        }
+    }
 }

@@ -1,6 +1,7 @@
 use std::{panic, process::exit};
 
 use clap::StructOpt;
+use commands::login::LoginMode;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error};
@@ -46,7 +47,10 @@ enum Subcommand {
     #[structopt(
         about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account"
     )]
-    Login {},
+    Login {
+        #[clap(arg_enum, default_value = "browser")]
+        via: LoginMode,
+    },
 }
 
 #[derive(Debug, StructOpt)]
@@ -257,7 +261,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 commands::signingkey::signingkey_cli::list_signing_keys(creds.token).await?
             }
         },
-        Subcommand::Login {} => match commands::login::login().await {
+        Subcommand::Login { via } => match commands::login::login(via).await {
             momento::momento::auth::LoginResult::LoggedIn(logged_in) => {
                 debug!("{}", logged_in.session_token);
                 clobber_session_token(
