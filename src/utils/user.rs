@@ -1,4 +1,4 @@
-use chrono::{Utc, Duration, TimeZone};
+use chrono::{Duration, TimeZone, Utc};
 use configparser::ini::Ini;
 
 use crate::{
@@ -14,8 +14,8 @@ fn get_session_token(credentials: &Ini) -> Option<String> {
     if session_token.is_some() {
         let expiry = credentials
             .get(".momento_session", "valid_until")
-            .map(|s| { s.parse::<i64>().unwrap_or(0) })
-            .map(|expiry_timestamp| { Utc.timestamp(expiry_timestamp, 0) });
+            .map(|s| s.parse::<i64>().unwrap_or(0))
+            .map(|expiry_timestamp| Utc.timestamp(expiry_timestamp, 0));
         if let Some(expiry_timestamp) = expiry {
             if Utc::now() + Duration::seconds(10) < expiry_timestamp {
                 let expiring = expiry_timestamp - Utc::now();
@@ -24,7 +24,9 @@ fn get_session_token(credentials: &Ini) -> Option<String> {
             }
             log::debug!("Token already expired at: {}", expiry_timestamp);
         } else {
-            log::debug!(".momento_session profile is missing the expiry time. Skipping this session...");
+            log::debug!(
+                ".momento_session profile is missing the expiry time. Skipping this session..."
+            );
         }
     }
     log::debug!("No session found in .momento_session profile...");
@@ -34,10 +36,17 @@ fn get_session_token(credentials: &Ini) -> Option<String> {
 fn set_session_token(credentials: &mut Ini, session_token: Option<String>, valid_for_seconds: u32) {
     let expiry_time = Utc::now() + Duration::seconds(valid_for_seconds.into());
     credentials.set(".momento_session", "token", session_token);
-    credentials.set(".momento_session", "valid_until", Some(expiry_time.timestamp().to_string()));
+    credentials.set(
+        ".momento_session",
+        "valid_until",
+        Some(expiry_time.timestamp().to_string()),
+    );
 }
 
-pub async fn clobber_session_token(session_token: Option<String>, valid_for_seconds: u32) -> Result<(), CliError> {
+pub async fn clobber_session_token(
+    session_token: Option<String>,
+    valid_for_seconds: u32,
+) -> Result<(), CliError> {
     let mut credentials_file = read_credentials().await?;
     set_session_token(&mut credentials_file, session_token, valid_for_seconds);
     ini_write_to_file(credentials_file, &get_credentials_file_path()).await?;

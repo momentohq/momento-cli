@@ -260,7 +260,11 @@ async fn entrypoint() -> Result<(), CliError> {
         Subcommand::Login {} => match commands::login::login().await {
             momento::momento::auth::LoginResult::LoggedIn(logged_in) => {
                 debug!("{}", logged_in.session_token);
-                clobber_session_token(Some(logged_in.session_token.to_string()), logged_in.valid_for_seconds).await?;
+                clobber_session_token(
+                    Some(logged_in.session_token.to_string()),
+                    logged_in.valid_for_seconds,
+                )
+                .await?;
                 eprintln!("Login valid for {}m", logged_in.valid_for_seconds / 60)
             }
             momento::momento::auth::LoginResult::NotLoggedIn(not_logged_in) => {
