@@ -780,9 +780,9 @@ dependencies = [
 
 [[package]]
 name = "momento"
-version = "0.5.1"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ec379e43f9cd7a835ca444d9a67abe574b4c1d2ded3ada42f18d22115090bcd"
+checksum = "874dd9d49adf223f60515bc3008c173fe408657ecb82473560d0877ae88554e1"
 dependencies = [
  "chrono",
  "jsonwebtoken",
@@ -799,6 +799,7 @@ name = "momento-cli"
 version = "0.11.9"
 dependencies = [
  "assert_cmd",
+ "chrono",
  "clap",
  "colored",
  "configparser",
@@ -819,9 +820,9 @@ dependencies = [
 
 [[package]]
 name = "momento-protos"
-version = "0.18.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e75ce56191eb20358b7e2ba26bc11d19abc087e9f78c568e24ea4c4476cd2ca6"
+checksum = "426dadd39866ada5146d0a7bace63a09de83c5b892847905ec2bc0379455fbd2"
 dependencies = [
  "prost",
  "tonic",

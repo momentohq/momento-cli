@@ -6,6 +6,8 @@ use error::CliError;
 use log::{debug, error};
 use utils::user::get_creds_and_config;
 
+use crate::utils::user::clobber_session_token;
+
 mod commands;
 mod config;
 mod error;
@@ -252,12 +254,18 @@ async fn entrypoint() -> Result<(), CliError> {
             }
             AccountCommand::ListSigningKeys { profile } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::signingkey::signingkey_cli::list_signing_keys(creds.token).await?;
+                commands::signingkey::signingkey_cli::list_signing_keys(creds.token).await?
             }
         },
         Subcommand::Login {} => match commands::login::login().await {
             momento::momento::auth::LoginResult::LoggedIn(logged_in) => {
-                println!("{}", logged_in.session_token)
+                debug!("{}", logged_in.session_token);
+                clobber_session_token(
+                    Some(logged_in.session_token.to_string()),
+                    logged_in.valid_for_seconds,
+                )
+                .await?;
+                eprintln!("Login valid for {}m", logged_in.valid_for_seconds / 60)
             }
             momento::momento::auth::LoginResult::NotLoggedIn(not_logged_in) => {
                 return Err(CliError {

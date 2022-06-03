@@ -1,42 +1,84 @@
+use chrono::{Duration, TimeZone, Utc};
+use configparser::ini::Ini;
+
 use crate::{
     config::{Config, Credentials},
     error::CliError,
     utils::file::{get_config_file_path, get_credentials_file_path, read_file},
 };
 
+use super::file::ini_write_to_file;
+
+fn get_session_token(credentials: &Ini) -> Option<String> {
+    let session_token = credentials.get(".momento_session", "token");
+    if session_token.is_some() {
+        let expiry = credentials
+            .get(".momento_session", "valid_until")
+            .map(|s| s.parse::<i64>().unwrap_or(0))
+            .map(|expiry_timestamp| Utc.timestamp(expiry_timestamp, 0));
+        if let Some(expiry_timestamp) = expiry {
+            if Utc::now() + Duration::seconds(10) < expiry_timestamp {
+                let expiring = expiry_timestamp - Utc::now();
+                log::debug!("Found user session expiring in {}m", expiring.num_minutes());
+                return session_token;
+            }
+            log::debug!("Token already expired at: {}", expiry_timestamp);
+        } else {
+            log::debug!(
+                ".momento_session profile is missing the expiry time. Skipping this session..."
+            );
+        }
+    }
+    log::debug!("No session found in .momento_session profile...");
+    None
+}
+
+fn set_session_token(credentials: &mut Ini, session_token: Option<String>, valid_for_seconds: u32) {
+    let expiry_time = Utc::now() + Duration::seconds(valid_for_seconds.into());
+    credentials.set(".momento_session", "token", session_token);
+    credentials.set(
+        ".momento_session",
+        "valid_until",
+        Some(expiry_time.timestamp().to_string()),
+    );
+}
+
+pub async fn clobber_session_token(
+    session_token: Option<String>,
+    valid_for_seconds: u32,
+) -> Result<(), CliError> {
+    let mut credentials_file = read_credentials().await?;
+    set_session_token(&mut credentials_file, session_token, valid_for_seconds);
+    ini_write_to_file(credentials_file, &get_credentials_file_path()).await?;
+    Ok(())
+}
+
 pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config), CliError> {
-    let creds = match get_creds_for_profile(profile).await {
-        Ok(c) => c,
-        Err(e) => return Err(e),
-    };
-    let config = match get_config_for_profile(profile).await {
-        Ok(c) => c,
-        Err(e) => return Err(e),
-    };
+    let creds = get_creds_for_profile(profile).await?;
+    let config = get_config_for_profile(profile).await?;
 
     Ok((creds, config))
 }
 
 pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliError> {
-    let path = get_credentials_file_path();
-    let credentials = match read_file(&path).await {
-        Ok(c) => c,
-        Err(_) => return Err(CliError {
-            msg: "failed to read credentials, please run 'momento configure' to setup credentials"
-                .to_string(),
-        }),
-    };
+    let credentials_file = read_credentials().await?;
 
-    let creds_result = match credentials.get(profile, "token") {
-        Some(c) => c,
-        None => return Err(CliError{
+    get_session_token(&credentials_file).or_else(|| {
+        credentials_file.get(profile, "token")
+    }).map(|credentials| {
+        Ok(Credentials {
+            token: credentials,
+        })
+    }).unwrap_or_else(|| {
+        Err(CliError{
             msg: format!("failed to get credentials for profile {}, please run 'momento configure' to configure your profile", profile)
-        }),
-    };
-
-    Ok(Credentials {
-        token: creds_result,
+        })
     })
+}
+
+async fn read_credentials() -> Result<Ini, CliError> {
+    let path = get_credentials_file_path();
+    read_file(&path).await
 }
 
 pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
