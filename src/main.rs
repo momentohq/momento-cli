@@ -155,16 +155,16 @@ enum CacheCommand {
         profile: String,
     },
 
-   #[structopt(about = "Delete an item from the cache")]
-       Delete {
-           #[structopt(long = "name", short = 'n')]
-           cache_name: Option<String>,
-           // TODO: Add support for non-string key-value
-           #[structopt(long, short)]
-           key: String,
-           #[structopt(long, short, default_value = "default")]
-           profile: String,
-       },
+    #[structopt(about = "Delete an item from the cache")]
+    Delete {
+        #[structopt(long = "name", short = 'n')]
+        cache_name: Option<String>,
+        // TODO: Add support for non-string key-value
+        #[structopt(long, short)]
+        key: String,
+        #[structopt(long, short, default_value = "default")]
+        profile: String,
+    },
 
     #[structopt(about = "List all caches")]
     ListCaches {
@@ -247,7 +247,7 @@ async fn entrypoint() -> Result<(), CliError> {
                     cache_name.unwrap_or(config.cache),
                     creds.token,
                     key,
-                    )
+                )
                 .await?;
             }
         },
