@@ -74,3 +74,10 @@ pub async fn get(cache_name: String, auth_token: String, key: String) -> Result<
     };
     Ok(())
 }
+
+pub async fn delete(cache_name: String, auth_token: String, key: String) -> Result<(), CliError> {
+    debug!("getting key: {} from cache: {}", key, cache_name);
+
+    let mut client = get_momento_client(auth_token).await?;
+    interact_with_momento("getting...", client.delete(&cache_name, key)).await
+}

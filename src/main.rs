@@ -155,8 +155,19 @@ enum CacheCommand {
         profile: String,
     },
 
+   #[structopt(about = "Delete an item from the cache")]
+       Delete {
+           #[structopt(long = "name", short = 'n')]
+           cache_name: Option<String>,
+           // TODO: Add support for non-string key-value
+           #[structopt(long, short)]
+           key: String,
+           #[structopt(long, short, default_value = "default")]
+           profile: String,
+       },
+
     #[structopt(about = "List all caches")]
-    ListCache {
+    ListCaches {
         #[structopt(long, short, default_value = "default")]
         profile: String,
     },
@@ -222,9 +233,22 @@ async fn entrypoint() -> Result<(), CliError> {
                 commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token).await?;
                 debug!("deleted cache {}", cache_name)
             }
-            CacheCommand::ListCache { profile } => {
+            CacheCommand::ListCaches { profile } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::list_caches(creds.token).await?
+            }
+            CacheCommand::Delete {
+                cache_name,
+                key,
+                profile,
+            } => {
+                let (creds, config) = get_creds_and_config(&profile).await?;
+                commands::cache::cache_cli::delete(
+                    cache_name.unwrap_or(config.cache),
+                    creds.token,
+                    key,
+                    )
+                .await?;
             }
         },
         Subcommand::Configure { quick, profile } => {
