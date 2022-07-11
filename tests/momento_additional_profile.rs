@@ -9,7 +9,7 @@ mod tests {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(&[
             "cache",
-            "create",
+            "create-cache",
             "--name",
             &test_cache_with_profile,
             "--profile",
@@ -49,7 +49,7 @@ mod tests {
         test_cache_with_profile.push('\n');
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&["cache", "list", "--profile", &test_profile])
+        cmd.args(&["cache", "list-caches", "--profile", &test_profile])
             .assert()
             .stdout(test_cache_with_profile);
     }
@@ -60,7 +60,7 @@ mod tests {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(&[
             "cache",
-            "delete",
+            "delete-cache",
             "--name",
             &test_cache_with_profile,
             "--profile",

@@ -15,7 +15,7 @@ toml = "0.5.8"
 maplit = "1.0.2"
 configparser = "3.0.0"
 regex = "1"
-momento = "0.5.4"
+momento = "0.6.0"
 qrcode = "0.12.0"
 webbrowser = "0.7.1"
 
