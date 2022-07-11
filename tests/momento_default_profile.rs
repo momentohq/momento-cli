@@ -8,7 +8,7 @@ mod tests {
         let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
         let output = Command::cargo_bin("momento")
             .unwrap()
-            .args(&["cache", "list"])
+            .args(&["cache", "list-caches"])
             .output()
             .unwrap()
             .stdout;
@@ -19,13 +19,13 @@ mod tests {
                 if !cache.is_empty() {
                     Command::cargo_bin("momento")
                         .unwrap()
-                        .args(&["cache", "delete", "--name", cache])
+                        .args(&["cache", "delete-cache", "--name", cache])
                         .unwrap();
                 }
             }
         }
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&["cache", "create", "--name", &test_cache_default])
+        cmd.args(&["cache", "create-cache", "--name", &test_cache_default])
             .assert()
             .success();
     }
@@ -48,7 +48,7 @@ mod tests {
         let mut test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
         test_cache_default.push('\n');
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&["cache", "list"])
+        cmd.args(&["cache", "list-caches"])
             .assert()
             .stdout(test_cache_default);
     }
@@ -56,7 +56,7 @@ mod tests {
     async fn momento_cache_delete_default_profile() {
         let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&["cache", "delete", "--name", &test_cache_default])
+        cmd.args(&["cache", "delete-cache", "--name", &test_cache_default])
             .assert()
             .success();
     }
