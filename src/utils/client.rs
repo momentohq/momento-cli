@@ -7,11 +7,12 @@ use momento::{
 
 use crate::error::CliError;
 
-pub async fn get_momento_client(auth_token: String) -> Result<SimpleCacheClient, CliError> {
+pub async fn get_momento_client(auth_token: String, endpoint: Option<String>) -> Result<SimpleCacheClient, CliError> {
     SimpleCacheClientBuilder::new_with_explicit_agent_name(
         auth_token,
         NonZeroU64::new(100).unwrap(),
         "cli",
+        endpoint
     )
     .map_or_else(
         |error| {
