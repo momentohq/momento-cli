@@ -198,7 +198,8 @@ async fn entrypoint() -> Result<(), CliError> {
                 endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token, endpoint).await?;
+                commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token, endpoint)
+                    .await?;
                 debug!("created cache {cache_name}")
             }
             CacheCommand::Set {
@@ -207,7 +208,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 value,
                 ttl_seconds,
                 profile,
-                endpoint
+                endpoint,
             } => {
                 let (creds, config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::set(
@@ -241,7 +242,8 @@ async fn entrypoint() -> Result<(), CliError> {
                 endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint).await?;
+                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
+                    .await?;
                 debug!("deleted cache {}", cache_name)
             }
             CacheCommand::List { profile, endpoint } => {
@@ -267,22 +269,31 @@ async fn entrypoint() -> Result<(), CliError> {
                 endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::signingkey::signingkey_cli::create_signing_key(ttl_minutes, creds.token, endpoint)
-                    .await?;
+                commands::signingkey::signingkey_cli::create_signing_key(
+                    ttl_minutes,
+                    creds.token,
+                    endpoint,
+                )
+                .await?;
             }
-            AccountCommand::RevokeSigningKey { key_id, profile, endpoint } => {
+            AccountCommand::RevokeSigningKey {
+                key_id,
+                profile,
+                endpoint,
+            } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
                 commands::signingkey::signingkey_cli::revoke_signing_key(
                     key_id.clone(),
                     creds.token,
-                    endpoint
+                    endpoint,
                 )
                 .await?;
                 debug!("revoked signing key {}", key_id)
             }
             AccountCommand::ListSigningKeys { profile, endpoint } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint).await?
+                commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
+                    .await?
             }
         },
         Subcommand::Login { via } => match commands::login::login(via).await {

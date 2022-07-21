@@ -5,13 +5,21 @@ use std::process::exit;
 use crate::error::CliError;
 use crate::utils::client::{get_momento_client, interact_with_momento};
 
-pub async fn create_cache(cache_name: String, auth_token: String, endpoint: Option<String>) -> Result<(), CliError> {
+pub async fn create_cache(
+    cache_name: String,
+    auth_token: String,
+    endpoint: Option<String>,
+) -> Result<(), CliError> {
     let mut client = get_momento_client(auth_token, endpoint).await?;
 
     interact_with_momento("creating cache...", client.create_cache(&cache_name)).await
 }
 
-pub async fn delete_cache(cache_name: String, auth_token: String, endpoint: Option<String>) -> Result<(), CliError> {
+pub async fn delete_cache(
+    cache_name: String,
+    auth_token: String,
+    endpoint: Option<String>,
+) -> Result<(), CliError> {
     let mut client = get_momento_client(auth_token, endpoint).await?;
 
     interact_with_momento("deleting cache...", client.delete_cache(&cache_name)).await
@@ -54,7 +62,12 @@ pub async fn set(
     .map(|_| ())
 }
 
-pub async fn get(cache_name: String, auth_token: String, key: String, endpoint: Option<String>) -> Result<(), CliError> {
+pub async fn get(
+    cache_name: String,
+    auth_token: String,
+    key: String,
+    endpoint: Option<String>,
+) -> Result<(), CliError> {
     debug!("getting key: {} from cache: {}", key, cache_name);
 
     let mut client = get_momento_client(auth_token, endpoint).await?;
