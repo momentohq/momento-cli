@@ -72,6 +72,8 @@ enum AccountCommand {
         ttl_minutes: u32,
         #[structopt(long, short, default_value = "default")]
         profile: String,
+        #[structopt(long = "endpoint", short = 'e')]
+        endpoint: Option<String>,
     },
 
     #[structopt(about = "Revoke the signing key")]
@@ -80,12 +82,16 @@ enum AccountCommand {
         key_id: String,
         #[structopt(long, short, default_value = "default")]
         profile: String,
+        #[structopt(long = "endpoint", short = 'e')]
+        endpoint: Option<String>,
     },
 
     #[structopt(about = "List all signing keys")]
     ListSigningKeys {
         #[structopt(long, short, default_value = "default")]
         profile: String,
+        #[structopt(long = "endpoint", short = 'e')]
+        endpoint: Option<String>,
     },
 }
 
@@ -115,6 +121,8 @@ enum CacheCommand {
         cache_name: String,
         #[structopt(long, short, default_value = "default")]
         profile: String,
+        #[structopt(long = "endpoint", short = 'e')]
+        endpoint: Option<String>,
     },
 
     #[structopt(about = "Store a given item in the cache")]
@@ -134,6 +142,8 @@ enum CacheCommand {
         ttl_seconds: Option<u64>,
         #[structopt(long, short, default_value = "default")]
         profile: String,
+        #[structopt(long = "endpoint", short = 'e')]
+        endpoint: Option<String>,
     },
 
     #[structopt(about = "Get an item from the cache")]
@@ -145,6 +155,8 @@ enum CacheCommand {
         key: String,
         #[structopt(long, short, default_value = "default")]
         profile: String,
+        #[structopt(long = "endpoint", short = 'e')]
+        endpoint: Option<String>,
     },
 
     #[structopt(about = "Delete the cache")]
@@ -153,12 +165,16 @@ enum CacheCommand {
         cache_name: String,
         #[structopt(long, short, default_value = "default")]
         profile: String,
+        #[structopt(long = "endpoint", short = 'e')]
+        endpoint: Option<String>,
     },
 
     #[structopt(about = "List all caches")]
     List {
         #[structopt(long, short, default_value = "default")]
         profile: String,
+        #[structopt(long = "endpoint", short = 'e')]
+        endpoint: Option<String>,
     },
 }
 
@@ -179,9 +195,11 @@ async fn entrypoint() -> Result<(), CliError> {
             CacheCommand::Create {
                 cache_name,
                 profile,
+                endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token).await?;
+                commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token, endpoint)
+                    .await?;
                 debug!("created cache {cache_name}")
             }
             CacheCommand::Set {
@@ -190,6 +208,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 value,
                 ttl_seconds,
                 profile,
+                endpoint,
             } => {
                 let (creds, config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::set(
@@ -198,6 +217,7 @@ async fn entrypoint() -> Result<(), CliError> {
                     key,
                     value,
                     ttl_seconds.unwrap_or(config.ttl),
+                    endpoint,
                 )
                 .await?
             }
@@ -205,26 +225,30 @@ async fn entrypoint() -> Result<(), CliError> {
                 cache_name,
                 key,
                 profile,
+                endpoint,
             } => {
                 let (creds, config) = get_creds_and_config(&profile).await?;
                 commands::cache::cache_cli::get(
                     cache_name.unwrap_or(config.cache),
                     creds.token,
                     key,
+                    endpoint,
                 )
                 .await?;
             }
             CacheCommand::Delete {
                 cache_name,
                 profile,
+                endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token).await?;
+                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
+                    .await?;
                 debug!("deleted cache {}", cache_name)
             }
-            CacheCommand::List { profile } => {
+            CacheCommand::List { profile, endpoint } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::cache::cache_cli::list_caches(creds.token).await?
+                commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
             }
         },
         Subcommand::Configure { quick, profile } => {
@@ -242,23 +266,34 @@ async fn entrypoint() -> Result<(), CliError> {
             AccountCommand::CreateSigningKey {
                 ttl_minutes,
                 profile,
+                endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::signingkey::signingkey_cli::create_signing_key(ttl_minutes, creds.token)
-                    .await?;
+                commands::signingkey::signingkey_cli::create_signing_key(
+                    ttl_minutes,
+                    creds.token,
+                    endpoint,
+                )
+                .await?;
             }
-            AccountCommand::RevokeSigningKey { key_id, profile } => {
+            AccountCommand::RevokeSigningKey {
+                key_id,
+                profile,
+                endpoint,
+            } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
                 commands::signingkey::signingkey_cli::revoke_signing_key(
                     key_id.clone(),
                     creds.token,
+                    endpoint,
                 )
                 .await?;
                 debug!("revoked signing key {}", key_id)
             }
-            AccountCommand::ListSigningKeys { profile } => {
+            AccountCommand::ListSigningKeys { profile, endpoint } => {
                 let (creds, _config) = get_creds_and_config(&profile).await?;
-                commands::signingkey::signingkey_cli::list_signing_keys(creds.token).await?
+                commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
+                    .await?
             }
         },
         Subcommand::Login { via } => match commands::login::login(via).await {

@@ -58,7 +58,8 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
             return Err(e);
         }
     }
-    match create_cache(config.cache.clone(), credentials.token).await {
+    // TODO: Update the endpoint to read from config
+    match create_cache(config.cache.clone(), credentials.token, None).await {
         Ok(_) => info!(
             "{} successfully created as the default with default TTL of {}s",
             config.cache.clone(),
