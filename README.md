@@ -50,7 +50,6 @@ momento cache get --key key --name example-cache
 ## Upgrading
 
 ```
-brew update
 brew upgrade momento-cli
 ```
 
