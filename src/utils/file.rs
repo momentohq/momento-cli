@@ -10,17 +10,17 @@ use crate::error::CliError;
 
 pub fn get_credentials_file_path() -> String {
     let momento_home = get_momento_dir();
-    return format!("{}/credentials", momento_home);
+    format!("{}/credentials", momento_home)
 }
 
 pub fn get_config_file_path() -> String {
     let momento_home = get_momento_dir();
-    return format!("{}/config", momento_home);
+    format!("{}/config", momento_home)
 }
 
 pub fn get_momento_dir() -> String {
     let home = home_dir().unwrap();
-    return format!("{}/.momento", home.display());
+    format!("{}/.momento", home.display())
 }
 
 pub async fn open_file(path: &str) -> Result<File, CliError> {
@@ -30,11 +30,9 @@ pub async fn open_file(path: &str) -> Result<File, CliError> {
             debug!("opened file {}", path);
             Ok(f)
         }
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to create file {}, error: {}", path, e),
-            })
-        }
+        Err(e) => Err(CliError {
+            msg: format!("failed to create file {}, error: {}", path, e),
+        }),
     }
 }
 
@@ -66,11 +64,9 @@ pub async fn create_file(path: &str) -> Result<(), CliError> {
             debug!("created file {}", path);
             Ok(())
         }
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to create file {}, error: {}", path, e),
-            })
-        }
+        Err(e) => Err(CliError {
+            msg: format!("failed to create file {}, error: {}", path, e),
+        }),
     }
 }
 
@@ -100,11 +96,9 @@ pub async fn write_to_file(path: &str, file_contents: Vec<String>) -> Result<(),
 pub async fn ini_write_to_file(ini_map: Ini, path: &str) -> Result<(), CliError> {
     match ini_map.write(path) {
         Ok(_) => Ok(()),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to write to file {} with ini, error: {}", path, e),
-            })
-        }
+        Err(e) => Err(CliError {
+            msg: format!("failed to write to file {} with ini, error: {}", path, e),
+        }),
     }
 }
 
