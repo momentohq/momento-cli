@@ -4,6 +4,13 @@ set -e
 set -x
 set -o pipefail
 
+features=$1
+
+if [ "$features" != "" ]
+then
+  features="--features $1"
+fi
+
 if [ "$TEST_CACHE_DEFAULT" == "" ]
 then
   echo "Missing required env var $TEST_CACHE_DEFAULT"
@@ -28,5 +35,5 @@ else
     export TEST_PROFILE=$TEST_PROFILE
 fi
 
-cargo test --test momento_default_profile
-cargo test --test momento_additional_profile
+cargo test --test momento_default_profile $features
+cargo test --test momento_additional_profile $features
