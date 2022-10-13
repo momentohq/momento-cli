@@ -13,7 +13,7 @@ fi
 
 if [ "$TEST_CACHE_DEFAULT" == "" ]
 then
-  echo "Missing required env var $TEST_CACHE_DEFAULT"
+  echo "Missing required env var TEST_CACHE_DEFAULT"
   exit 1
 else 
     export TEST_CACHE_DEFAULT=$TEST_CACHE_DEFAULT
@@ -21,7 +21,7 @@ fi
 
 if [ "$TEST_CACHE_WITH_PROFILE" == "" ]
 then
-  echo "Missing required env var $TEST_CACHE_WITH_PROFILE"
+  echo "Missing required env var TEST_CACHE_WITH_PROFILE"
   exit 1
 else
     export TEST_CACHE_WITH_PROFILE=$TEST_CACHE_WITH_PROFILE
@@ -29,7 +29,7 @@ fi
 
 if [ "$TEST_PROFILE" == "" ] 
 then
-  echo "Missing required env var $TEST_PROFILE"
+  echo "Missing required env var TEST_PROFILE"
   exit 1
 else 
     export TEST_PROFILE=$TEST_PROFILE
