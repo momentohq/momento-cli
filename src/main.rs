@@ -1,12 +1,14 @@
 use std::{panic, process::exit};
 
 use clap::StructOpt;
+#[cfg(feature = "login")]
 use commands::login::LoginMode;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error};
 use utils::user::get_creds_and_config;
 
+#[cfg(feature = "login")]
 use crate::utils::user::clobber_session_token;
 
 mod commands;
@@ -44,6 +46,7 @@ enum Subcommand {
         #[structopt(subcommand)]
         operation: AccountCommand,
     },
+    #[cfg(feature = "login")]
     #[structopt(
         about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account"
     )]
@@ -296,6 +299,7 @@ async fn entrypoint() -> Result<(), CliError> {
                     .await?
             }
         },
+        #[cfg(feature = "login")]
         Subcommand::Login { via } => match commands::login::login(via).await {
             momento::momento::auth::LoginResult::LoggedIn(logged_in) => {
                 debug!("{}", logged_in.session_token);
