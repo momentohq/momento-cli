@@ -25,6 +25,10 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [default, login]
+
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -33,11 +37,11 @@ jobs:
           components: rustfmt
           override: true
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --verbose --features ${{ matrix.feature }}
       - name: Create .momento directory
         run: mkdir ~/.momento
       - name: Run momento configure test with default profile created initially
-        run: cargo test --test configure_profiles_test
+        run: cargo test --test configure_profiles_test --features ${{ matrix.feature }}
       - name: Remove credentials and config files to prepare for the integration tests
         run: |
           rm ~/.momento/credentials
@@ -63,7 +67,7 @@ jobs:
           EOF
           cat ~/.momento/config
       - name: Run Integration Tests
-        run: ./run_test_sequentially.sh
+        run: ./run_test_sequentially.sh ${{ matrix.feature }}
 
   build-windows:
     runs-on: windows-latest
