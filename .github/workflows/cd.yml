@@ -36,13 +36,14 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Set release
+      - name: Dry run release
         id: semrel
         uses: go-semantic-release/action@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allow-initial-development-versions: true
           force-bump-patch-version: true
+          dry: true
 
       - name: Update Cargo Version
         run: |
@@ -96,6 +97,14 @@ jobs:
       - name: Output release
         id: release
         run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
+        
+      - name: Set release
+        id: semrel-actual
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
 
   publish-linux-assets:
     runs-on: ubuntu-latest
