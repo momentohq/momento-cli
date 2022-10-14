@@ -5,7 +5,8 @@ use clap::StructOpt;
 use commands::login::LoginMode;
 use env_logger::Env;
 use error::CliError;
-use log::{debug, error};
+use log::{debug, error, LevelFilter};
+use utils::console::console_info;
 use utils::user::get_creds_and_config;
 
 #[cfg(feature = "login")]
@@ -185,7 +186,12 @@ enum CacheCommand {
 async fn entrypoint() -> Result<(), CliError> {
     let args = Momento::parse();
 
-    let log_level = if args.verbose { "debug" } else { "info" };
+    let log_level = if args.verbose {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Off
+    }
+    .as_str();
 
     env_logger::Builder::from_env(
         Env::default()
@@ -300,7 +306,7 @@ async fn entrypoint() -> Result<(), CliError> {
                     logged_in.valid_for_seconds,
                 )
                 .await?;
-                eprintln!("Login valid for {}m", logged_in.valid_for_seconds / 60)
+                console_info!("Login valid for {}m", logged_in.valid_for_seconds / 60);
             }
             momento::momento::auth::LoginResult::NotLoggedIn(not_logged_in) => {
                 return Err(CliError {
@@ -319,7 +325,7 @@ async fn main() {
     }));
 
     if let Err(e) = entrypoint().await {
-        eprintln!("{}", e);
+        console_info!("{}", e);
         exit(1)
     }
 }

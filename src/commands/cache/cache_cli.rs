@@ -2,8 +2,13 @@ use log::debug;
 use std::num::NonZeroU64;
 use std::process::exit;
 
-use crate::error::CliError;
-use crate::utils::client::{get_momento_client, interact_with_momento};
+use crate::{
+    error::CliError,
+    utils::{
+        client::{get_momento_client, interact_with_momento},
+        console::console_data,
+    },
+};
 
 pub async fn create_cache(
     cache_name: String,
@@ -33,7 +38,7 @@ pub async fn list_caches(auth_token: String, endpoint: Option<String>) -> Result
     list_result
         .caches
         .into_iter()
-        .for_each(|cache| println!("{}", cache.cache_name));
+        .for_each(|cache| console_data!("{}", cache.cache_name));
 
     Ok(())
 }
@@ -75,7 +80,7 @@ pub async fn get(
     let response = interact_with_momento("getting...", client.get(&cache_name, key)).await?;
     match response.result {
         momento::response::cache_get_response::MomentoGetStatus::HIT => {
-            println!("{}", response.as_string())
+            console_data!("{}", response.as_string())
         }
         momento::response::cache_get_response::MomentoGetStatus::MISS => {
             debug!("cache miss");

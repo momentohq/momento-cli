@@ -1,4 +1,3 @@
-use log::info;
 use std::path::Path;
 use tokio::fs;
 
@@ -7,6 +6,7 @@ use crate::{
     config::{Config, Credentials, FileTypes},
     error::CliError,
     utils::{
+        console::console_info,
         file::{
             create_file, get_config_file_path, get_credentials_file_path, get_momento_dir,
             open_file, prompt_user_for_input, read_file_contents, write_to_file,
@@ -60,14 +60,14 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
     }
     // TODO: Update the endpoint to read from config
     match create_cache(config.cache.clone(), credentials.token, None).await {
-        Ok(_) => info!(
+        Ok(_) => console_info!(
             "{} successfully created as the default with default TTL of {}s",
             config.cache.clone(),
             config.ttl
         ),
         Err(e) => {
             if e.msg.contains("already exists") {
-                info!("{} as the default already exists", config.cache);
+                console_info!("{} as the default already exists", config.cache);
             } else {
                 return Err(e);
             }
