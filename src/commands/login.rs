@@ -1,8 +1,8 @@
+use crate::utils::console::console_info;
 use momento::momento::auth::{EarlyOutActionResult, LoginAction};
 use momento::{momento::auth::LoginResult, response::error::MomentoError};
 use qrcode::render::unicode;
 use qrcode::QrCode;
-use crate::utils::console::console_info;
 
 #[derive(clap::ArgEnum, Clone, Debug)]
 pub enum LoginMode {
