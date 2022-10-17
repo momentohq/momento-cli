@@ -5,7 +5,7 @@ use momento::{
     simple_cache_client::{SimpleCacheClient, SimpleCacheClientBuilder},
 };
 
-use crate::error::CliError;
+use crate::{error::CliError, utils::console::console_data};
 
 pub async fn get_momento_client(
     auth_token: String,
@@ -31,7 +31,7 @@ pub fn print_whatever_this_is_as_json<T>(value: &T)
 where
     T: serde::Serialize,
 {
-    println!(
+    console_data!(
         "{}",
         serde_json::to_string_pretty(value).expect("Could not print whatever this is as json")
     );

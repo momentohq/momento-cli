@@ -1,3 +1,4 @@
+use crate::utils::console::console_info;
 use momento::momento::auth::{EarlyOutActionResult, LoginAction};
 use momento::{momento::auth::LoginResult, response::error::MomentoError};
 use qrcode::render::unicode;
@@ -32,7 +33,7 @@ fn login_with_browser(action: LoginAction) -> EarlyOutActionResult {
             }
         }
         momento::momento::auth::LoginAction::ShowMessage(message) => {
-            eprintln!("{}", message.text);
+            console_info!("{}", message.text);
             None
         }
     }
@@ -41,18 +42,18 @@ fn login_with_browser(action: LoginAction) -> EarlyOutActionResult {
 fn login_with_qr_code(action: LoginAction) -> EarlyOutActionResult {
     match action {
         momento::momento::auth::LoginAction::OpenBrowser(open) => {
-            eprintln!("Navigate here to log in: {}", open.url);
+            console_info!("Navigate here to log in: {}", open.url);
             let code = QrCode::new(open.url).unwrap();
             let image = code
                 .render::<unicode::Dense1x2>()
                 .dark_color(unicode::Dense1x2::Dark)
                 .light_color(unicode::Dense1x2::Light)
                 .build();
-            eprintln!("{}", image);
+            console_info!("{}", image);
             None
         }
         momento::momento::auth::LoginAction::ShowMessage(message) => {
-            eprintln!("{}", message.text);
+            console_info!("{}", message.text);
             None
         }
     }

@@ -1,9 +1,8 @@
-use log::info;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::env;
 
-use crate::error::CliError;
+use crate::{error::CliError, utils::console::console_info};
 
 const SIGNUP_ENDPOINT: &str = "https://signup.registry.prod.a.momentohq.com";
 
@@ -40,11 +39,11 @@ pub async fn signup_user(email: String, cloud: String, region: String) -> Result
         cloud,
         region,
     };
-    info!("Signing up for Momento...");
+    console_info!("Signing up for Momento...");
     match Client::new().post(url).json(body).send().await {
         Ok(resp) => {
             if resp.status().is_success() {
-                info!("Success! Your access token will be emailed to you shortly.")
+                console_info!("Success! Your access token will be emailed to you shortly.")
             } else {
                 let response_json: CreateTokenResponse = resp.json().await.unwrap_or_default();
                 return Err(CliError {
