@@ -1,7 +1,7 @@
 name: On push to main
 
 on:
-  pull_request:
+  push:
     branches: [main]
 
 env:
@@ -82,3 +82,23 @@ jobs:
           override: true
       - name: Build
         run: cargo build --verbose
+
+  update-cargo:
+    runs-on: ubuntu-latest
+    needs: [rustfmt, build, build-windows]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add Cargo.toml
+          git commit -m "chore: bump cargo version v${{ needs.release.outputs.version }}"
+        shell: bash
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
