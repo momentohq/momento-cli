@@ -87,6 +87,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [rustfmt, build, build-windows]
     steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
       - name: Dry run release
         id: semrel
         uses: go-semantic-release/action@v1
