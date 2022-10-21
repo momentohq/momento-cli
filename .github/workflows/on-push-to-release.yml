@@ -1,0 +1,239 @@
+name: On push to release
+
+on:
+  push:
+    branches: [release]
+    paths-ignore:
+      - "**/Cargo.toml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: rustfmt
+        run: cargo fmt -- --check
+
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.release }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+
+      - name: Dry run release
+        id: semrel
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
+          dry: true
+
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
+        shell: bash
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Build tar.gz
+        run: |
+          STASH_SHA=$(git stash create)
+          VERSION=${{ steps.semrel.outputs.version }}
+          ARCHIVE_FILE=archive-$VERSION.tar.gz
+          echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
+          pip install git-archive-all
+          git-archive-all $ARCHIVE_FILE
+          SHA=$(openssl sha256 < ${ARCHIVE_FILE} | sed 's/.* //')
+          echo "SHA="$SHA >> $GITHUB_ENV
+          echo "sha is: ${SHA}"
+          AUTH="Authorization: token ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${ARCHIVE_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+        shell: bash
+
+      - name: Check out homebrew-tap
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          repository: momentohq/homebrew-tap
+          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+
+      - name: update homebrew formulae
+        run: |
+          git checkout -b formula/momento-cli/v${{ steps.semrel.outputs.version }}
+          pushd Formula
+            sed -i 's/sha256 ".*"/sha256 "${{ env.SHA }}"/g' momento-cli.rb
+            sed -i 's/version ".*"/version "${{ steps.semrel.outputs.version }}"/g' momento-cli.rb
+            sed -i 's/releases\/download\/.*\/archive-.*.tar.gz/releases\/download\/v${{ steps.semrel.outputs.version }}\/${{ env.ARCHIVE_FILE }}/g' momento-cli.rb
+          popd
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add .
+          git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
+          git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
+
+      - name: Output release
+        id: release
+        run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
+
+      - name: Set release
+        id: semrel-actual
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
+
+  publish-linux-assets:
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux2014_x86_64
+    needs: release
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+
+      - name: Build tar.gz and publish asset
+        run: |
+          yum install jq -y
+          VERSION=${{ needs.release.outputs.version }}
+          BINARY_FILE="momento-cli-$VERSION.linux_x86_64.tar.gz"
+          cargo build --release
+          tar zcvf $BINARY_FILE ./target/release/momento
+          AUTH="Authorization: token ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+        shell: bash
+
+  publish-windows-assets:
+    runs-on: windows-latest
+    needs: release
+    steps:
+      - uses: actions/checkout@v2
+      - name: i guess windows-latest does not have protoc or cmake but we need protoc
+        run: choco install protoc
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+
+      - name: Build zip for windows_x86_64 and create release
+        id: create_release
+        run: |
+          $env:Version = "${{ needs.release.outputs.version }}"
+          $env:BinaryFile64 = "momento-cli-" + $env:VERSION + ".windows_x86_64.zip"
+          rustup target add x86_64-pc-windows-gnu
+          cargo build --release --target x86_64-pc-windows-gnu
+          $env:CurrentDir = Get-Location
+          $env:LiteralPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento.exe"
+          $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile64
+          Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
+          $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v" + $env:Version
+          $env:LatestReleaseUri
+          $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get | Select-Object -Property Content).Content
+          $env:ReleaseId = $env:LatestRelease | jq -r .id
+          $GhAsset64 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
+          $GhAsset64
+          echo "::set-output name=upload_url::$GhAsset64"
+          echo "::set-output name=asset_path::$env:DestinationPath"
+          echo "::set-output name=asset_name::$env:BinaryFile64"
+        shell: pwsh
+
+      - name: Upload windows_x86_64 zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.create_release.outputs.asset_path }}
+          asset_name: ${{ steps.create_release.outputs.asset_name }}
+          asset_content_type: application/zip
+
+      # Commenting out building i686 since the machine doesn't seem to have i686-w64-mingw32-gcc.exe compiler installed by default.
+      # Come back and work on this when customers ask 32-bit build.
+      #
+      # - name: Add mingw32 to path
+      #   shell: bash
+      #   run: |
+      #     echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
+
+      # - name: Build zip for windows_i686 and create release
+      #   id: create_release_32
+      #   run: |
+      #     $env:Version = "${{ needs.release.outputs.version }}"
+      #     $env:BinaryFile32 = "momento-cli-" + $env:VERSION + ".windows_i686.zip"
+      #     rustup target add i686-pc-windows-gnu
+      #     cargo build --release --target i686-pc-windows-gnu
+      #     $env:CurrentDir = Get-Location
+      #     $env:LiteralPath = $env:CurrentDir + "\target\i686-pc-windows-gnu\release\momento.exe"
+      #     $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile32
+      #     Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
+      #     $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v" + $env:Version
+      #     $env:LatestReleaseUri
+      #     $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get | Select-Object -Property Content).Content
+      #     $env:ReleaseId = $env:LatestRelease | jq -r .id
+      #     $GhAsset32 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile32
+      #     $GhAsset32
+      #     echo "::set-output name=upload_url::$GhAsset32"
+      #     echo "::set-output name=asset_path::$env:DestinationPath"
+      #     echo "::set-output name=asset_name::$env:BinaryFile32"
+      #   shell: pwsh
+
+      # - name: Upload windows_i686 zip
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release_32.outputs.upload_url }}
+      #     asset_path: ${{ steps.create_release_32.outputs.asset_path }}
+      #     asset_name: ${{ steps.create_release_32.outputs.asset_name }}
+      #     asset_content_type: application/zip
+
+  update-cargo:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - uses: actions/checkout@v2
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add Cargo.toml
+          git commit -m "chore: bump cargo version v${{ needs.release.outputs.version }}"
+        shell: bash
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
