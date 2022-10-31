@@ -108,7 +108,7 @@ enum CloudSignupCommand {
     Gcp {
         #[structopt(long, short)]
         email: String,
-        #[structopt(long, short, value_name = "us-east1 or ap-northeast1")]
+        #[structopt(long, short, value_name = "us-east1 or asia-northeast1")]
         region: String,
     },
     #[structopt(about = "Signup for Momento on AWS")]
