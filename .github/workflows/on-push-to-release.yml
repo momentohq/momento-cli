@@ -42,7 +42,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allow-initial-development-versions: true
           force-bump-patch-version: true
-          dry: true
 
       - name: Update Cargo Version
         run: |
