@@ -110,6 +110,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allow-initial-development-versions: true
           force-bump-patch-version: true
+          custom-arguments: "--no-ci"
 
   publish-linux-assets:
     runs-on: ubuntu-latest
