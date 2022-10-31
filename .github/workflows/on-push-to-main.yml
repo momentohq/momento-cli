@@ -1,0 +1,101 @@
+name: On push to main
+
+on:
+  push:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  TEST_AUTH_TOKEN_DEFAULT: ${{ secrets.ALPHA_TEST_AUTH_TOKEN }}
+  TEST_AUTH_TOKEN_WITH_PROFILE: ${{ secrets.ALPHA_TEST_AUTH_TOKEN }}
+  TEST_CACHE_DEFAULT: "default-cache"
+  TEST_CACHE_WITH_PROFILE: "cache-with-profile"
+  TEST_PROFILE: "test-profile"
+
+jobs:
+  rustfmt:
+    name: Style & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: rustfmt
+        run: cargo fmt -- --check
+      - name: Rigorous lint via Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [default, login]
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+      - name: Build
+        run: cargo build --verbose --features ${{ matrix.feature }}
+      - name: Create .momento directory
+        run: mkdir ~/.momento
+      - name: Run momento configure test with default profile created initially
+        run: cargo test --test configure_profiles_test --features ${{ matrix.feature }}
+      - name: Remove credentials and config files to prepare for the integration tests
+        run: |
+          rm ~/.momento/credentials
+          rm ~/.momento/config
+      - name: Create credential file
+        run: |
+          cat <<EOF > ~/.momento/credentials 
+          [default]
+          token=$TEST_AUTH_TOKEN_DEFAULT
+          [$TEST_PROFILE]
+          token=$TEST_AUTH_TOKEN_WITH_PROFILE
+          EOF
+          cat ~/.momento/credentials
+      - name: Create config file
+        run: |
+          cat <<EOF > ~/.momento/config 
+          [default]
+          cache=$TEST_CACHE_DEFAULT
+          ttl=900
+          [$TEST_PROFILE]
+          cache=$TEST_CACHE_WITH_PROFILE
+          ttl=1000
+          EOF
+          cat ~/.momento/config
+      - name: Run Integration Tests
+        run: ./run_test_sequentially.sh ${{ matrix.feature }}
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: i guess windows-latest does not have protoc or cmake but we need protoc
+        run: choco install protoc
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+      - name: Build
+        run: cargo build --verbose
+
+  dry-run-release:
+    runs-on: ubuntu-latest
+    needs: [rustfmt, build, build-windows]
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+      - name: Dry run release
+        id: semrel
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
+          dry: true
