@@ -35,14 +35,13 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Dry run release
+      - name: Set release
         id: semrel
         uses: go-semantic-release/action@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allow-initial-development-versions: true
           force-bump-patch-version: true
-          dry: true
           # For whatever reason, this silly tool won't let you do releases from branches
           #  other than the default branch unless you pass this flag, which doesn't seem
           #  to actually have anything to do with CI:
@@ -102,15 +101,6 @@ jobs:
       - name: Output release
         id: release
         run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
-
-      - name: Set release
-        id: semrel-actual
-        uses: go-semantic-release/action@v1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          allow-initial-development-versions: true
-          force-bump-patch-version: true
-          custom-arguments: "--no-ci"
 
   publish-linux-assets:
     runs-on: ubuntu-latest
