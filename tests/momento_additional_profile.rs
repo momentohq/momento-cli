@@ -8,7 +8,7 @@ mod tests {
         let test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").unwrap();
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&[
+        cmd.args([
             "cache",
             "create",
             "--name",
@@ -23,7 +23,7 @@ mod tests {
     async fn momento_cache_set_with_profile() {
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&[
+        cmd.args([
             "cache",
             "set",
             "--key",
@@ -40,7 +40,7 @@ mod tests {
     async fn momento_cache_get_with_profile() {
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&["cache", "get", "--key", "key", "--profile", &test_profile])
+        cmd.args(["cache", "get", "--key", "key", "--profile", &test_profile])
             .assert()
             .stdout("value\n");
     }
@@ -50,7 +50,7 @@ mod tests {
         test_cache_with_profile.push('\n');
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&["cache", "list", "--profile", &test_profile])
+        cmd.args(["cache", "list", "--profile", &test_profile])
             .assert()
             .stdout(test_cache_with_profile);
     }
@@ -59,7 +59,7 @@ mod tests {
         let test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").unwrap();
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(&[
+        cmd.args([
             "cache",
             "delete",
             "--name",
