@@ -69,7 +69,7 @@ jobs:
           SHA=$(openssl sha256 < ${ARCHIVE_FILE} | sed 's/.* //')
           echo "SHA="$SHA >> $GITHUB_ENV
           echo "sha is: ${SHA}"
-          AUTH="Authorization: token ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
+          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
           GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${ARCHIVE_FILE}"
@@ -82,7 +82,7 @@ jobs:
         with:
           fetch-depth: 0
           repository: momentohq/homebrew-tap
-          token: ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}
+          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
 
       - name: update homebrew formulae
         run: |
@@ -142,7 +142,7 @@ jobs:
           BINARY_FILE="momento-cli-$VERSION.linux_x86_64.tar.gz"
           cargo build --release
           tar zcvf $BINARY_FILE ./target/release/momento
-          AUTH="Authorization: token ${{ secrets.PRIVATE_REPO_RELEASE_ACCESS }}"
+          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
           GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
