@@ -134,6 +134,12 @@ jobs:
           toolchain: stable
           components: rustfmt
           override: true
+          
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
+        shell: bash
 
       - name: Build tar.gz and publish asset
         run: |
