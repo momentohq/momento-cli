@@ -50,10 +50,7 @@ mod tests {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         let output = cmd.args(["cache", "list"]).output().unwrap().stdout;
         let string_output = str::from_utf8(&output).unwrap();
-        if !string_output
-            .split('\n')
-            .any(|x| x == &*test_cache_with_profile)
-        {
+        if !string_output.split('\n').any(|x| x == &*test_cache_default) {
             // Exit status 3 indicates cache list operation didn't include test_cache_default in the returned list.
             cmd.args(["cache", "list"]).assert().code(predicate::ne(3));
         }
