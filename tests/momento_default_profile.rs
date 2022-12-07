@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use assert_cmd::Command;
-    use predicates::prelude::predicate;
     use std::str;
 
     async fn momento_cache_create_default_profile() {
@@ -50,7 +49,7 @@ mod tests {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         let output = cmd.args(["cache", "list"]).output().unwrap().stdout;
         let string_output = str::from_utf8(&output).unwrap();
-        assert!(string_output.split('\n').any(|x| x == &*test_cache_default));
+        assert!(string_output.split('\n').any(|x| x == test_cache_default));
     }
 
     async fn momento_cache_delete_default_profile() {

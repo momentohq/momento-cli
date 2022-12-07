@@ -59,7 +59,7 @@ mod tests {
         let string_output = str::from_utf8(&output).unwrap();
         assert!(string_output
             .split('\n')
-            .any(|x| x == &*test_cache_with_profile));
+            .any(|x| x == test_cache_with_profile));
     }
 
     async fn momento_cache_delete_with_profile() {
