@@ -3,6 +3,7 @@ mod tests {
 
     use assert_cmd::Command;
     use predicates::prelude::*;
+    use std::str;
 
     async fn momento_cache_create_with_profile() {
         let test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").unwrap();
@@ -50,8 +51,14 @@ mod tests {
         test_cache_with_profile.push('\n');
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        let output = cmd.args(["cache", "list"]).output().unwrap().stdout;
-        if !output.contains_str(test_cache_default) {
+        let output = cmd
+            .args(["cache", "list", "--profile", &test_profile])
+            .output()
+            .unwrap()
+            .stdout;
+        let string_output = str::from_utf8(&output).unwrap();
+        let v: Vec<&str> = string_output.split('\n').collect();
+        if !v.contains(&&*test_cache_with_profile) {
             // Exit status 3 indicates cache list operation didn't include test_cache_default in the returned list.
             cmd.args(["cache", "list"]).assert().code(predicate::ne(3));
         }

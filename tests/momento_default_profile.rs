@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-
     use assert_cmd::Command;
     use predicates::prelude::predicate;
     use std::str;
@@ -50,7 +49,9 @@ mod tests {
         test_cache_default.push('\n');
         let mut cmd = Command::cargo_bin("momento").unwrap();
         let output = cmd.args(["cache", "list"]).output().unwrap().stdout;
-        if !output.contains_str(test_cache_default) {
+        let string_output = str::from_utf8(&output).unwrap();
+        let v: Vec<&str> = string_output.split('\n').collect();
+        if !v.contains(&&*test_cache_default) {
             // Exit status 3 indicates cache list operation didn't include test_cache_default in the returned list.
             cmd.args(["cache", "list"]).assert().code(predicate::ne(3));
         }
