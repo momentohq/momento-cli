@@ -57,13 +57,9 @@ mod tests {
             .unwrap()
             .stdout;
         let string_output = str::from_utf8(&output).unwrap();
-        if !string_output
+        assert!(string_output
             .split('\n')
-            .any(|x| x == &*test_cache_with_profile)
-        {
-            // Exit status 3 indicates cache list operation didn't include test_cache_default in the returned list.
-            cmd.args(["cache", "list"]).assert().code(predicate::ne(3));
-        }
+            .any(|x| x == &*test_cache_with_profile));
     }
 
     async fn momento_cache_delete_with_profile() {
