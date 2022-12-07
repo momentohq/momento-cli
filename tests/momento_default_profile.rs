@@ -47,9 +47,9 @@ mod tests {
         let mut test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
         test_cache_default.push('\n');
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        let output = cmd.args(["cache", "list"]).output().unwrap().stdout;
-        let string_output = str::from_utf8(&output).unwrap();
-        assert!(string_output.split('\n').any(|x| x == test_cache_default));
+        cmd.args(["cache", "list"])
+            .assert()
+            .stdout(test_cache_default);
     }
 
     async fn momento_cache_delete_default_profile() {

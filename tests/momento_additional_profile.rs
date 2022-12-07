@@ -3,7 +3,6 @@ mod tests {
 
     use assert_cmd::Command;
     use predicates::prelude::*;
-    use std::str;
 
     async fn momento_cache_create_with_profile() {
         let test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").unwrap();
@@ -51,15 +50,9 @@ mod tests {
         test_cache_with_profile.push('\n');
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        let output = cmd
-            .args(["cache", "list", "--profile", &test_profile])
-            .output()
-            .unwrap()
-            .stdout;
-        let string_output = str::from_utf8(&output).unwrap();
-        assert!(string_output
-            .split('\n')
-            .any(|x| x == test_cache_with_profile));
+        cmd.args(["cache", "list", "--profile", &test_profile])
+            .assert()
+            .stdout(test_cache_with_profile);
     }
 
     async fn momento_cache_delete_with_profile() {
