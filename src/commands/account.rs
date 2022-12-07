@@ -41,7 +41,7 @@ pub async fn signup_user(email: String, cloud: String, region: String) -> Result
         region,
     };
     console_info!("Signing up for Momento...");
-    match ClientBuilder::new().max_tls_version(Version::TLS_1_3).build() {
+    match ClientBuilder::new().max_tls_version(Version::TLS_1_2).build() {
         Ok(client) => {
             match client.post(url).json(body).send().await {
                 Ok(resp) => {
