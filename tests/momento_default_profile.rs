@@ -3,6 +3,7 @@ mod tests {
 
     use assert_cmd::Command;
     use std::str;
+    use predicates::prelude::predicate;
 
     async fn momento_cache_create_default_profile() {
         let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
@@ -48,9 +49,14 @@ mod tests {
         let mut test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
         test_cache_default.push('\n');
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "list"])
-            .assert()
-            .stdout(test_cache_default);
+        let output = cmd.args(["cache", "list"])
+            .output()
+            .unwrap()
+            .stdout;;
+        if !output.contains_str(test_cache_default) {
+            // Exit status 3 indicates cache list operation didn't include test_cache_default in the returned list.
+            cmd.args(["cache", "list"]).assert().code(predicate::ne(3));
+        }
     }
 
     async fn momento_cache_delete_default_profile() {
