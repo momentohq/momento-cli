@@ -1,7 +1,7 @@
+use reqwest::tls::Version;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use std::env;
-use reqwest::tls::Version;
 
 use crate::{error::CliError, utils::console::console_info};
 
@@ -41,23 +41,24 @@ pub async fn signup_user(email: String, cloud: String, region: String) -> Result
         region,
     };
     console_info!("Signing up for Momento...");
-    match ClientBuilder::new().max_tls_version(Version::TLS_1_2).build() {
-        Ok(client) => {
-            match client.post(url).json(body).send().await {
-                Ok(resp) => {
-                    if resp.status().is_success() {
-                        console_info!("Success! Your access token will be emailed to you shortly.")
-                    } else {
-                        let response_json: CreateTokenResponse = resp.json().await.unwrap_or_default();
-                        return Err(CliError {
-                            msg: format!("Failed to create Momento token: {}", response_json.message),
-                        });
-                    }
+    match ClientBuilder::new()
+        .max_tls_version(Version::TLS_1_2)
+        .build()
+    {
+        Ok(client) => match client.post(url).json(body).send().await {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    console_info!("Success! Your access token will be emailed to you shortly.")
+                } else {
+                    let response_json: CreateTokenResponse = resp.json().await.unwrap_or_default();
+                    return Err(CliError {
+                        msg: format!("Failed to create Momento token: {}", response_json.message),
+                    });
                 }
-                Err(e) => return Err(CliError { msg: e.to_string() }),
             }
-        }
             Err(e) => return Err(CliError { msg: e.to_string() }),
+        },
+        Err(e) => return Err(CliError { msg: e.to_string() }),
     };
     Ok(())
 }

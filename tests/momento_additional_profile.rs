@@ -50,10 +50,7 @@ mod tests {
         test_cache_with_profile.push('\n');
         let test_profile = std::env::var("TEST_PROFILE").unwrap();
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        let output = cmd.args(["cache", "list"])
-            .output()
-            .unwrap()
-            .stdout;;
+        let output = cmd.args(["cache", "list"]).output().unwrap().stdout;
         if !output.contains_str(test_cache_default) {
             // Exit status 3 indicates cache list operation didn't include test_cache_default in the returned list.
             cmd.args(["cache", "list"]).assert().code(predicate::ne(3));
