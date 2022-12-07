@@ -42,6 +42,8 @@ pub async fn signup_user(email: String, cloud: String, region: String) -> Result
     };
     console_info!("Signing up for Momento...");
     match ClientBuilder::new()
+        // We're enforcing TLS1.2 since API Gateway currently does not support TLS1.3 for regional endpoints.
+        // https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-custom-domain-tls-version.html#apigateway-custom-domain-tls-version-edge-optimized
         .max_tls_version(Version::TLS_1_2)
         .build()
     {
