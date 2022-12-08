@@ -169,6 +169,12 @@ jobs:
           components: rustfmt
           override: true
 
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+        shell: bash
+
       - name: Build zip for windows_x86_64 and create release
         id: create_release
         run: |
