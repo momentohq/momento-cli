@@ -276,7 +276,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 }
             },
         },
-        Subcommand::SigningKey {operation} => match operation {
+        Subcommand::SigningKey { operation } => match operation {
             SigningKeyCommand::Create {
                 ttl_minutes,
                 endpoint,
