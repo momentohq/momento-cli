@@ -155,7 +155,7 @@ jobs:
         shell: bash
 
       - name: Create rmp package
-      - uses: jiro4989/build-rpm-action@v2
+        uses: jiro4989/build-rpm-action@v2
         with:
           summary: ${{ env.DESC }}
           package: ${{ env.APP_NAME }}
@@ -165,6 +165,8 @@ jobs:
           arch: ${{ matrix.architecture }}
           desc: ${{ env.DESC }}
 
+      # Looks like jiro4989/build-rpm-action@v2 creates a rpm package name such as <package>-<version>-1.el7.<arch>.rpm
+      # https://github.com/jiro4989/nimjson/actions/runs/3615428952/jobs/6092519590#step:9:106
       - name: Publish rpm package
         run: |
           yum install jq -y
