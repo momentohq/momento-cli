@@ -165,12 +165,12 @@ jobs:
           arch: ${{ matrix.architecture }}
           desc: ${{ env.DESC }}
 
+        # Looks like jiro4989/build-rpm-action@v2 creates a rpm package name such as <package>-<version>-1.el7.<arch>.rpm
+        # https://github.com/jiro4989/nimjson/actions/runs/3615428952/jobs/6092519590#step:9:106
       - name: Publish rpm package
         run: |
           yum install jq -y
           VERSION=${{ needs.release.outputs.version }}
-        # Looks like jiro4989/build-rpm-action@v2 creates a rpm package name such as <package>-<version>-1.el7.<arch>.rpm
-        # https://github.com/jiro4989/nimjson/actions/runs/3615428952/jobs/6092519590#step:9:106
           BINARY_FILE="${{ env.APP_NAME }}-$VERSION-1.el7.${{ matrix.architecture }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
