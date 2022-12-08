@@ -163,7 +163,7 @@ jobs:
           cp -p ./target/release/momento .rpmpkg/usr/bin
         shell: bash
 
-      - name: Create rmp package
+      - name: Create rpm package
         uses: jiro4989/build-rpm-action@v2
         with:
           summary: ${{ env.DESC }}
