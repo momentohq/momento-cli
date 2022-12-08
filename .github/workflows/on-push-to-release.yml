@@ -110,6 +110,11 @@ jobs:
     needs: release
     steps:
       - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+
       - name: Update Cargo Version
         run: |
           chmod +x set_cargo_version.sh
@@ -135,6 +140,10 @@ jobs:
       image: quay.io/pypa/manylinux2014_${{ matrix.architecture }}
     steps:
       - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -187,6 +196,10 @@ jobs:
     needs: [release, update-cargo]
     steps:
       - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -219,6 +232,10 @@ jobs:
     needs: [release, update-cargo]
     steps:
       - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
       - name: i guess windows-latest does not have protoc or cmake but we need protoc
         run: choco install protoc
       - uses: actions-rs/toolchain@v1
