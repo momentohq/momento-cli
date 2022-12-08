@@ -166,8 +166,6 @@ jobs:
           desc: ${{ env.DESC }}
 
       - name: Publish rpm package
-        # Looks like jiro4989/build-rpm-action@v2 creates a rpm package name such as <package>-<version>-1.el7.<arch>.rpm
-        # https://github.com/jiro4989/nimjson/actions/runs/3615428952/jobs/6092519590#step:9:106
         run: |
           yum install jq -y
           VERSION=${{ needs.release.outputs.version }}
