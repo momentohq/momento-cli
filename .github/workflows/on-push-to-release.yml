@@ -168,7 +168,7 @@ jobs:
           package: ${{ env.APP_NAME }}
           package_root: .rpmpkg
           maintainer: ${{ env.MAINTAINER }}
-          version: ${{ steps.semrel.outputs.version }}
+          version: ${{ needs.release.outputs.version }}
           arch: ${{ matrix.architecture }}
           desc: ${{ env.DESC }}
 
