@@ -136,8 +136,6 @@ jobs:
     strategy:
       matrix:
         architecture: [ x86_64 ]
-    container:
-      image: quay.io/pypa/manylinux2014_${{ matrix.architecture }}
     steps:
       - uses: actions/checkout@v2
       - name: Setup Python
@@ -197,9 +195,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.x"
+        run: yum install python3-devel python3-pip -y
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
