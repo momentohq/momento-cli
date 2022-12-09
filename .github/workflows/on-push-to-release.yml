@@ -176,7 +176,6 @@ jobs:
       # https://github.com/jiro4989/nimjson/actions/runs/3615428952/jobs/6092519590#step:9:106
       - name: Publish rpm package
         run: |
-          yum install jq -y
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="${{ env.APP_NAME }}-$VERSION-1.el7.${{ matrix.architecture }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
@@ -259,7 +258,7 @@ jobs:
           Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
           $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v" + $env:Version
           $env:LatestReleaseUri
-          $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get | Select-Object -Property Content).Content
+          $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get -Headers @{'authorization': Bearer ${{ secrets.GITHUB_TOKEN }} } | Select-Object -Property Content).Content
           $env:ReleaseId = $env:LatestRelease | jq -r .id
           $GhAsset64 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
           $GhAsset64
