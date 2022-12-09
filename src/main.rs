@@ -54,6 +54,11 @@ enum Subcommand {
         #[structopt(subcommand)]
         operation: AccountCommand,
     },
+    #[structopt(about = "Manage signing keys")]
+    SigningKey {
+        #[structopt(subcommand)]
+        operation: SigningKeyCommand,
+    },
     #[cfg(feature = "login")]
     #[structopt(
         about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account"
@@ -65,15 +70,9 @@ enum Subcommand {
 }
 
 #[derive(Debug, StructOpt)]
-enum AccountCommand {
-    #[structopt(about = "Sign up for Momento")]
-    Signup {
-        #[structopt(subcommand)]
-        signup_operation: CloudSignupCommand,
-    },
-
+enum SigningKeyCommand {
     #[structopt(about = "Create a signing key")]
-    CreateSigningKey {
+    Create {
         #[structopt(
             long = "ttl",
             short = 't',
@@ -87,7 +86,7 @@ enum AccountCommand {
     },
 
     #[structopt(about = "Revoke the signing key")]
-    RevokeSigningKey {
+    Revoke {
         #[structopt(long = "key-id", short, help = "Signing Key ID")]
         key_id: String,
 
@@ -96,9 +95,18 @@ enum AccountCommand {
     },
 
     #[structopt(about = "List all signing keys")]
-    ListSigningKeys {
+    List {
         #[structopt(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
+    },
+}
+
+#[derive(Debug, StructOpt)]
+enum AccountCommand {
+    #[structopt(about = "Sign up for Momento")]
+    Signup {
+        #[structopt(subcommand)]
+        signup_operation: CloudSignupCommand,
     },
 }
 
@@ -267,7 +275,9 @@ async fn entrypoint() -> Result<(), CliError> {
                     commands::account::signup_user(email, "aws".to_string(), region).await?
                 }
             },
-            AccountCommand::CreateSigningKey {
+        },
+        Subcommand::SigningKey { operation } => match operation {
+            SigningKeyCommand::Create {
                 ttl_minutes,
                 endpoint,
             } => {
@@ -279,7 +289,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 )
                 .await?;
             }
-            AccountCommand::RevokeSigningKey { key_id, endpoint } => {
+            SigningKeyCommand::Revoke { key_id, endpoint } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::revoke_signing_key(
                     key_id.clone(),
@@ -289,7 +299,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 .await?;
                 debug!("revoked signing key {}", key_id)
             }
-            AccountCommand::ListSigningKeys { endpoint } => {
+            SigningKeyCommand::List { endpoint } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
                     .await?
