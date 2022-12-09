@@ -258,7 +258,7 @@ jobs:
           Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
           $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v" + $env:Version
           $env:LatestReleaseUri
-          $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get -Headers @{'authorization': Bearer ${{ secrets.GITHUB_TOKEN }} } | Select-Object -Property Content).Content
+          $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get -Headers @{'authorization' = 'Bearer ${{ secrets.GITHUB_TOKEN }}' } | Select-Object -Property Content).Content
           $env:ReleaseId = $env:LatestRelease | jq -r .id
           $GhAsset64 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile64
           $GhAsset64
