@@ -83,10 +83,14 @@ mod tests {
             // configure subcommand
             vec!["configure", "--profile", &test_profile],
             vec!["--profile", &test_profile, "configure"],
+            // signing-key subcommand
+            vec!["signing-key", "list", "--profile", &test_profile],
+            vec!["signing-key", "--profile", &test_profile, "list"],
+            vec!["--profile", &test_profile, "signing-key", "list"],
             // account subcommand
-            vec!["account", "list-signing-keys", "--profile", &test_profile],
-            vec!["account", "--profile", &test_profile, "list-signing-keys"],
-            vec!["--profile", &test_profile, "account", "list-signing-keys"],
+            vec!["account", "signup", "--profile", &test_profile, "help"],
+            vec!["account", "--profile", &test_profile, "signup", "help"],
+            vec!["--profile", &test_profile, "account", "signup", "help"],
         ];
         for command_line_args in profile_permutations {
             let mut cmd = Command::cargo_bin("momento").unwrap();
