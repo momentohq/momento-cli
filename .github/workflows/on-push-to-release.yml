@@ -24,7 +24,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.release.outputs.release }}
+      version: ${{ steps.semrel.outputs.release }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -38,7 +38,46 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Set release
+      - name: Dry-run semrel release to get version number
+        id: semrel_dryrun
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
+          # For whatever reason, this silly tool won't let you do releases from branches
+          #  other than the default branch unless you pass this flag, which doesn't seem
+          #  to actually have anything to do with CI:
+          # https://github.com/go-semantic-release/semantic-release/blob/master/cmd/semantic-release/main.go#L173-L194
+          # https://github.com/go-semantic-release/condition-github/blob/4c8af3fc516151423fff2f77eb08bf7082570676/pkg/condition/github.go#L42-L44
+          custom-arguments: "--no-ci"
+          dry: true
+
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ steps.semrel_dryrun.outputs.version }}
+        shell: bash
+
+      - name: Build
+        run: |
+          rustup target list
+          cargo build --verbose
+
+      - name: Commit Cargo version
+        run: |
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add Cargo.toml
+          git commit -m "chore: bump cargo version v${{ needs.release.outputs.version }}"
+        shell: bash
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+      - name: semrel release
         id: semrel
         uses: go-semantic-release/action@v1
         with:
@@ -51,15 +90,6 @@ jobs:
           # https://github.com/go-semantic-release/semantic-release/blob/master/cmd/semantic-release/main.go#L173-L194
           # https://github.com/go-semantic-release/condition-github/blob/4c8af3fc516151423fff2f77eb08bf7082570676/pkg/condition/github.go#L42-L44
           custom-arguments: "--no-ci"
-
-      - name: Update Cargo Version
-        run: |
-          chmod +x set_cargo_version.sh
-          ./set_cargo_version.sh ${{ steps.semrel.outputs.version }}
-        shell: bash
-
-      - name: Build
-        run: cargo build --verbose
 
       - name: Build tar.gz
         run: |
@@ -105,114 +135,71 @@ jobs:
         id: release
         run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
 
-  update-cargo:
-    runs-on: ubuntu-latest
-    needs: release
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.x"
-
-      - name: Update Cargo Version
-        run: |
-          chmod +x set_cargo_version.sh
-          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
-          git config user.email "momentobot@users.noreply.github.com"
-          git config user.name "momentobot"
-          git add Cargo.toml
-          git commit -m "chore: bump cargo version v${{ needs.release.outputs.version }}"
-        shell: bash
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
-
-  publish-rpm-package:
-    runs-on: ubuntu-latest
-    needs: [ release, update-cargo ]
-    strategy:
-      matrix:
-        architecture: [ x86_64 ]
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.x"
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          override: true
-
-      - name: Update Cargo Version
-        run: |
-          chmod +x set_cargo_version.sh
-          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
-        shell: bash
-
-      - name: Build
-        run: |
-          cargo build --release
-          mkdir -p .rpmpkg/usr/bin
-          cp -p ./target/release/momento .rpmpkg/usr/bin
-        shell: bash
-
-      - name: Create rpm package
-        uses: jiro4989/build-rpm-action@v2
-        with:
-          summary: ${{ env.DESC }}
-          package: ${{ env.APP_NAME }}
-          package_root: .rpmpkg
-          maintainer: ${{ env.MAINTAINER }}
-          version: ${{ needs.release.outputs.version }}
-          arch: ${{ matrix.architecture }}
-          desc: ${{ env.DESC }}
-
-      # Looks like jiro4989/build-rpm-action@v2 creates a rpm package name such as <package>-<version>-1.el7.<arch>.rpm
-      # https://github.com/jiro4989/nimjson/actions/runs/3615428952/jobs/6092519590#step:9:106
-      - name: Publish rpm package
-        run: |
-          VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="${{ env.APP_NAME }}-$VERSION-1.el7.${{ matrix.architecture }}.rpm"
-          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
-          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
-          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
-          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
-          echo $GH_ASSET
-          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
-        shell: bash
+#  update-cargo:
+#    runs-on: ubuntu-latest
+#    needs: release
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: Setup Python
+#        uses: actions/setup-python@v2
+#        with:
+#          python-version: "3.x"
+#
+#      - name: Update Cargo Version
+#        run: |
+#          chmod +x set_cargo_version.sh
+#          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+#          git config user.email "momentobot@users.noreply.github.com"
+#          git config user.name "momentobot"
+#          git add Cargo.toml
+#          git commit -m "chore: bump cargo version v${{ needs.release.outputs.version }}"
+#        shell: bash
+#      - name: Push changes
+#        uses: ad-m/github-push-action@master
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          branch: ${{ github.ref }}
 
   publish-linux-assets:
     runs-on: ubuntu-latest
-    container:
-      image: quay.io/pypa/manylinux2014_x86_64
-    needs: [release, update-cargo]
+    needs: [ release ]
+    strategy:
+      matrix:
+        architecture: [ x86_64 aarch64 ]
     steps:
       - uses: actions/checkout@v2
-      - name: Setup Python
-        run: yum install python3-devel python3-pip -y
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          override: true
+#      - name: Setup Python
+#        uses: actions/setup-python@v2
+#        with:
+#          python-version: "3.x"
+#      - uses: actions-rs/toolchain@v1
+#        with:
+#          toolchain: stable
+#          components: rustfmt
+#          override: true
+#
+#      - name: Update Cargo Version
+#        run: |
+#          chmod +x set_cargo_version.sh
+#          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+#        shell: bash
 
-      - name: Update Cargo Version
+      - name: Build
         run: |
-          chmod +x set_cargo_version.sh
-          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+          cargo build --release --target ${{ matrix.architecture }}-unknown-linux-new
+          ls target
+          ls target/release
+#          mkdir -p .rpmpkg/usr/bin
+#          cp -p ./target/release/momento .rpmpkg/usr/bin
         shell: bash
+
 
       - name: Build tar.gz and publish asset
         run: |
-          yum install jq -y
+#          yum install jq -y
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="momento-cli-$VERSION.linux_x86_64.tar.gz"
-          cargo build --release
+#          cargo build --release
           tar zcvf $BINARY_FILE ./target/release/momento
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
@@ -222,9 +209,112 @@ jobs:
           curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
         shell: bash
 
+#      - name: Create rpm package
+#        uses: jiro4989/build-rpm-action@v2
+#        with:
+#          summary: ${{ env.DESC }}
+#          package: ${{ env.APP_NAME }}
+#          package_root: .rpmpkg
+#          maintainer: ${{ env.MAINTAINER }}
+#          version: ${{ needs.release.outputs.version }}
+#          arch: ${{ matrix.architecture }}
+#          desc: ${{ env.DESC }}
+#
+#      # Looks like jiro4989/build-rpm-action@v2 creates a rpm package name such as <package>-<version>-1.el7.<arch>.rpm
+#      # https://github.com/jiro4989/nimjson/actions/runs/3615428952/jobs/6092519590#step:9:106
+#      - name: Publish rpm package
+#        run: |
+#          VERSION=${{ needs.release.outputs.version }}
+#          BINARY_FILE="${{ env.APP_NAME }}-$VERSION-1.el7.${{ matrix.architecture }}.rpm"
+#          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+#          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+#          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+#          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+#          echo $GH_ASSET
+#          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+#        shell: bash
+
+      - name: Install nfpm to build rpm and deb
+        run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt update
+          sudo apt install nfpm
+        shell: bash
+
+      - name: Update nfpm package config
+        run: |
+          MOMENTO_VERSION=${{ needs.release.outputs.version }}
+          MOMENTO_ARCH=${{ matrix.architecture }}
+          cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH > nfpm.yaml
+          cat nfpm.yaml
+        shell: bash
+
+      - name: Build and publish rpm via nfpm
+        run: |
+          npm pkg --packager rpm
+          VERSION=${{ needs.release.outputs.version }}
+          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture }}.rpm"
+          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+
+      - name: Build and publish dep via nfpm
+        run: |
+          npm pkg --packager deb
+          VERSION=${{ needs.release.outputs.version }}
+          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture }}.rpm"
+          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+          
+
+
+
+#  publish-linux-assets:
+#    runs-on: ubuntu-latest
+#    container:
+#      image: quay.io/pypa/manylinux2014_x86_64
+#    needs: [release, update-cargo]
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: Setup Python
+#        run: yum install python3-devel python3-pip -y
+#      - uses: actions-rs/toolchain@v1
+#        with:
+#          toolchain: stable
+#          components: rustfmt
+#          override: true
+#
+#      - name: Update Cargo Version
+#        run: |
+#          chmod +x set_cargo_version.sh
+#          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+#        shell: bash
+
+#      - name: Build tar.gz and publish asset
+#        run: |
+#          yum install jq -y
+#          VERSION=${{ needs.release.outputs.version }}
+#          BINARY_FILE="momento-cli-$VERSION.linux_x86_64.tar.gz"
+#          cargo build --release
+#          tar zcvf $BINARY_FILE ./target/release/momento
+#          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+#          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+#          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+#          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+#          echo $GH_ASSET
+#          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+#        shell: bash
+
   publish-windows-assets:
     runs-on: windows-latest
-    needs: [release, update-cargo]
+    needs: [release]
     steps:
       - uses: actions/checkout@v2
       - name: Setup Python
@@ -241,8 +331,9 @@ jobs:
 
       - name: Update Cargo Version
         run: |
-          chmod +x set_cargo_version.sh
-          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+          cat Cargo.toml
+#          chmod +x set_cargo_version.sh
+#          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
         shell: bash
 
       - name: Build zip for windows_x86_64 and create release
