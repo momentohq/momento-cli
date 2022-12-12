@@ -3,6 +3,12 @@
 Japanese: [日本語](README.ja.md)
 Portuguese: [Português](README.pt.md)
 
+Command-line tool for managing Momento Serverless Cache.  Supports the following:
+
+* Create a Momento account
+* Create, list, and delete Momento caches
+* Get and set values in a Momento cache
+
 ## Quick Start
 
 Please refer to the installation instructions for Linux [here](https://github.com/momentohq/momento-cli/blob/main/README.md#linux) and Windows [here](https://github.com/momentohq/momento-cli/blob/main/README.md#windows).
