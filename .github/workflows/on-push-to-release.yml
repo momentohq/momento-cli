@@ -165,7 +165,7 @@ jobs:
     needs: [ release ]
     strategy:
       matrix:
-        architecture: [ x86_64 aarch64 ]
+        architecture: [ x86_64, aarch64 ]
     steps:
       - uses: actions/checkout@v2
 #      - name: Setup Python
