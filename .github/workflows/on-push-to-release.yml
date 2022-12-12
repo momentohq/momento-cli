@@ -196,10 +196,10 @@ jobs:
 
       - name: Build tar.gz and publish asset
         run: |
-#          yum install jq -y
+          # yum install jq -y
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="momento-cli-$VERSION.linux_x86_64.tar.gz"
-#          cargo build --release
+          # cargo build --release
           tar zcvf $BINARY_FILE ./target/release/momento
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
