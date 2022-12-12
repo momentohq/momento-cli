@@ -186,7 +186,8 @@ jobs:
 
       - name: Build
         run: |
-          cargo build --release --target ${{ matrix.architecture }}-unknown-linux-new
+          rustup target add ${{ matrix.architecture }}-unknown-linux-gnu
+          cargo build --release --target ${{ matrix.architecture }}-unknown-linux-gnu
           ls target
           ls target/release
 #          mkdir -p .rpmpkg/usr/bin
@@ -197,8 +198,8 @@ jobs:
       - name: Build tar.gz and publish asset
         run: |
           # yum install jq -y
-          VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="momento-cli-$VERSION.linux_x86_64.tar.gz"
+          VERSION=${{ needs.release.outputs.release }}
+          BINARY_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture }}.tar.gz"
           # cargo build --release
           tar zcvf $BINARY_FILE ./target/release/momento
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
@@ -243,7 +244,7 @@ jobs:
 
       - name: Update nfpm package config
         run: |
-          MOMENTO_VERSION=${{ needs.release.outputs.version }}
+          MOMENTO_VERSION=${{ needs.release.outputs.release }}
           MOMENTO_ARCH=${{ matrix.architecture }}
           cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH > nfpm.yaml
           cat nfpm.yaml
@@ -252,7 +253,7 @@ jobs:
       - name: Build and publish rpm via nfpm
         run: |
           npm pkg --packager rpm
-          VERSION=${{ needs.release.outputs.version }}
+          VERSION=${{ needs.release.outputs.release }}
           BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
@@ -264,7 +265,7 @@ jobs:
       - name: Build and publish dep via nfpm
         run: |
           npm pkg --packager deb
-          VERSION=${{ needs.release.outputs.version }}
+          VERSION=${{ needs.release.outputs.release }}
           BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
@@ -339,7 +340,7 @@ jobs:
       - name: Build zip for windows_x86_64 and create release
         id: create_release
         run: |
-          $env:Version = "${{ needs.release.outputs.version }}"
+          $env:Version = "${{ needs.release.outputs.release }}"
           $env:BinaryFile64 = "momento-cli-" + $env:VERSION + ".windows_x86_64.zip"
           rustup target add x86_64-pc-windows-gnu
           cargo build --release --target x86_64-pc-windows-gnu
