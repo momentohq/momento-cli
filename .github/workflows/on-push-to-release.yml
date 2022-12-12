@@ -256,32 +256,52 @@ jobs:
           $env:Version = "${{ needs.release.outputs.version }}"
           $env.BinaryFile64Prefix = "momento-cli-$env:Version.windows_x86_64"
 
+          # Create zipfile
+          $env:BinaryFile64Zip = $env.BinaryFile64Prefix = ".zip"
+          $env:CurrentDir = Get-Location
+          $env:LiteralPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento.exe"
+          $env:DestinationPathZip = $env:CurrentDir + "\" + $env:BinaryFile64Zip
+          Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPathZip
+
           # MSI installers are Major.minor.patch.build. Since we don't have build versions, we set that to 0.
           $env:BuildVersion = "$env:Version.0"
           msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$env:BinaryFile64Prefix
+          $env:BinaryFile64Msi = "$env:BinaryFile64Prefix.msi"
+          $env:DestinationPathMsi = ".\windows\installer\bin\Release\$env:BinaryFile64Msi"
 
-          $env:BinaryFile64 = "$env:BinaryFile64Prefix.msi"
-          $env:DestinationPath = ".\windows\installer\bin\Release\$env:BinaryFile64"
           $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v$env:Version"
           $env:LatestReleaseUri
           $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get -Headers @{'authorization': Bearer ${{ secrets.GITHUB_TOKEN }} } | Select-Object -Property Content).Content
           $env:ReleaseId = $env:LatestRelease | jq -r .id
-          $GhAsset64 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$env:ReleaseId/assets?name=$env:BinaryFile64"
-          $GhAsset64
-          echo "::set-output name=upload_url::$GhAsset64"
-          echo "::set-output name=asset_path::$env:DestinationPath"
-          echo "::set-output name=asset_name::$env:BinaryFile64"
+          $GhAsset64Msi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$env:ReleaseId/assets?name=$env:BinaryFile64Msi"
+          $GhAsset64Zip = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$env:ReleaseId/assets?name=$env:BinaryFile64Zip"
+          echo "::set-output name=upload_url_msi::$GhAsset64Msi"
+          echo "::set-output name=upload_url_zip::$GhAsset64Zip"
+          echo "::set-output name=asset_path_msi::$env:DestinationPathMsi"
+          echo "::set-output name=asset_path_zip::$env:DestinationPathZip"
+          echo "::set-output name=asset_name_msi::$env:BinaryFile64Msi"
+          echo "::set-output name=asset_name_zip::$env:BinaryFile64Zip"
         shell: pwsh
+
+      - name: Upload windows_x86_64 msi
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url_msi }}
+          asset_path: ${{ steps.create_release.outputs.asset_path_msi }}
+          asset_name: ${{ steps.create_release.outputs.asset_name_msi }}
+          asset_content_type: application/octet-stream
 
       - name: Upload windows_x86_64 zip
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ steps.create_release.outputs.asset_path }}
-          asset_name: ${{ steps.create_release.outputs.asset_name }}
-          asset_content_type: application/octet-stream
+          upload_url: ${{ steps.create_release.outputs.upload_url_zip }}
+          asset_path: ${{ steps.create_release.outputs.asset_path_zip }}
+          asset_name: ${{ steps.create_release.outputs.asset_name_zip }}
+          asset_content_type: application/zip
 
       # Commenting out building i686 since the machine doesn't seem to have i686-w64-mingw32-gcc.exe compiler installed by default.
       # Come back and work on this when customers ask 32-bit build.
