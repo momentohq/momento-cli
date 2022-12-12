@@ -1,0 +1,26 @@
+# nfpm example config file
+#
+# check https://nfpm.goreleaser.com/configuration for detailed usage
+#
+name: "momento-cli"
+arch: "$MOMENTO_ARCH"
+platform: "linux"
+version: "v$MOMENTO_VERSION"
+section: "default"
+priority: "extra"
+provides:
+- momento
+maintainer: "Momento <eng-deveco@momentohq.com>"
+description: |
+  Command-line tool for managing Momento Serverless Cache
+vendor: "Momento"
+homepage: "https://gomomento.com"
+license: "Apache-2.0"
+contents:
+- src: ./target/release/momento
+  dst: /usr/bin/momento
+overrides:
+  rpm:
+    scripts:
+  deb:
+    scripts:
