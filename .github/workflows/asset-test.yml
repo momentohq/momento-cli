@@ -2,6 +2,8 @@ name: Asset test
 
 on:
   workflow_dispatch:
+  push:
+    branches: [feat/windows-installer]
 
 env:
   CARGO_TERM_COLOR: always
@@ -28,9 +30,74 @@ jobs:
         with:
           python-version: "3.x"
 
-      - name: Build
-        run: cargo build --verbose
-
       - name: Output release
         id: release
         run: echo "::set-output name=release::99.99.99"
+
+  publish-windows-assets:
+    runs-on: windows-latest
+    needs: [release]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+      - name: i guess windows-latest does not have protoc or cmake but we need protoc
+        run: choco install protoc
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
+        shell: bash
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Build installer for windows_x86_64 and create release
+        id: create_release
+        run: |
+          rustup target add x86_64-pc-windows-gnu
+          cargo build --release --target x86_64-pc-windows-gnu
+
+          cp .\target\x86_64-pc-windows-gnu\release\momento.exe .\windows\installer\
+
+          $env:Version = "${{ needs.release.outputs.version }}"
+          $env:BinaryFile64Prefix = "momento-cli-$env:Version.windows_x86_64"
+
+          # Create zipfile
+          $env:BinaryFile64Zip = "$env:BinaryFile64Prefix.zip"
+          $env:CurrentDir = Get-Location
+          $env:LiteralPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento.exe"
+          $env:DestinationPathZip = $env:CurrentDir + "\" + $env:BinaryFile64Zip
+          Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPathZip
+
+          # MSI installers are Major.minor.patch.build. Since we don't have build versions, we set that to 0.
+          $env:BuildVersion = "$env:Version.0"
+          msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$env:BinaryFile64Prefix
+          $env:BinaryFile64Msi = "$env:BinaryFile64Prefix.msi"
+          $env:DestinationPathMsi = ".\windows\installer\bin\Release\$env:BinaryFile64Msi"
+
+          echo "::set-output name=asset_path_msi::$env:DestinationPathMsi"
+          echo "::set-output name=asset_path_zip::$env:DestinationPathZip"
+          echo "::set-output name=asset_name_msi::$env:BinaryFile64Msi"
+          echo "::set-output name=asset_name_zip::$env:BinaryFile64Zip"
+        shell: pwsh
+
+      - name: Upload zipfile
+        uses: actions/upload-artifact@v2
+        with:
+            name: zipfile-asset
+            path: ${{ steps.create_release.outputs.asset_path_zip }}
+
+      - name: Upload MSI
+        uses: actions/upload-artifact@v2
+        with:
+          name: installer-asset
+          path: ${{ steps.create_release.outputs.asset_path_msi }}
