@@ -2,3 +2,7 @@
 .idea/
 client-cli.iml
 .DS_Store
+.vs/
+bin/
+momento.exe
+obj/
