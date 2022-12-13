@@ -1,0 +1,36 @@
+name: Asset test
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  APP_NAME: 'momento-cli'
+  MAINTAINER: 'momentohq'
+  DESC: 'Official CLI for Momento Serverless Cache'
+
+jobs:
+  rustfmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: rustfmt
+        run: cargo fmt -- --check
+
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.release }}
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Output release
+        id: release
+        run: echo "::set-output name=release::99.99.99"
