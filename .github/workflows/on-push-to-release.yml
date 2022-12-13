@@ -220,12 +220,12 @@ jobs:
 
       - name: Inspect Build
         run: |
-#          rustup target add ${{ matrix.architecture }}-unknown-linux-gnu
-#          cargo build --release --target ${{ matrix.architecture }}-unknown-linux-gnu
+          #          rustup target add ${{ matrix.architecture }}-unknown-linux-gnu
+          #          cargo build --release --target ${{ matrix.architecture }}-unknown-linux-gnu
           ls target
           ls target/release
-#          mkdir -p .rpmpkg/usr/bin
-#          cp -p ./target/release/momento .rpmpkg/usr/bin
+          #          mkdir -p .rpmpkg/usr/bin
+          #          cp -p ./target/release/momento .rpmpkg/usr/bin
         shell: bash
 
 
