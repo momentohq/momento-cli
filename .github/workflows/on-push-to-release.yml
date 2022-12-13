@@ -278,9 +278,9 @@ jobs:
 
       - name: Update nfpm package config
         run: |
-          MOMENTO_VERSION=${{ needs.release.outputs.version }}
-          MOMENTO_ARCH=${{ matrix.architecture.arch-shortname }}
-          MOMENTO_BINARY=./target/${{ matrix.architecture.target }}/release/momento
+          export MOMENTO_VERSION=${{ needs.release.outputs.version }}
+          export MOMENTO_ARCH=${{ matrix.architecture.arch-shortname }}
+          export MOMENTO_BINARY=./target/${{ matrix.architecture.target }}/release/momento
           cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH |envsubst \$MOMENTO_BINARY > nfpm.yaml
           cat nfpm.yaml
         shell: bash
