@@ -287,7 +287,7 @@ jobs:
 
       - name: Build and publish rpm via nfpm
         run: |
-          npm pkg --packager rpm
+          nfpm pkg --packager rpm
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.arch-shortname }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
@@ -299,7 +299,7 @@ jobs:
 
       - name: Build and publish dep via nfpm
         run: |
-          npm pkg --packager deb
+          nfpm pkg --packager deb
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.arch-shortname }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
