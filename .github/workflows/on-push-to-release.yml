@@ -245,6 +245,9 @@ jobs:
           ./set_cargo_version.sh ${{ needs.release.outputs.version }}
         shell: bash
 
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.1
+
       - name: Build installer for windows_x86_64 and create release
         id: create_release
         run: |
@@ -254,10 +257,10 @@ jobs:
           cp .\target\x86_64-pc-windows-gnu\release\momento.exe .\windows\installer\
 
           $env:Version = "${{ needs.release.outputs.version }}"
-          $env.BinaryFile64Prefix = "momento-cli-$env:Version.windows_x86_64"
+          $env:BinaryFile64Prefix = "momento-cli-$env:Version.windows_x86_64"
 
           # Create zipfile
-          $env:BinaryFile64Zip = $env.BinaryFile64Prefix = ".zip"
+          $env:BinaryFile64Zip = "$env:BinaryFile64Prefix.zip"
           $env:CurrentDir = Get-Location
           $env:LiteralPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento.exe"
           $env:DestinationPathZip = $env:CurrentDir + "\" + $env:BinaryFile64Zip
