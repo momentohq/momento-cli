@@ -165,9 +165,11 @@ jobs:
     needs: [ release ]
     strategy:
       matrix:
-        architecture: [ x86_64, aarch64 ]
+        architecture:
+          - { target: aarch64-unknown-linux-gnu, arch-shortname: aarch64, os: ubuntu-20.04, use-cross: true }
+          - { target: x86_64-unknown-linux-gnu, arch-shortname: x86_64, os: ubuntu-20.04, use-cross: true }
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 #      - name: Setup Python
 #        uses: actions/setup-python@v2
 #        with:
@@ -184,10 +186,42 @@ jobs:
 #          ./set_cargo_version.sh ${{ needs.release.outputs.version }}
 #        shell: bash
 
-      - name: Build
+      - name: Install prerequisites
+        shell: bash
         run: |
-          rustup target add ${{ matrix.architecture }}-unknown-linux-gnu
-          cargo build --release --target ${{ matrix.architecture }}-unknown-linux-gnu
+          case ${{ matrix.job.target }} in
+            aarch64-unknown-linux-gnu) sudo apt-get -y update ; sudo apt-get -y install gcc-aarch64-linux-gnu ;;
+          esac
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.job.target }}
+          override: true
+          profile: minimal # minimal component installation (ie, no documentation)
+
+      - name: Show version information (Rust, cargo, GCC)
+        shell: bash
+        run: |
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.job.use-cross }}
+          command: build
+          args: --locked --release --target=${{ matrix.job.target }}
+
+      - name: Inspect Build
+        run: |
+#          rustup target add ${{ matrix.architecture }}-unknown-linux-gnu
+#          cargo build --release --target ${{ matrix.architecture }}-unknown-linux-gnu
           ls target
           ls target/release
 #          mkdir -p .rpmpkg/usr/bin
@@ -199,9 +233,9 @@ jobs:
         run: |
           # yum install jq -y
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture }}.tar.gz"
+          BINARY_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture.arch-shortname }}.tar.gz"
           # cargo build --release
-          tar zcvf $BINARY_FILE ./target/release/momento
+          tar zcvf $BINARY_FILE ./target/${{ matrix.architecture.target }}/release/momento
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
@@ -245,8 +279,9 @@ jobs:
       - name: Update nfpm package config
         run: |
           MOMENTO_VERSION=${{ needs.release.outputs.version }}
-          MOMENTO_ARCH=${{ matrix.architecture }}
-          cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH > nfpm.yaml
+          MOMENTO_ARCH=${{ matrix.architecture.arch-shortname }}
+          MOMENTO_BINARY=./target/${{ matrix.architecture.target }}/release/momento
+          cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH |envsubst \$MOMENTO_BINARY > nfpm.yaml
           cat nfpm.yaml
         shell: bash
 
@@ -254,7 +289,7 @@ jobs:
         run: |
           npm pkg --packager rpm
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture }}.rpm"
+          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.arch-shortname }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
@@ -266,7 +301,7 @@ jobs:
         run: |
           npm pkg --packager deb
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture }}.rpm"
+          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.arch-shortname }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)

@@ -17,7 +17,7 @@ vendor: "Momento"
 homepage: "https://gomomento.com"
 license: "Apache-2.0"
 contents:
-- src: ./target/release/momento
+- src: $MOMENTO_BINARY
   dst: /usr/bin/momento
 overrides:
   rpm:
