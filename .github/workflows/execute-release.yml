@@ -1,0 +1,317 @@
+name: On push to release
+
+on:
+  repository_dispatch:
+    types:
+      - execute-release
+
+env:
+  CARGO_TERM_COLOR: always
+  APP_NAME: 'momento-cli'
+  MAINTAINER: 'momentohq'
+  DESC: 'Official CLI for Momento Serverless Cache'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.release }}
+    steps:
+      - uses: actions/checkout@v3
+        ref: release
+
+      - name: semrel release
+        id: semrel
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
+          # For whatever reason, this silly tool won't let you do releases from branches
+          #  other than the default branch unless you pass this flag, which doesn't seem
+          #  to actually have anything to do with CI:
+          # https://github.com/go-semantic-release/semantic-release/blob/master/cmd/semantic-release/main.go#L173-L194
+          # https://github.com/go-semantic-release/condition-github/blob/4c8af3fc516151423fff2f77eb08bf7082570676/pkg/condition/github.go#L42-L44
+          custom-arguments: "--no-ci"
+
+      - name: Build tar.gz
+        run: |
+          STASH_SHA=$(git stash create)
+          VERSION=${{ steps.semrel.outputs.version }}
+          ARCHIVE_FILE=archive-$VERSION.tar.gz
+          echo "ARCHIVE_FILE="$ARCHIVE_FILE >> $GITHUB_ENV
+          pip install git-archive-all
+          git-archive-all $ARCHIVE_FILE
+          SHA=$(openssl sha256 < ${ARCHIVE_FILE} | sed 's/.* //')
+          echo "SHA="$SHA >> $GITHUB_ENV
+          echo "sha is: ${SHA}"
+          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${ARCHIVE_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+        shell: bash
+
+      - name: Check out homebrew-tap
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          repository: momentohq/homebrew-tap
+          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
+
+      - name: update homebrew formulae
+        run: |
+          git checkout -b formula/momento-cli/v${{ steps.semrel.outputs.version }}
+          pushd Formula
+            sed -i 's/sha256 ".*"/sha256 "${{ env.SHA }}"/g' momento-cli.rb
+            sed -i 's/version ".*"/version "${{ steps.semrel.outputs.version }}"/g' momento-cli.rb
+            sed -i 's/releases\/download\/.*\/archive-.*.tar.gz/releases\/download\/v${{ steps.semrel.outputs.version }}\/${{ env.ARCHIVE_FILE }}/g' momento-cli.rb
+          popd
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add .
+          git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
+          git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
+
+      - name: Output release
+        id: release
+        run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
+
+  publish-linux-assets:
+    runs-on: ubuntu-latest
+    needs: [ release ]
+    strategy:
+      matrix:
+        architecture:
+          - { target: aarch64-unknown-linux-gnu, rpm-arch-shortname: aarch64, deb-arch-shortname: aarch64, os: ubuntu-20.04, use-cross: true }
+          - { target: x86_64-unknown-linux-gnu, rpm-arch-shortname: x86_64, deb-arch-shortname: amd64, os: ubuntu-20.04, use-cross: true }
+    steps:
+      - uses: actions/checkout@v3
+        ref: release
+
+      - name: Install prerequisites
+        shell: bash
+        run: |
+          case ${{ matrix.architecture.target }} in
+            aarch64-unknown-linux-gnu) sudo apt-get -y update ; sudo apt-get -y install gcc-aarch64-linux-gnu ;;
+          esac
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.architecture.target }}
+          override: true
+          profile: minimal # minimal component installation (ie, no documentation)
+
+      - name: Show version information (Rust, cargo, GCC)
+        shell: bash
+        run: |
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.architecture.use-cross }}
+          command: build
+          args: --locked --release --target=${{ matrix.architecture.target }}
+
+      - name: Inspect Build
+        run: |
+          ls target
+          ls target/release
+        shell: bash
+
+
+      - name: Build tar.gz and publish asset
+        run: |
+          VERSION=${{ needs.release.outputs.version }}
+          BINARY_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture.rpm-arch-shortname }}.tar.gz"
+          tar zcvf $BINARY_FILE ./target/${{ matrix.architecture.target }}/release/momento
+          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+        shell: bash
+
+      - name: Install nfpm to build rpm and deb
+        run: |
+          echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+          sudo apt update
+          sudo apt install nfpm
+        shell: bash
+
+      - name: Update nfpm package config for rpms
+        run: |
+          export MOMENTO_VERSION=${{ needs.release.outputs.version }}
+          export MOMENTO_ARCH=${{ matrix.architecture.rpm-arch-shortname }}
+          export MOMENTO_BINARY=./target/${{ matrix.architecture.target }}/release/momento
+          cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH |envsubst \$MOMENTO_BINARY > nfpm.yaml
+          cat nfpm.yaml
+        shell: bash
+
+      - name: Build and publish rpm via nfpm
+        run: |
+          nfpm pkg --packager rpm
+          VERSION=${{ needs.release.outputs.version }}
+          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.rpm-arch-shortname }}.rpm"
+          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+
+      - name: Update nfpm package config for debs
+        run: |
+          export MOMENTO_VERSION=${{ needs.release.outputs.version }}
+          export MOMENTO_ARCH=${{ matrix.architecture.deb-arch-shortname }}
+          export MOMENTO_BINARY=./target/${{ matrix.architecture.target }}/release/momento
+          cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH |envsubst \$MOMENTO_BINARY > nfpm.yaml
+          cat nfpm.yaml
+        shell: bash
+
+      - name: Build and publish deb via nfpm
+        run: |
+          nfpm pkg --packager deb
+          VERSION=${{ needs.release.outputs.version }}
+          BINARY_FILE="${{ env.APP_NAME }}_${VERSION}_${{ matrix.architecture.deb-arch-shortname }}.deb"
+          AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+          LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+          RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+          echo $GH_ASSET
+          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+
+  publish-windows-assets:
+    runs-on: windows-latest
+    needs: [release]
+    steps:
+      - uses: actions/checkout@v3
+        ref: release
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+      - name: i guess windows-latest does not have protoc or cmake but we need protoc
+        run: choco install protoc
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          override: true
+
+      - name: Show Cargo Version
+        run: |
+          cat Cargo.toml
+        shell: bash
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Build installer for windows_x86_64 and create release
+        id: create_release
+        run: |
+          rustup target add x86_64-pc-windows-gnu
+          cargo build --release --target x86_64-pc-windows-gnu
+
+          cp .\target\x86_64-pc-windows-gnu\release\momento.exe .\windows\installer\
+
+          $env:Version = "${{ needs.release.outputs.version }}"
+          $env:BinaryFile64Prefix = "momento-cli-$env:Version.windows_x86_64"
+
+          # Create zipfile
+          $env:BinaryFile64Zip = "$env:BinaryFile64Prefix.zip"
+          $env:CurrentDir = Get-Location
+          $env:LiteralPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento.exe"
+          $env:DestinationPathZip = $env:CurrentDir + "\" + $env:BinaryFile64Zip
+          Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPathZip
+
+          # MSI installers are Major.minor.patch.build. Since we don't have build versions, we set that to 0.
+          $env:BuildVersion = "$env:Version.0"
+          msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$env:BinaryFile64Prefix
+          $env:BinaryFile64Msi = "$env:BinaryFile64Prefix.msi"
+          $env:DestinationPathMsi = ".\windows\installer\bin\Release\$env:BinaryFile64Msi"
+
+          $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v$env:Version"
+          $env:LatestReleaseUri
+          $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get -Headers @{'authorization' = 'Bearer ${{ secrets.GITHUB_TOKEN }}' } | Select-Object -Property Content).Content
+          $env:ReleaseId = $env:LatestRelease | jq -r .id
+          $GhAsset64Msi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$env:ReleaseId/assets?name=$env:BinaryFile64Msi"
+          $GhAsset64Zip = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$env:ReleaseId/assets?name=$env:BinaryFile64Zip"
+          echo "::set-output name=upload_url_msi::$GhAsset64Msi"
+          echo "::set-output name=upload_url_zip::$GhAsset64Zip"
+          echo "::set-output name=asset_path_msi::$env:DestinationPathMsi"
+          echo "::set-output name=asset_path_zip::$env:DestinationPathZip"
+          echo "::set-output name=asset_name_msi::$env:BinaryFile64Msi"
+          echo "::set-output name=asset_name_zip::$env:BinaryFile64Zip"
+        shell: pwsh
+
+      - name: Upload windows_x86_64 msi
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url_msi }}
+          asset_path: ${{ steps.create_release.outputs.asset_path_msi }}
+          asset_name: ${{ steps.create_release.outputs.asset_name_msi }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload windows_x86_64 zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url_zip }}
+          asset_path: ${{ steps.create_release.outputs.asset_path_zip }}
+          asset_name: ${{ steps.create_release.outputs.asset_name_zip }}
+          asset_content_type: application/zip
+
+      # Commenting out building i686 since the machine doesn't seem to have i686-w64-mingw32-gcc.exe compiler installed by default.
+      # Come back and work on this when customers ask 32-bit build.
+      #
+      # - name: Add mingw32 to path
+      #   shell: bash
+      #   run: |
+      #     echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
+
+      # - name: Build zip for windows_i686 and create release
+      #   id: create_release_32
+      #   run: |
+      #     $env:Version = "${{ needs.release.outputs.version }}"
+      #     $env:BinaryFile32 = "momento-cli-" + $env:VERSION + ".windows_i686.zip"
+      #     rustup target add i686-pc-windows-gnu
+      #     cargo build --release --target i686-pc-windows-gnu
+      #     $env:CurrentDir = Get-Location
+      #     $env:LiteralPath = $env:CurrentDir + "\target\i686-pc-windows-gnu\release\momento.exe"
+      #     $env:DestinationPath = $env:CurrentDir + "\" + $env:BinaryFile32
+      #     Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPath
+      #     $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v" + $env:Version
+      #     $env:LatestReleaseUri
+      #     $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get | Select-Object -Property Content).Content
+      #     $env:ReleaseId = $env:LatestRelease | jq -r .id
+      #     $GhAsset32 = "https://uploads.github.com/repos/momentohq/momento-cli/releases/" + $env:ReleaseId + "/assets?name=" + $env:BinaryFile32
+      #     $GhAsset32
+      #     echo "::set-output name=upload_url::$GhAsset32"
+      #     echo "::set-output name=asset_path::$env:DestinationPath"
+      #     echo "::set-output name=asset_name::$env:BinaryFile32"
+      #   shell: pwsh
+
+      # - name: Upload windows_i686 zip
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release_32.outputs.upload_url }}
+      #     asset_path: ${{ steps.create_release_32.outputs.asset_path }}
+      #     asset_name: ${{ steps.create_release_32.outputs.asset_name }}
+      #     asset_content_type: application/zip
