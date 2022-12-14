@@ -18,7 +18,8 @@ jobs:
       version: ${{ steps.release.outputs.release }}
     steps:
       - uses: actions/checkout@v3
-        ref: release
+        with:
+          ref: release
 
       - name: semrel release
         id: semrel
@@ -88,7 +89,8 @@ jobs:
           - { target: x86_64-unknown-linux-gnu, rpm-arch-shortname: x86_64, deb-arch-shortname: amd64, os: ubuntu-20.04, use-cross: true }
     steps:
       - uses: actions/checkout@v3
-        ref: release
+        with:
+          ref: release
 
       - name: Install prerequisites
         shell: bash
@@ -196,7 +198,8 @@ jobs:
     needs: [release]
     steps:
       - uses: actions/checkout@v3
-        ref: release
+        with:
+          ref: release
 
       - name: Setup Python
         uses: actions/setup-python@v2
