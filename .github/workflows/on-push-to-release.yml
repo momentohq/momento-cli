@@ -141,8 +141,8 @@ jobs:
     strategy:
       matrix:
         architecture:
-          - { target: aarch64-unknown-linux-gnu, arch-shortname: aarch64, os: ubuntu-20.04, use-cross: true }
-          - { target: x86_64-unknown-linux-gnu, arch-shortname: x86_64, os: ubuntu-20.04, use-cross: true }
+          - { target: aarch64-unknown-linux-gnu, rpm-arch-shortname: aarch64, deb-arch-shortname: aarch64, os: ubuntu-20.04, use-cross: true }
+          - { target: x86_64-unknown-linux-gnu, rpm-arch-shortname: x86_64, deb-arch-shortname: amd64, os: ubuntu-20.04, use-cross: true }
     steps:
       - uses: actions/checkout@v3
 
@@ -188,7 +188,7 @@ jobs:
       - name: Build tar.gz and publish asset
         run: |
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture.arch-shortname }}.tar.gz"
+          BINARY_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture.rpm-arch-shortname }}.tar.gz"
           tar zcvf $BINARY_FILE ./target/${{ matrix.architecture.target }}/release/momento
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
@@ -205,10 +205,10 @@ jobs:
           sudo apt install nfpm
         shell: bash
 
-      - name: Update nfpm package config
+      - name: Update nfpm package config for rpms
         run: |
           export MOMENTO_VERSION=${{ needs.release.outputs.version }}
-          export MOMENTO_ARCH=${{ matrix.architecture.arch-shortname }}
+          export MOMENTO_ARCH=${{ matrix.architecture.rpm-arch-shortname }}
           export MOMENTO_BINARY=./target/${{ matrix.architecture.target }}/release/momento
           cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH |envsubst \$MOMENTO_BINARY > nfpm.yaml
           cat nfpm.yaml
@@ -218,7 +218,7 @@ jobs:
         run: |
           nfpm pkg --packager rpm
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.arch-shortname }}.rpm"
+          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.rpm-arch-shortname }}.rpm"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
@@ -226,11 +226,20 @@ jobs:
           echo $GH_ASSET
           curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
 
-      - name: Build and publish dep via nfpm
+      - name: Update nfpm package config for debs
+        run: |
+          export MOMENTO_VERSION=${{ needs.release.outputs.version }}
+          export MOMENTO_ARCH=${{ matrix.architecture.deb-arch-shortname }}
+          export MOMENTO_BINARY=./target/${{ matrix.architecture.target }}/release/momento
+          cat nfpm.template.yaml |envsubst \$MOMENTO_VERSION |envsubst \$MOMENTO_ARCH |envsubst \$MOMENTO_BINARY > nfpm.yaml
+          cat nfpm.yaml
+        shell: bash
+
+      - name: Build and publish deb via nfpm
         run: |
           nfpm pkg --packager deb
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="${{ env.APP_NAME }}_${VERSION}_${{ matrix.architecture.arch-shortname }}.deb"
+          BINARY_FILE="${{ env.APP_NAME }}_${VERSION}_${{ matrix.architecture.deb-arch-shortname }}.deb"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
