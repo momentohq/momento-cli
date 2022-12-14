@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- NB BuildVersion is an environment variable set by CI/CD -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Product Id="*" Name="Momento" Language="1033" Version="$(env.BuildVersion)" Manufacturer="Momento" UpgradeCode="7f41664a-8556-4415-8c59-2a2f079cca02">
+		<Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+		<!--<UIRef Id="WixUI_InstallDir" />-->
+
+		<MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+		<MediaTemplate EmbedCab="yes" />
+
+		<!-- Momento icon for Add/Remove Program menu -->
+		<Icon Id="icon.ico" SourceFile="Resources\icon.ico"/>
+		<Property Id="ARPPRODUCTICON" Value="icon.ico" />
+
+		<!-- Customize install location -->
+		<UI>
+			<UIRef Id="WixUI_InstallDir" />
+		</UI>
+		<Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+		<!-- License to display in install dialog -->
+		<WixVariable Id="WixUILicenseRtf" Value="Resources\license.rtf" />
+
+		<Feature Id="ProductFeature" Title="Momento CLI" Level="1">
+			<ComponentGroupRef Id="ProductComponents" />
+		</Feature>
+	</Product>
+
+	<Fragment>
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFilesFolder">
+				<Directory Id="INSTALLFOLDER" Name="Momento"/>
+			</Directory>
+		</Directory>
+	</Fragment>
+
+	<Fragment>
+		<ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+			<Component Id="momento.exe" Guid="7B4DAA48-9F3B-408D-9C71-40B02FB1AE9F">
+				<File Id="momento.exe" Source="momento.exe" KeyPath="yes" Checksum="yes" />
+			</Component>
+
+			<!-- Add install dir to PATH -->
+			<Component Id="PathEnvVar" Guid="73AD57CF-3BB9-4480-A1E3-02B255FB81C1">
+				<CreateFolder />
+				<Environment Id="PATH" Name="PATH" Value="[INSTALLFOLDER]" Permanent="no" Part="last" Action="set" System="yes" />
+			</Component>
+		</ComponentGroup>
+	</Fragment>
+</Wix>
