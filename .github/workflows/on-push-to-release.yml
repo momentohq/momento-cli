@@ -230,7 +230,7 @@ jobs:
         run: |
           nfpm pkg --packager deb
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.arch-shortname }}.deb"
+          BINARY_FILE="${{ env.APP_NAME }}-${VERSION}_${{ matrix.architecture.arch-shortname }}.deb"
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
