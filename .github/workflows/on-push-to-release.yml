@@ -78,6 +78,7 @@ jobs:
           branch: ${{ github.ref }}
 
   trigger-release:
+    runs-on: ubuntu-latest
     needs: [prepare-release]
     steps:
       - name: Repository Dispatch to Execute Release
