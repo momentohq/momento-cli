@@ -58,10 +58,10 @@ jobs:
           ./set_cargo_version.sh ${{ steps.semrel_dryrun.outputs.version }}
         shell: bash
 
-#      - name: Build
-#        run: |
-#          rustup target list
-#          cargo build --verbose
+      - name: Build
+        run: |
+          rustup target list
+          cargo build --verbose
 
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
