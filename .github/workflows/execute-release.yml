@@ -24,6 +24,8 @@ jobs:
       - name: semrel release
         id: semrel
         uses: go-semantic-release/action@v1
+        env:
+          GITHUB_REF: 'refs/heads/release'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           allow-initial-development-versions: true
