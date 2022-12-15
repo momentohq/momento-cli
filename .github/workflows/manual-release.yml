@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
+
       - name: rustfmt
         run: cargo fmt -- --check
 
@@ -57,18 +60,9 @@ jobs:
           rustup target list
           cargo build --verbose
 
-      - name: Commit Cargo version
-        run: |
-          git config user.email "momentobot@users.noreply.github.com"
-          git config user.name "momentobot"
-          git add Cargo.toml
-          git commit -m "chore: bump cargo version v${{ steps.semrel_dryrun.outputs.version }}"
-        shell: bash
-      - name: Push changes
-        uses: ad-m/github-push-action@master
+      - uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          github_token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          commit_message: "chore: Updated Cargo version to v${{ steps.semrel_dryrun.outputs.version }}"
 
   trigger-release:
     runs-on: ubuntu-latest
