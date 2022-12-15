@@ -5,16 +5,76 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  CARGO_TERM_COLOR: always
+  APP_NAME: 'momento-cli'
+  MAINTAINER: 'momentohq'
+  DESC: 'Official CLI for Momento Serverless Cache'
+
 jobs:
-  merge-to-release-branch:
+  rustfmt:
+    name: rustfmt
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@main
+      - uses: actions/checkout@v3
+      - name: rustfmt
+        run: cargo fmt -- --check
 
-      - name: Merge main -> release
-        uses: devmasx/merge-branch@master
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.release }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
         with:
-          type: now
-          from_branch: main
-          target_branch: release
-          github_token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
+          toolchain: stable
+          components: rustfmt
+          override: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+
+      - name: Dry-run semrel release to get version number
+        id: semrel_dryrun
+        uses: go-semantic-release/action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          allow-initial-development-versions: true
+          force-bump-patch-version: true
+          dry: true
+
+      - name: Update Cargo Version
+        run: |
+          chmod +x set_cargo_version.sh
+          ./set_cargo_version.sh ${{ steps.semrel_dryrun.outputs.version }}
+        shell: bash
+
+      - name: Build
+        run: |
+          rustup target list
+          cargo build --verbose
+
+      - name: Commit Cargo version
+        run: |
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add Cargo.toml
+          git commit -m "chore: bump cargo version v${{ steps.semrel_dryrun.outputs.version }}"
+        shell: bash
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+  trigger-release:
+    runs-on: ubuntu-latest
+    needs: [prepare-release]
+    steps:
+      - name: Repository Dispatch to Execute Release
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          event-type: execute-release
