@@ -83,7 +83,7 @@ jobs:
     strategy:
       matrix:
         architecture:
-          - { target: aarch64-unknown-linux-gnu, rpm-arch-shortname: aarch64, deb-arch-shortname: aarch64, os: ubuntu-20.04, use-cross: true }
+          - { target: aarch64-unknown-linux-gnu, rpm-arch-shortname: aarch64, deb-arch-shortname: arm64, os: ubuntu-20.04, use-cross: true }
           - { target: x86_64-unknown-linux-gnu, rpm-arch-shortname: x86_64, deb-arch-shortname: amd64, os: ubuntu-20.04, use-cross: true }
     steps:
       - uses: actions/checkout@v3
