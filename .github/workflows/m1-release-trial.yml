@@ -97,7 +97,7 @@ jobs:
           EOF
           cat ~/.momento/config
       - name: Run Integration Tests
-        run: ./run_test_sequentially.sh
+        run: ./run_test_sequentially.sh default
 
       - name: Build release binary
         uses: actions-rs/cargo@v1
