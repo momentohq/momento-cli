@@ -4,7 +4,8 @@ mod tests {
     use assert_cmd::Command;
 
     async fn configure_momento_default_profile() {
-        let test_auth_token = std::env::var("TEST_AUTH_TOKEN_DEFAULT").expect("Missing required env var TEST_AUTH_TOKEN_DEFAULT");
+        let test_auth_token = std::env::var("TEST_AUTH_TOKEN_DEFAULT")
+            .expect("Missing required env var TEST_AUTH_TOKEN_DEFAULT");
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(["configure"])
             .write_stdin(test_auth_token)
@@ -27,7 +28,8 @@ mod tests {
     }
 
     async fn momento_cache_delete_default_profile() {
-        let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").expect("Missing required env var TEST_CACHE_DEFAULT");
+        let test_cache_default = std::env::var("TEST_CACHE_DEFAULT")
+            .expect("Missing required env var TEST_CACHE_DEFAULT");
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(["cache", "delete", "--name", &test_cache_default])
             .assert()
