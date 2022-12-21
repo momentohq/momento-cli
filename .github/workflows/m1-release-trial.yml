@@ -71,7 +71,7 @@ jobs:
       - name: Create .momento directory
         run: mkdir ~/.momento
       - name: Run momento configure test with default profile created initially
-        run: cargo test --test configure_profiles_test --features ${{ matrix.feature }}
+        run: cargo test --test configure_profiles_test --features default
       - name: Remove credentials and config files to prepare for the integration tests
         run: |
           rm ~/.momento/credentials
