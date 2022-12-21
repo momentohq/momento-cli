@@ -1,6 +1,6 @@
 # From https://github.com/SpectralOps/rust-ci-release-template
 # Giving this a try.
-name: Manual Build and Release
+name: Experimental Mac Silicon Release
 on:
   workflow_dispatch:
 
