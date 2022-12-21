@@ -5,8 +5,8 @@ mod tests {
     use predicates::prelude::*;
 
     async fn momento_cache_create_with_profile() {
-        let test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").unwrap();
-        let test_profile = std::env::var("TEST_PROFILE").unwrap();
+        let test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").expect("Missing required env var TEST_CACHE_WITH_PROFILE");
+        let test_profile = std::env::var("TEST_PROFILE").expect("Missing required env var TEST_PROFILE");
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args([
             "cache",
@@ -21,7 +21,7 @@ mod tests {
     }
 
     async fn momento_cache_set_with_profile() {
-        let test_profile = std::env::var("TEST_PROFILE").unwrap();
+        let test_profile = std::env::var("TEST_PROFILE").expect("Missing required env var TEST_PROFILE");
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args([
             "cache",
@@ -38,7 +38,7 @@ mod tests {
     }
 
     async fn momento_cache_get_with_profile() {
-        let test_profile = std::env::var("TEST_PROFILE").unwrap();
+        let test_profile = std::env::var("TEST_PROFILE").expect("Missing required env var TEST_PROFILE");
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(["cache", "get", "--key", "key", "--profile", &test_profile])
             .assert()
@@ -46,9 +46,9 @@ mod tests {
     }
 
     async fn momento_cache_list_with_profile() {
-        let mut test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").unwrap();
+        let mut test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").expect("Missing required env var TEST_CACHE_WITH_PROFILE");
         test_cache_with_profile.push('\n');
-        let test_profile = std::env::var("TEST_PROFILE").unwrap();
+        let test_profile = std::env::var("TEST_PROFILE").expect("Missing required env var TEST_PROFILE");
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(["cache", "list", "--profile", &test_profile])
             .assert()
@@ -56,8 +56,8 @@ mod tests {
     }
 
     async fn momento_cache_delete_with_profile() {
-        let test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").unwrap();
-        let test_profile = std::env::var("TEST_PROFILE").unwrap();
+        let test_cache_with_profile = std::env::var("TEST_CACHE_WITH_PROFILE").expect("Missing required env var TEST_CACHE_WITH_PROFILE");
+        let test_profile = std::env::var("TEST_PROFILE").expect("Missing required env var TEST_PROFILE");
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args([
             "cache",
@@ -72,7 +72,7 @@ mod tests {
     }
 
     async fn test_profile_allowed_in_any_position() {
-        let test_profile = std::env::var("TEST_PROFILE").unwrap();
+        let test_profile = std::env::var("TEST_PROFILE").expect("Missing required env var TEST_PROFILE");
 
         let profile_permutations = vec![
             // cache subcommand

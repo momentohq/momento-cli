@@ -4,7 +4,7 @@ mod tests {
     use std::str;
 
     async fn momento_cache_create_default_profile() {
-        let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
+        let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").expect("Missing required env var TEST_CACHE_DEFAULT");
         let output = Command::cargo_bin("momento")
             .unwrap()
             .args(["cache", "list"])
@@ -44,7 +44,7 @@ mod tests {
     }
 
     async fn momento_cache_list_default_profile() {
-        let mut test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
+        let mut test_cache_default = std::env::var("TEST_CACHE_DEFAULT").expect("Missing required env var TEST_CACHE_DEFAULT");
         test_cache_default.push('\n');
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(["cache", "list"])
@@ -53,7 +53,7 @@ mod tests {
     }
 
     async fn momento_cache_delete_default_profile() {
-        let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").unwrap();
+        let test_cache_default = std::env::var("TEST_CACHE_DEFAULT").expect("Missing required env var TEST_CACHE_DEFAULT");
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(["cache", "delete", "--name", &test_cache_default])
             .assert()
