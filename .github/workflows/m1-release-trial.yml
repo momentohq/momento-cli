@@ -2,7 +2,8 @@
 # Giving this a try.
 name: Experimental Mac Silicon Release
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: [m1-experiment]
 
 env:
   BIN_NAME: momento
