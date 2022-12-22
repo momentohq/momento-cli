@@ -52,27 +52,6 @@ jobs:
           curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
         shell: bash
 
-      - name: Check out homebrew-tap
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          repository: momentohq/homebrew-tap
-          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
-
-      - name: update homebrew formulae
-        run: |
-          git checkout -b formula/momento-cli/v${{ steps.semrel.outputs.version }}
-          pushd Formula
-            sed -i 's/sha256 ".*"/sha256 "${{ env.SHA }}"/g' momento-cli.rb
-            sed -i 's/version ".*"/version "${{ steps.semrel.outputs.version }}"/g' momento-cli.rb
-            sed -i 's/releases\/download\/.*\/archive-.*.tar.gz/releases\/download\/v${{ steps.semrel.outputs.version }}\/${{ env.ARCHIVE_FILE }}/g' momento-cli.rb
-          popd
-          git config user.email "momentobot@users.noreply.github.com"
-          git config user.name "momentobot"
-          git add .
-          git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
-          git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
-
       - name: Output release
         id: release
         run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
@@ -369,4 +348,69 @@ jobs:
       #     asset_path: ${{ steps.create_release_32.outputs.asset_path }}
       #     asset_name: ${{ steps.create_release_32.outputs.asset_name }}
       #     asset_content_type: application/zip
+
+  update-homebrew-formula:
+    runs-on: ubuntu-latest
+    needs: [ release, publish-linux-assets, publish-mac-assets ]
+
+    steps:
+      - name: Check out homebrew-tap
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          repository: momentohq/homebrew-tap
+          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
+
+      - name: update homebrew formulae
+        run: |
+          export MOMENTO_CLI_VERSION=${{ needs.release.outputs.version }}
+          echo "Version is $MOMENTO_CLI_VERSION"
+          git checkout -b formula/momento-cli/v${MOMENTO_CLI_VERSION}
+          
+          export MOMENTO_CLI_LINUX_X86_64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}.linux_x86_64.tar.gz"
+          export MOMENTO_CLI_LINUX_AARCH64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}.linux_aarch64.tar.gz"
+          export MOMENTO_CLI_MAC_X86_64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}.x86_64-apple-darwin.tar.gz"
+          export MOMENTO_CLI_MAC_AARCH64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}.aarch64-apple-darwin.tar.gz"
+          
+          echo "Downloading and computing SHA for ${MOMENTO_CLI_LINUX_X86_64_URL}"
+          wget ${MOMENTO_CLI_LINUX_X86_64_URL} -O linux-x86_64.tgz
+          export MOMENTO_CLI_LINUX_X86_64_SHA=$(shasum -a 256 linux-x86_64.tgz | awk '{print $1}')
+          rm linux-x86_64.tgz
+          
+          echo "Downloading and computing SHA for ${MOMENTO_CLI_LINUX_AARCH64_URL}"
+          wget ${MOMENTO_CLI_LINUX_AARCH64_URL} -O linux-aarch64.tgz
+          export MOMENTO_CLI_LINUX_AARCH64_SHA=$(shasum -a 256 linux-aarch64.tgz | awk '{print $1}')
+          rm linux-aarch64.tgz
+          
+          echo "Downloading and computing SHA for ${MOMENTO_CLI_MAC_X86_64_URL}"
+          wget ${MOMENTO_CLI_MAC_X86_64_URL} -O mac-x86_64.tgz
+          export MOMENTO_CLI_MAC_X86_64_SHA=$(shasum -a 256 mac-x86_64.tgz | awk '{print $1}')
+          rm mac-x86_64.tgz
+          
+          echo "Downloading and computing SHA for ${MOMENTO_CLI_MAC_AARCH64_URL}"
+          wget ${MOMENTO_CLI_MAC_AARCH64_URL} -O mac-aarch64.tgz
+          export MOMENTO_CLI_MAC_AARCH64_SHA=$(shasum -a 256 mac-aarch64.tgz | awk '{print $1}')
+          rm mac-aarch64.tgz
+          
+          pushd Formula
+            cat momento-cli.rb.template \
+              | envsubst \$MOMENTO_CLI_VERSION \
+              | envsubst \$MOMENTO_CLI_LINUX_X86_64_URL \
+              | envsubst \$MOMENTO_CLI_LINUX_X86_64_SHA \
+              | envsubst \$MOMENTO_CLI_LINUX_AARCH64_URL \
+              | envsubst \$MOMENTO_CLI_LINUX_AARCH64_SHA \
+              | envsubst \$MOMENTO_CLI_MAC_X86_64_URL \
+              | envsubst \$MOMENTO_CLI_MAC_X86_64_SHA \
+              | envsubst \$MOMENTO_CLI_MAC_AARCH64_URL \
+              | envsubst \$MOMENTO_CLI_MAC_AARCH64_SHA \
+              > momento-cli.rb
+          
+            cat momento-cli.rb
+          popd
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add .
+          git commit -m "momento-cli ${MOMENTO_CLI_VERSION}"
+          git push origin formula/momento-cli/v${MOMENTO_CLI_VERSION}
+        shell: bash
 
