@@ -189,6 +189,62 @@ jobs:
           echo $GH_ASSET
           curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
 
+    publish-mac-assets:
+      runs-on: macos-latest
+      needs: [ release ]
+      strategy:
+        matrix:
+          architecture:
+            - { target: x86_64-apple-darwin, use-cross: false }
+            - { target: aarch64-apple-darwin, use-cross: true }
+
+      steps:
+        - uses: actions/checkout@v3
+
+        - name: Install Rust toolchain
+          uses: actions-rs/toolchain@v1
+          with:
+            toolchain: stable
+            target: ${{ matrix.architecture.target }}
+            override: true
+            profile: minimal # minimal component installation (ie, no documentation)
+
+        - name: Show version information (Rust, cargo, GCC)
+          shell: bash
+          run: |
+            gcc --version || true
+            rustup -V
+            rustup toolchain list
+            rustup default
+            cargo -V
+            rustc -V
+
+        - name: Build
+          uses: actions-rs/cargo@v1
+          with:
+            use-cross: ${{ matrix.architecture.use-cross }}
+            command: build
+            args: --locked --release --target=${{ matrix.architecture.target }}
+
+        - name: Inspect Build
+          run: |
+            ls target
+            ls target/release
+          shell: bash
+
+        - name: Build tar.gz and publish asset
+          run: |
+            VERSION=${{ needs.release.outputs.version }}
+            BINARY_FILE="momento-cli-$VERSION.${{ matrix.architecture.target }}.tar.gz"
+            tar -C ./target/${{ matrix.architecture.target }}/release/ -zcvf $BINARY_FILE momento
+            AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
+            LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
+            RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
+            GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+            echo $GH_ASSET
+            curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+          shell: bash
+
   publish-windows-assets:
     runs-on: windows-latest
     needs: [release]
