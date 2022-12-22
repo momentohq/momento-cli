@@ -28,7 +28,7 @@ jobs:
       - name: update homebrew formulae
         run: |
           set -x
-          MOMENTO_CLI_VERSION=0.25.6
+          export MOMENTO_CLI_VERSION=0.25.6
           echo "Version is $MOMENTO_CLI_VERSION"
           git checkout -b formula/momento-cli/v${MOMENTO_CLI_VERSION}
           
