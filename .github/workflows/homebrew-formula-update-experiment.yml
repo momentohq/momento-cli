@@ -60,16 +60,9 @@ jobs:
           
             cat momento-experimental-cli.rb
           popd
-          
-          #          git checkout -b formula/momento-cli/v${{ steps.semrel.outputs.version }}
-          #          pushd Formula
-          #            sed -i 's/sha256 ".*"/sha256 "${{ env.SHA }}"/g' momento-cli.rb
-          #            sed -i 's/version ".*"/version "${{ steps.semrel.outputs.version }}"/g' momento-cli.rb
-          #            sed -i 's/releases\/download\/.*\/archive-.*.tar.gz/releases\/download\/v${{ steps.semrel.outputs.version }}\/${{ env.ARCHIVE_FILE }}/g' momento-cli.rb
-          #          popd
-          #          git config user.email "momentobot@users.noreply.github.com"
-          #          git config user.name "momentobot"
-          #          git add .
-          #          git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
-          #          git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
+          git config user.email "momentobot@users.noreply.github.com"
+          git config user.name "momentobot"
+          git add .
+          git commit -m "momento-cli ${{ steps.semrel.outputs.version }}"
+          git push origin formula/momento-cli/v${{ steps.semrel.outputs.version }}
         shell: bash
