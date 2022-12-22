@@ -837,7 +837,7 @@ dependencies = [
 
 [[package]]
 name = "momento-cli"
-version = "0.25.5"
+version = "0.25.6"
 dependencies = [
  "assert_cmd",
  "chrono",
