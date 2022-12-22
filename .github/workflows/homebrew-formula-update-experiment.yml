@@ -34,20 +34,19 @@ jobs:
           LINUX_AARCH64_URL="https://github.com/momentohq/momento-cli/releases/download/v${VERSION}/momento-cli-${VERSION}.linux_aarch64.tar.gz"
           MAC_X86_64_URL="https://github.com/momentohq/momento-cli/releases/download/v${VERSION}/momento-cli-${VERSION}.x86_64-apple-darwin.tar.gz"
           MAC_AARCH64_URL="https://github.com/momentohq/momento-cli/releases/download/v${VERSION}/momento-cli-${VERSION}.aarch64-apple-darwin.tar.gz"
-          
-          wget ${LINUX_X86_64_URL} -O linux-x86_64.tgz
-          LINUX_X86_64_SHA=$(shasum -a 256 linux-x86_64.tgz | awk '{print $1}')
-          
-          wget ${LINUX_AARCH64_URL} -O linux-aarch64.tgz
-          LINUX_AARCH64_SHA=$(shasum -a 256 linux-aarch64.tgz | awk '{print $1}')
-          
-          wget ${MAC_X86_64_URL} -O mac-x86_64.tgz
-          MAC_X86_64_SHA=$(shasum -a 256 mac-x86_64.tgz | awk '{print $1}')
-          
-          wget ${MAC_AARCH64_URL} -O mac-aarch64.tgz
-          MAC_AARCH64_SHA=$(shasum -a 256 mac-aarch64.tgz | awk '{print $1}')
-          
-          
+          #          wget ${LINUX_X86_64_URL} -O linux-x86_64.tgz
+          #          LINUX_X86_64_SHA=$(shasum -a 256 linux-x86_64.tgz | awk '{print $1}')
+          #          
+          #          wget ${LINUX_AARCH64_URL} -O linux-aarch64.tgz
+          #          LINUX_AARCH64_SHA=$(shasum -a 256 linux-aarch64.tgz | awk '{print $1}')
+          #          
+          #          wget ${MAC_X86_64_URL} -O mac-x86_64.tgz
+          #          MAC_X86_64_SHA=$(shasum -a 256 mac-x86_64.tgz | awk '{print $1}')
+          #          
+          #          wget ${MAC_AARCH64_URL} -O mac-aarch64.tgz
+          #          MAC_AARCH64_SHA=$(shasum -a 256 mac-aarch64.tgz | awk '{print $1}')
+          which ruby
+          which erb
           #          git checkout -b formula/momento-cli/v${{ steps.semrel.outputs.version }}
           #          pushd Formula
           #            sed -i 's/sha256 ".*"/sha256 "${{ env.SHA }}"/g' momento-cli.rb
