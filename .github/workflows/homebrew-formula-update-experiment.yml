@@ -47,15 +47,15 @@ jobs:
           export MOMENTO_CLI_MAC_AARCH64_SHA=$(shasum -a 256 mac-aarch64.tgz | awk '{print $1}')
           
           pushd Formula
-            cat momento-experimental-cli.rb.template | \
-              envsubst \$MOMENTO_CLI_LINUX_X86_64_URL \
-              envsubst \$MOMENTO_CLI_LINUX_X86_64_SHA \
-              envsubst \$MOMENTO_CLI_LINUX_AARCH64_URL \
-              envsubst \$MOMENTO_CLI_LINUX_AARCH64_SHA \
-              envsubst \$MOMENTO_CLI_MAC_X86_64_URL \
-              envsubst \$MOMENTO_CLI_MAC_X86_64_SHA \
-              envsubst \$MOMENTO_CLI_MAC_AARCH64_URL \
-              envsubst \$MOMENTO_CLI_MAC_AARCH64_SHA \
+            cat momento-experimental-cli.rb.template \
+              | envsubst \$MOMENTO_CLI_LINUX_X86_64_URL \
+              | envsubst \$MOMENTO_CLI_LINUX_X86_64_SHA \
+              | envsubst \$MOMENTO_CLI_LINUX_AARCH64_URL \
+              | envsubst \$MOMENTO_CLI_LINUX_AARCH64_SHA \
+              | envsubst \$MOMENTO_CLI_MAC_X86_64_URL \
+              | envsubst \$MOMENTO_CLI_MAC_X86_64_SHA \
+              | envsubst \$MOMENTO_CLI_MAC_AARCH64_URL \
+              | envsubst \$MOMENTO_CLI_MAC_AARCH64_SHA \
               > momento-experimental-cli.rb
           
             cat momento-experimental-cli.rb
