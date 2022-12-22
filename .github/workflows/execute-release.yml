@@ -1,4 +1,4 @@
-name: On push to release
+name: Execute Release
 
 on:
   repository_dispatch:
@@ -369,3 +369,4 @@ jobs:
       #     asset_path: ${{ steps.create_release_32.outputs.asset_path }}
       #     asset_name: ${{ steps.create_release_32.outputs.asset_name }}
       #     asset_content_type: application/zip
+
