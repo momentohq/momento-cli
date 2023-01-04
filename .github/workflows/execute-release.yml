@@ -279,7 +279,7 @@ jobs:
           CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
           CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
         run: |
-          $momentoBinaryPath =".\target\x86_64-pc-windows-gnu\release\momento.exe"
+          $momentoBinaryPath = ".\target\x86_64-pc-windows-gnu\release\momento.exe"
           & $env:SIGNTOOL_PATH sign /fd SHA256 /a /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $momentoBinaryPath
 
       - name: Create zip and installer packages
@@ -289,17 +289,16 @@ jobs:
           CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
           CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
         run: |
-          cp .\target\x86_64-pc-windows-gnu\release\momento.exe .\windows\installer\
-
+          # Create zipfile
+          $momentoBinaryPath = ".\target\x86_64-pc-windows-gnu\release\momento.exe"
           $version = "${{ needs.release.outputs.version }}"
           $binaryFile64Prefix = "momento-cli-$version.windows_x86_64"
-
-          # Create zipfile
           $binaryFile64Zip = "$binaryFile64Prefix.zip"
           $destinationPathZip = Get-Location + "\" + $binaryFile64Zip
-          Compress-Archive -LiteralPath $MomentoBinaryPath -DestinationPath $destinationPathZip
+          Compress-Archive -LiteralPath $momentoBinaryPath -DestinationPath $destinationPathZip
 
           # Build the installer
+          cp $momentoBinaryPath .\windows\installer
           # NB: MSI installers are Major.minor.patch.build. Since we don't have build versions, we set that to 0.
           $BuildVersion = "$version.0"
           msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$binaryFile64Prefix
