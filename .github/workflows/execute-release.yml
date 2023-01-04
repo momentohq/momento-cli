@@ -249,12 +249,16 @@ jobs:
         shell: bash
 
       - name: Build
+        id: build
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
         run: |
           rustup target add x86_64-pc-windows-gnu
           cargo build --release --target x86_64-pc-windows-gnu
 
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.1
+          echo "::set-output name=momento_binary_path::.\target\x86_64-pc-windows-gnu\release\momento.exe"
+          $distributableFile64Prefix = "momento-cli-$env:VERSION.windows_x86_64"
+          echo "::set-output name=distributable_file_prefix::$distributableFile64Prefix"
 
       - name: Write PFX certificate file
         id: write_pfx
@@ -273,68 +277,84 @@ jobs:
           Test-Path -Path $signtool -PathType Leaf
           echo "::set-output name=signtool_path::$signtool"
 
-      - name: Sign Momento Binary
+      - name: Sign Momento binary
         env:
-          SIGNTOOL_PATH: ${{ steps.signtool.signtool_path }}
+          SIGNTOOL_PATH: ${{ steps.signtool.outputs.signtool_path }}
           CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
           CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
+          MOMENTO_BINARY_PATH: ${{ steps.build.outputs.momento_binary_path }}
         run: |
-          $momentoBinaryPath = ".\target\x86_64-pc-windows-gnu\release\momento.exe"
-          & $env:SIGNTOOL_PATH sign /fd SHA256 /a /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $momentoBinaryPath
+          & $env:SIGNTOOL_PATH sign /fd SHA256 /a /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $env:MOMENTO_BINARY_PATH
 
-      - name: Create zip and installer packages
-        id: create_release
+      - name: Create zip
+        id: create_zip
         env:
-          SIGNTOOL_PATH: ${{ steps.signtool.signtool_path }}
-          CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
-          CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
+          MOMENTO_BINARY_PATH: ${{ steps.build.outputs.momento_binary_path }}
+          DISTRIBUTABLE_FILE_PREFIX: ${{ steps.build.outputs.distributable_file_prefix }}
         run: |
-          # Create zipfile
-          $momentoBinaryPath = ".\target\x86_64-pc-windows-gnu\release\momento.exe"
-          $version = "${{ needs.release.outputs.version }}"
-          $binaryFile64Prefix = "momento-cli-$version.windows_x86_64"
-          $binaryFile64Zip = "$binaryFile64Prefix.zip"
-          $destinationPathZip = Get-Location + "\" + $binaryFile64Zip
-          Compress-Archive -LiteralPath $momentoBinaryPath -DestinationPath $destinationPathZip
+          $zipFilename = "$env:DISTRIBUTABLE_FILE_PREFIX.zip"
+          $zipPath = Get-Location + "\" + $zipFilename
+          Compress-Archive -LiteralPath $env:MOMENTO_BINARY_PATH -DestinationPath $zipPath
 
-          # Build the installer
-          cp $momentoBinaryPath .\windows\installer
+          echo "::set-output name=asset_path_zip::$zipPath"
+          echo "::set-output name=asset_name_zip::$zipFilename"
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Build installer
+        id: build_installer
+        env:
+          MOMENTO_BINARY_PATH: ${{ steps.build.outputs.momento_binary_path }}
+          DISTRIBUTABLE_FILE_PREFIX: ${{ steps.build.outputs.distributable_file_prefix }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          cp $env:MOMENTO_BINARY_PATH .\windows\installer
           # NB: MSI installers are Major.minor.patch.build. Since we don't have build versions, we set that to 0.
-          $BuildVersion = "$version.0"
-          msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$binaryFile64Prefix
-          $binaryFile64Msi = "$binaryFile64Prefix.msi"
-          $destinationPathMsi = ".\windows\installer\bin\Release\$binaryFile64Msi"
+          $BuildVersion = "$env:VERSION.0"
+          msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$env:DISTRIBUTABLE_FILE_PREFIX
 
-          # Sign the installer
-          & $env:SIGNTOOL_PATH sign /fd SHA256 /a /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $destinationPathMsi
-
-          # Write asset paths
-          $latestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v$version"
-          $latestReleaseUri
-          $latestRelease = (Invoke-WebRequest -Uri $latestReleaseUri -Method Get -Headers @{'authorization' = 'Bearer ${{ secrets.GITHUB_TOKEN }}' } | Select-Object -Property Content).Content
-          $releaseId = $latestRelease | jq -r .id
-          $ghAsset64Msi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$binaryFile64Msi"
-          $ghAsset64Zip = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$binaryFile64Zip"
-          echo "::set-output name=upload_url_msi::$ghAsset64Msi"
-          echo "::set-output name=upload_url_zip::$ghAsset64Zip"
-          echo "::set-output name=asset_path_msi::$destinationPathMsi"
-          echo "::set-output name=asset_path_zip::$destinationPathZip"
-          echo "::set-output name=asset_name_msi::$binaryFile64Msi"
-          echo "::set-output name=asset_name_zip::$binaryFile64Zip"
+          $msiFilename = "env:DISTRIBUTABLE_FILE_PREFIX.msi"
+          $msiPath = ".\windows\installer\bin\Release\$msiFilename"
+          echo "::set-output name=asset_path_msi::$msiPath"
+          echo "::set-output name=asset_name_msi::$msiFilename"
+          
+      - name: Sign installer
+        env:
+          SIGNTOOL_PATH: ${{ steps.signtool.outputs.signtool_path }}
+          CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
+          CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
+          MSI_PATH: ${{ steps.build_installer.outputs.asset_path_msi }}
+        run: |
+          & $env:SIGNTOOL_PATH sign /fd SHA256 /a /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $env:MSI_PATH
 
       - name: Delete PFX certificate
         env:
           CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
         run: Remove-Item -Path $env:CERT_PATH
 
+      - name: Create zip and installer urls
+        id: create_release_urls
+        env:
+          ZIP_FILENAME: ${{ steps.create_zip.outputs.asset_name_zip }}
+          MSI_FILENAME: ${{ steps.create_zip.outputs.asset_name_msi }}
+        run: |
+          $latestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v${{ needs.release.outputs.version }}"
+          $latestRelease = (Invoke-WebRequest -Uri $latestReleaseUri -Method Get -Headers @{'authorization' = 'Bearer ${{ secrets.GITHUB_TOKEN }}' } | Select-Object -Property Content).Content
+          $releaseId = $latestRelease | jq -r .id
+          $ghAssetMsi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:MSI_FILENAME"
+          $ghAssetZip = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:ZIP_FILENAME"
+          echo "::set-output name=upload_url_msi::$ghAssetMsi"
+          echo "::set-output name=upload_url_zip::$ghAssetZip"
+
       - name: Upload windows_x86_64 msi
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url_msi }}
-          asset_path: ${{ steps.create_release.outputs.asset_path_msi }}
-          asset_name: ${{ steps.create_release.outputs.asset_name_msi }}
+          upload_url: ${{ steps.create_release_urls.outputs.upload_url_msi }}
+          asset_path: ${{ steps.build_installer.outputs.asset_path_msi }}
+          asset_name: ${{ steps.build_installer.outputs.asset_name_msi }}
           asset_content_type: application/octet-stream
 
       - name: Upload windows_x86_64 zip
@@ -342,9 +362,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url_zip }}
-          asset_path: ${{ steps.create_release.outputs.asset_path_zip }}
-          asset_name: ${{ steps.create_release.outputs.asset_name_zip }}
+          upload_url: ${{ steps.create_release_urls.outputs.upload_url_zip }}
+          asset_path: ${{ steps.create_zip.outputs.asset_path_zip }}
+          asset_name: ${{ steps.create_zip.outputs.asset_name_zip }}
           asset_content_type: application/zip
 
       # Commenting out building i686 since the machine doesn't seem to have i686-w64-mingw32-gcc.exe compiler installed by default.
