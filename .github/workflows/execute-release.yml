@@ -251,9 +251,31 @@ jobs:
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
 
+      - name: Write PFX certificate file
+        id: write_pfx
+        env:
+          PFX_CONTENT: ${{ secrets.CODE_SIGNING_CERT_BASE64 }}
+        run: |
+          $pfxPath = "cert.pfx";
+          $encodedBytes = [System.Convert]::FromBase64String($env:PFX_CONTENT);
+          Set-Content $pfxPath -Value $encodedBytes -AsByteStream;
+          echo "::set-output name=pfx_path::$pfxPath";
+
+      - name: Test and cache signtool path
+        id: signtool
+        run: |
+          $signtool = "C:/Program Files (x86)/Windows Kits/10/bin/10.0.17763.0/x86/signtool.exe"
+          Test-Path -Path $signtool -PathType Leaf
+          echo "::set-output name=signtool_path::$signtool"
+
       - name: Build installer for windows_x86_64 and create release
         id: create_release
+        env:
+          SIGNTOOL_PATH: ${{ steps.signtool.signtool_path }}
+          CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
+          CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
         run: |
+          # Build windows Momento binary
           rustup target add x86_64-pc-windows-gnu
           cargo build --release --target x86_64-pc-windows-gnu
 
@@ -262,19 +284,27 @@ jobs:
           $env:Version = "${{ needs.release.outputs.version }}"
           $env:BinaryFile64Prefix = "momento-cli-$env:Version.windows_x86_64"
 
+          # Sign the executable
+          $env:CurrentDir = Get-Location
+          $env:MomentoBinaryPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento.exe"
+          & $env:SIGNTOOL_PATH sign /fd SHA256 /a /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $env:MomentoBinaryPath
+
           # Create zipfile
           $env:BinaryFile64Zip = "$env:BinaryFile64Prefix.zip"
-          $env:CurrentDir = Get-Location
-          $env:LiteralPath = $env:CurrentDir + "\target\x86_64-pc-windows-gnu\release\momento.exe"
           $env:DestinationPathZip = $env:CurrentDir + "\" + $env:BinaryFile64Zip
-          Compress-Archive -LiteralPath $env:LiteralPath -DestinationPath $env:DestinationPathZip
+          Compress-Archive -LiteralPath $env:MomentoBinaryPath -DestinationPath $env:DestinationPathZip
 
-          # MSI installers are Major.minor.patch.build. Since we don't have build versions, we set that to 0.
+          # Build the installer
+          # NB: MSI installers are Major.minor.patch.build. Since we don't have build versions, we set that to 0.
           $env:BuildVersion = "$env:Version.0"
           msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$env:BinaryFile64Prefix
           $env:BinaryFile64Msi = "$env:BinaryFile64Prefix.msi"
           $env:DestinationPathMsi = ".\windows\installer\bin\Release\$env:BinaryFile64Msi"
 
+          # Sign the installer
+          & $env:SIGNTOOL_PATH sign /fd SHA256 /a /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $env:DestinationPathMsi
+
+          # Write asset paths
           $env:LatestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v$env:Version"
           $env:LatestReleaseUri
           $env:LatestRelease = (Invoke-WebRequest -Uri $env:LatestReleaseUri -Method Get -Headers @{'authorization' = 'Bearer ${{ secrets.GITHUB_TOKEN }}' } | Select-Object -Property Content).Content
@@ -287,7 +317,11 @@ jobs:
           echo "::set-output name=asset_path_zip::$env:DestinationPathZip"
           echo "::set-output name=asset_name_msi::$env:BinaryFile64Msi"
           echo "::set-output name=asset_name_zip::$env:BinaryFile64Zip"
-        shell: pwsh
+
+      - name: Delete PFX certificate
+        env:
+          CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
+        run: Remove-Item -Path $env:CERT_PATH
 
       - name: Upload windows_x86_64 msi
         uses: actions/upload-release-asset@v1
@@ -337,7 +371,6 @@ jobs:
       #     echo "::set-output name=upload_url::$GhAsset32"
       #     echo "::set-output name=asset_path::$env:DestinationPath"
       #     echo "::set-output name=asset_name::$env:BinaryFile32"
-      #   shell: pwsh
 
       # - name: Upload windows_i686 zip
       #   uses: actions/upload-release-asset@v1
