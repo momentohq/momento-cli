@@ -296,8 +296,8 @@ jobs:
           $zipPath = Get-Location + "\" + $zipFilename
           Compress-Archive -LiteralPath $env:MOMENTO_BINARY_PATH -DestinationPath $zipPath
 
-          echo "::set-output name=asset_path_zip::$zipPath"
-          echo "::set-output name=asset_name_zip::$zipFilename"
+          echo "::set-output name=asset_path::$zipPath"
+          echo "::set-output name=asset_name::$zipFilename"
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
@@ -316,15 +316,15 @@ jobs:
 
           $msiFilename = "env:DISTRIBUTABLE_FILE_PREFIX.msi"
           $msiPath = ".\windows\installer\bin\Release\$msiFilename"
-          echo "::set-output name=asset_path_msi::$msiPath"
-          echo "::set-output name=asset_name_msi::$msiFilename"
+          echo "::set-output name=asset_path::$msiPath"
+          echo "::set-output name=asset_name::$msiFilename"
           
       - name: Sign installer
         env:
           SIGNTOOL_PATH: ${{ steps.signtool.outputs.signtool_path }}
           CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
           CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
-          MSI_PATH: ${{ steps.build_installer.outputs.asset_path_msi }}
+          MSI_PATH: ${{ steps.build_installer.outputs.asset_path }}
         run: |
           & $env:SIGNTOOL_PATH sign /fd SHA256 /a /f $env:CERT_PATH /p $env:CERT_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $env:MSI_PATH
 
@@ -336,8 +336,8 @@ jobs:
       - name: Create zip and installer urls
         id: create_release_urls
         env:
-          ZIP_FILENAME: ${{ steps.create_zip.outputs.asset_name_zip }}
-          MSI_FILENAME: ${{ steps.create_zip.outputs.asset_name_msi }}
+          ZIP_FILENAME: ${{ steps.create_zip.outputs.asset_name }}
+          MSI_FILENAME: ${{ steps.build_installer.outputs.asset_name }}
         run: |
           $latestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v${{ needs.release.outputs.version }}"
           $latestRelease = (Invoke-WebRequest -Uri $latestReleaseUri -Method Get -Headers @{'authorization' = 'Bearer ${{ secrets.GITHUB_TOKEN }}' } | Select-Object -Property Content).Content
@@ -353,8 +353,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release_urls.outputs.upload_url_msi }}
-          asset_path: ${{ steps.build_installer.outputs.asset_path_msi }}
-          asset_name: ${{ steps.build_installer.outputs.asset_name_msi }}
+          asset_path: ${{ steps.build_installer.outputs.asset_path }}
+          asset_name: ${{ steps.build_installer.outputs.asset_name }}
           asset_content_type: application/octet-stream
 
       - name: Upload windows_x86_64 zip
@@ -363,8 +363,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release_urls.outputs.upload_url_zip }}
-          asset_path: ${{ steps.create_zip.outputs.asset_path_zip }}
-          asset_name: ${{ steps.create_zip.outputs.asset_name_zip }}
+          asset_path: ${{ steps.create_zip.outputs.asset_path }}
+          asset_name: ${{ steps.create_zip.outputs.asset_name }}
           asset_content_type: application/zip
 
       # Commenting out building i686 since the machine doesn't seem to have i686-w64-mingw32-gcc.exe compiler installed by default.
