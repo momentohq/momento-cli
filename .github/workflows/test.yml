@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Output release
         id: release
-        run: echo "::set-output name=release::1.2.3"
+        run: echo "::set-output name=release::0.26.2"
 
   publish-windows-assets:
     runs-on: windows-latest
