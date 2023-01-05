@@ -293,7 +293,7 @@ jobs:
           DISTRIBUTABLE_FILE_PREFIX: ${{ steps.build.outputs.distributable_file_prefix }}
         run: |
           $zipFilename = "$env:DISTRIBUTABLE_FILE_PREFIX.zip"
-          $zipPath = Get-Location + "\" + $zipFilename
+          $zipPath = ".\$zipFilename"
           Compress-Archive -LiteralPath $env:MOMENTO_BINARY_PATH -DestinationPath $zipPath
 
           echo "::set-output name=asset_path::$zipPath"
