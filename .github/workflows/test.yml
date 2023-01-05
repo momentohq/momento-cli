@@ -137,10 +137,14 @@ jobs:
           MSI_FILENAME: ${{ steps.build_installer.outputs.asset_name }}
         run: |
           $latestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v$env:VERSION"
+          $latestReleaseUri
           $latestRelease = (Invoke-WebRequest -Uri $latestReleaseUri -Method Get -Headers @{'authorization' = 'Bearer ${{ secrets.GITHUB_TOKEN }}' } | Select-Object -Property Content).Content
+          $latestRelease
           $releaseId = $latestRelease | jq -r .id
           $ghAssetMsi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:MSI_FILENAME"
+          $ghAssetMsi
           $ghAssetZip = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:ZIP_FILENAME"
+          $ghAssetZip
           echo "::set-output name=upload_url_msi::$ghAssetMsi"
           echo "::set-output name=upload_url_zip::$ghAssetZip"
 
