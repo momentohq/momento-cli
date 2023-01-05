@@ -336,10 +336,11 @@ jobs:
       - name: Create zip and installer urls
         id: create_release_urls
         env:
+          VERSION: ${{ needs.release.outputs.version }}
           ZIP_FILENAME: ${{ steps.create_zip.outputs.asset_name }}
           MSI_FILENAME: ${{ steps.build_installer.outputs.asset_name }}
         run: |
-          $latestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v${{ needs.release.outputs.version }}"
+          $latestReleaseUri = "https://api.github.com/repos/momentohq/momento-cli/releases/tags/v$env:VERSION"
           $latestRelease = (Invoke-WebRequest -Uri $latestReleaseUri -Method Get -Headers @{'authorization' = 'Bearer ${{ secrets.GITHUB_TOKEN }}' } | Select-Object -Property Content).Content
           $releaseId = $latestRelease | jq -r .id
           $ghAssetMsi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:MSI_FILENAME"
