@@ -315,7 +315,7 @@ jobs:
           $env:BuildVersion = "$env:VERSION.0"
           msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$env:DISTRIBUTABLE_FILE_PREFIX
 
-          $msiFilename = "env:DISTRIBUTABLE_FILE_PREFIX.msi"
+          $msiFilename = "$env:DISTRIBUTABLE_FILE_PREFIX.msi"
           $msiPath = ".\windows\installer\bin\Release\$msiFilename"
           echo "::set-output name=asset_path::$msiPath"
           echo "::set-output name=asset_name::$msiFilename"
