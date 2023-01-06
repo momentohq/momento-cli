@@ -6,7 +6,7 @@
     <ProductVersion>3.10</ProductVersion>
     <ProjectGuid>3ec4cace-a121-4de6-bb52-fd0acd71c4d9</ProjectGuid>
     <SchemaVersion>2.0</SchemaVersion>
-    <OutputName>MomentoCLI</OutputName>
+    <OutputName>momento-cli</OutputName>
     <OutputType>Package</OutputType>
     <DefineSolutionProperties>false</DefineSolutionProperties>
   </PropertyGroup>
