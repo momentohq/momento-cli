@@ -1,11 +1,11 @@
 # Created using wingetcreate 1.1.2.0
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.2.0.schema.json
 
-PackageIdentifier: Momento.Momento
+PackageIdentifier: Momento.cli
 PackageVersion: 0.26.3.0
 PackageLocale: en-US
 Publisher: Momento
-PackageName: Momento
+PackageName: cli
 License: Apache-2.0 License
 ShortDescription: Official CLI for Momento Serverless Cache
 ManifestType: defaultLocale

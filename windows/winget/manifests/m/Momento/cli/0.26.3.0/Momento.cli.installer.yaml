@@ -1,7 +1,7 @@
 # Created using wingetcreate 1.1.2.0
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.2.0.schema.json
 
-PackageIdentifier: Momento.Momento
+PackageIdentifier: Momento.cli
 PackageVersion: 0.26.3.0
 Installers:
 - InstallerLocale: en-US
