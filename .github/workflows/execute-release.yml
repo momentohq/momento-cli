@@ -408,6 +408,28 @@ jobs:
       #     asset_name: ${{ steps.create_release_32.outputs.asset_name }}
       #     asset_content_type: application/zip
 
+  update-winget-package-manager:
+    runs-on: windows-latest
+    needs: [ release, publish-windows-assets ]
+
+    steps:
+      - name: Download winget
+        run: iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+
+      - name: Fetch installer URL
+        id: fetch_installer_url
+        run: |
+          $github = Get-Content '${{ github.event_path }}' | ConvertFrom-Json
+          $installerUrl = $github.release.assets | Where-Object -Property name -match 'msi$' | Select -ExpandProperty browser_download_url -First 1
+          echo "::set-output name=installer_url::$installerUrl"
+
+      - name: Open PR on WinGet
+        env:
+          INSTALLER_URL: ${{ steps.fetch_installer_url.outputs.installer_url }}
+          VERSION: ${{ needs.release.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: .\wingetcreate.exe update momento.cli -s -v $env:VERSION -u $env:INSTALLER_URL -t $env:GITHUB_TOKEN
+          
   update-homebrew-formula:
     runs-on: ubuntu-latest
     needs: [ release, publish-linux-assets, publish-mac-assets ]
