@@ -5,9 +5,20 @@ PackageIdentifier: Momento.cli
 PackageVersion: 0.26.3.0
 PackageLocale: en-US
 Publisher: Momento
-PackageName: cli
+PublisherUrl: https://www.gomomento.com/
+Author: Momento
+PackageName: Momento CLI
+PackageUrl: https://github.com/momentohq/momento-cli
 License: Apache-2.0 License
+LicenseUrl: https://github.com/momentohq/momento-cli/blob/main/LICENSE
 ShortDescription: Official CLI for Momento Serverless Cache
+Description: momento is Momento Serverless Cache on the command line. It brings account creation, maintenance, cache control and data commands to the terminal.
+Moniker: momento
+Tags:
+  - cli
+  - command-line
+  - tool
+  - utility
 ManifestType: defaultLocale
 ManifestVersion: 1.2.0
 

@@ -3,6 +3,14 @@
 
 PackageIdentifier: Momento.cli
 PackageVersion: 0.26.3.0
+Platform:
+  - Windows.Desktop
+InstallerType: wix
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
 Installers:
 - InstallerLocale: en-US
   Architecture: x64
