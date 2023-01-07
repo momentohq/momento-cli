@@ -5,7 +5,7 @@ PackageIdentifier: Momento.cli
 PackageVersion: 0.26.3.0
 Installers:
 - InstallerLocale: en-US
-  Architecture: x86
+  Architecture: x64
   InstallerType: wix
   InstallerUrl: https://github.com/momentohq/momento-cli/releases/download/v0.26.3/momento-cli-0.26.3.windows_x86_64.msi
   InstallerSha256: 01535ADCECD45CE787A5E46FB246C18704E453EB9A15236EA4443789182FC88B
