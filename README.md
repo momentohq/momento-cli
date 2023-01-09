@@ -9,23 +9,56 @@ Command-line tool for managing Momento Serverless Cache.  Supports the following
 * Create, list, and delete Momento caches
 * Get and set values in a Momento cache
 
-## Quick Start
 
-Please refer to the installation instructions for Linux [here](https://github.com/momentohq/momento-cli/blob/main/README.md#linux) and Windows [here](https://github.com/momentohq/momento-cli/blob/main/README.md#windows).
+
+## Installation
+
+### Mac (intel or apple silicon)
 
 ```
-# Install
 brew tap momentohq/tap
 brew install momento-cli
+```
 
-# Sign Up
+#### Upgrading to a newer version
 
+```
+brew upgrade momento-cli
+```
+
+### Linux
+
+Visit the web page for the latest [github release](https://github.com/momentohq/momento-cli/releases).
+There, you will find `.deb` and `.rpm` files for both x86_64 and aarch64.
+
+`.deb` files have been tested on modern versions of Ubuntu and Debian.
+`.rpm` files have been tested on modern versions of RHEL, Amazon Linux 2, Rocky Linux, and CentOS.
+
+If you have problems with any of these packages on your favorite platform, please file an issue and let us know!
+
+We also provide tarballs for both x86_64 and aarch64; these contain the `momento` binary,
+which you may add anywhere you like in your execution path.
+
+### Windows
+
+Visit the web page for the latest [github release](https://github.com/momentohq/momento-cli/releases).
+There you will find an `.msi` installer for Windows platforms, as well as a windows `.zip` file if
+you prefer to manually copy the `momento` executable to your preferred location.
+
+If you have problems with the windows packages please file an issue and let us know!
+
+## Quick Start
+
+These instructions assume you have the `momento` executable on your path, after following
+the appropriate installation steps above.
+
+```
+# Sign up
 ## AWS [available regions are us-west-2, us-east-1, ap-northeast-1]
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 ## GCP [available regions are us-east1, asia-northeast1]
 momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
-
 
 # Configure your account with the credentials in your email, plus default cache name and TTL
 momento configure --quick
@@ -36,51 +69,6 @@ momento cache create --name example-cache
 # Set and Get values from your cache
 momento cache set --key key --value value --ttl 100 --name example-cache
 momento cache get --key key --name example-cache
-
-```
-
-## Installation
-
-### Linux
-
-1. Download the latest linux tar.gz file from [https://github.com/momentohq/momento-cli/releases/download/v0.22.8/momento-cli-0.22.8.linux_x86_64.tar.gz](https://github.com/momentohq/momento-cli/releases/download/v0.22.8/momento-cli-0.22.8.linux_x86_64.tar.gz)
-2. Unzip the file: `tar -xvf momento-cli-X.X.X.linux_x86_64.tar.gz`
-3. Move `./momento` to your execution path.
-
-### Windows
-
-1. Download the latest windows zip file from [https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)
-2. Unzip the `momento-cli-X.X.X.windows_x86_64.zip` file
-3. Run the unzipped .exe file
-
-## Upgrading
-
-```
-brew upgrade momento-cli
-```
-
-## Sign up
-
-**NOTE:** If you run into errors during signup, please ensure you have upgraded to the [latest version](https://github.com/momentohq/momento-cli/releases/latest) of our CLI.
-
-### Momento on AWS
-```
-# View help to see all available regions, and sign up for a specific region
-momento account signup aws --help
-momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
-
-# Configure CLI
-momento configure
-```
-
-### Momento on GCP
-```
-# View help to see all available regions, and sign up for a specific region
-momento account signup gcp --help
-momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
-
-# Configure CLI
-momento configure
 ```
 
 Upon signing up, Momento sends a token to the email provided. This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager.
