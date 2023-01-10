@@ -310,9 +310,7 @@ jobs:
           VERSION: ${{ needs.release.outputs.version }}
         run: |
           cp $env:MOMENTO_BINARY_PATH .\windows\installer
-          # NB: MSI installers are Major.minor.patch.build. Since we don't have build versions, we set that to 0.
-          # Also note the build expects this to be an environment variable
-          $env:BuildVersion = "$env:VERSION.0"
+          $env:BuildVersion = "$env:VERSION"
           msbuild .\windows\installer\MomentoCLI.wixproj /p:Configuration=Release /p:OutputName=$env:DISTRIBUTABLE_FILE_PREFIX
 
           $msiFilename = "$env:DISTRIBUTABLE_FILE_PREFIX.msi"
