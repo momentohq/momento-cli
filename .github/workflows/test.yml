@@ -22,6 +22,8 @@ jobs:
         id: fetch_installer_url
         run: |
           $github = Get-Content '${{ github.event_path }}' | ConvertFrom-Json
+          echo github: $github
+          echo github release assets: $github.release.assets
           $installerUrl = $github.release.assets | Where-Object -Property name -match 'msi$' | Select -ExpandProperty browser_download_url -First 1
           $installerUrl
           echo $installerUrl
