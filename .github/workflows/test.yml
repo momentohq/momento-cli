@@ -1,0 +1,35 @@
+name: test
+
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  APP_NAME: 'momento-cli'
+  MAINTAINER: 'momentohq'
+  DESC: 'Official CLI for Momento Serverless Cache'
+
+jobs:
+  update-winget-package-manager:
+    runs-on: windows-latest
+
+    steps:
+      - name: Download winget
+        run: iwr https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+
+      - name: Fetch installer URL
+        id: fetch_installer_url
+        run: |
+          $github = Get-Content '${{ github.event_path }}' | ConvertFrom-Json
+          $installerUrl = $github.release.assets | Where-Object -Property name -match 'msi$' | Select -ExpandProperty browser_download_url -First 1
+          $installerUrl
+          echo $installerUrl
+          echo "::set-output name=installer_url::$installerUrl"
+
+      - name: Open PR on WinGet
+        env:
+          INSTALLER_URL: ${{ steps.fetch_installer_url.outputs.installer_url }}
+          VERSION: 0.26.5
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "running .\wingetcreate.exe update momento.cli -s -v $env:VERSION -u $env:INSTALLER_URL -t env:GITHUB_TOKEN"
