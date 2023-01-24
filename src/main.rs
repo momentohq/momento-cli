@@ -127,48 +127,94 @@ enum CloudSignupCommand {
 
 #[derive(Debug, Parser)]
 enum CacheCommand {
-    #[command(about = "Create a cache")]
+    #[command(
+        about = "Create a cache",
+        group(
+            clap::ArgGroup::new("cache-name")
+                .required(true)
+                .args(["cache_name", "cache_name_flag"]),
+        ),
+    )]
     Create {
-        #[arg(long = "name", short = 'n')]
-        cache_name: String,
+        #[arg(help = "Name of the cache you want to create. Must be at least 3 characters and unique within your account.", value_name = "CACHE")]
+        cache_name: Option<String>,
+
+        #[arg(long = "cache", value_name = "CACHE")]
+        cache_name_flag: Option<String>,
     },
 
-    #[command(about = "Store a given item in the cache")]
-    Set {
-        #[arg(long = "name", short = 'n')]
+    #[command(
+        about = "Delete a cache",
+        group(
+            clap::ArgGroup::new("cache-name")
+                .required(true)
+                .args(["cache_name", "cache_name_flag"]),
+        ),
+    )]
+    Delete {
+        #[arg(help = "Name of the cache you want to delete.", value_name = "CACHE")]
         cache_name: Option<String>,
-        // TODO: Add support for non-string key-value
-        #[arg(long, short)]
-        key: String,
 
-        #[arg(long, short)]
-        value: String,
+        #[arg(long = "cache", value_name = "CACHE")]
+        cache_name_flag: Option<String>,
+    },
+
+    #[command(about = "List all caches")]
+    List {
+    },
+
+    #[command(
+        about = "Store an item in a cache",
+        group(
+            clap::ArgGroup::new("cache-key")
+                .required(true)
+                .args(["key", "key_flag"]),
+        ),
+        group(
+            clap::ArgGroup::new("cache-value")
+                .required(true)
+                .args(["value", "value_flag"]),
+        ),
+    )]
+    Set {
+        #[arg(long = "cache", help = "Name of the cache you want to use. If not provided, your profile's default cache is used.", value_name = "CACHE")]
+        cache_name: Option<String>,
+
+        // TODO: Add support for non-string key-value
+        #[arg(help = "Cache key under which to store the value")]
+        key: Option<String>,
+        #[arg(long = "key", value_name = "KEY")]
+        key_flag: Option<String>,
+
+        #[arg(help = "Cache value to store under the key. This will be stored as UTF-8 bytes.")]
+        value: Option<String>,
+        #[arg(long = "value", value_name = "VALUE")]
+        value_flag: Option<String>,
 
         #[arg(
             long = "ttl",
-            short = 't',
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
         ttl_seconds: Option<u64>,
     },
 
-    #[command(about = "Get an item from the cache")]
+    #[command(
+        about = "Get an item from the cache",
+        group(
+            clap::ArgGroup::new("cache-key")
+                .required(true)
+                .args(["key", "key_flag"]),
+        ),
+    )]
     Get {
-        #[arg(long = "name", short = 'n')]
+        #[arg(long = "cache", help = "Name of the cache you want to use. If not provided, your profile's default cache is used.", value_name = "CACHE")]
         cache_name: Option<String>,
+
         // TODO: Add support for non-string key-value
-        #[arg(long, short)]
-        key: String,
-    },
-
-    #[command(about = "Delete the cache")]
-    Delete {
-        #[arg(long = "name", short = 'n')]
-        cache_name: String,
-    },
-
-    #[command(about = "List all caches")]
-    List {
+        #[arg(help = "Cache key under which to store the value")]
+        key: Option<String>,
+        #[arg(long = "key", value_name = "KEY")]
+        key_flag: Option<String>,
     },
 }
 
@@ -192,22 +238,43 @@ async fn entrypoint() -> Result<(), CliError> {
     match args.command {
         Subcommand::Cache { endpoint, operation } => match operation {
             CacheCommand::Create {
+                cache_name_flag,
                 cache_name,
             } => {
+                let cache_name = cache_name.or(cache_name_flag).expect("The argument group guarantees 1 or the other");
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token, endpoint)
                     .await?;
                 debug!("created cache {cache_name}")
             }
+            CacheCommand::Delete {
+                cache_name,
+                cache_name_flag,
+            } => {
+                let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                let cache_name = cache_name.or(cache_name_flag).expect("The argument group guarantees 1 or the other");
+                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
+                    .await?;
+                debug!("deleted cache {}", cache_name)
+            }
+            CacheCommand::List { } => {
+                let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
+            }
             CacheCommand::Set {
                 cache_name,
                 key,
+                key_flag,
                 value,
+                value_flag,
                 ttl_seconds,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
+                let cache_name = cache_name.unwrap_or(config.cache);
+                let key = key.or(key_flag).expect("The argument group guarantees 1 or the other");
+                let value = value.or(value_flag).expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::set(
-                    cache_name.unwrap_or(config.cache),
+                    cache_name,
                     creds.token,
                     key,
                     value,
@@ -219,8 +286,10 @@ async fn entrypoint() -> Result<(), CliError> {
             CacheCommand::Get {
                 cache_name,
                 key,
+                key_flag,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
+                let key = key.or(key_flag).expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::get(
                     cache_name.unwrap_or(config.cache),
                     creds.token,
@@ -228,18 +297,6 @@ async fn entrypoint() -> Result<(), CliError> {
                     endpoint,
                 )
                 .await?;
-            }
-            CacheCommand::Delete {
-                cache_name,
-            } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
-                    .await?;
-                debug!("deleted cache {}", cache_name)
-            }
-            CacheCommand::List { } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
             }
         },
         Subcommand::Configure { quick } => {
@@ -311,7 +368,8 @@ async fn main() {
     }));
 
     if let Err(e) = entrypoint().await {
-        console_info!("{}", e);
+        // We should not exit nonzero without providing the message.
+        eprintln!("{}", e);
         exit(1)
     }
 }
