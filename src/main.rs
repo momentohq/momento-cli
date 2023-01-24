@@ -1,6 +1,6 @@
 use std::{panic, process::exit};
 
-use clap::StructOpt;
+use clap::Parser;
 #[cfg(feature = "login")]
 use commands::login::LoginMode;
 use env_logger::Env;
@@ -17,14 +17,13 @@ mod config;
 mod error;
 mod utils;
 
-#[derive(Debug, StructOpt)]
-#[clap(version)]
-#[structopt(about = "CLI for Momento APIs", name = "momento")]
+#[derive(Debug, Parser)]
+#[clap(version, about = "CLI for Momento APIs", name = "momento")]
 struct Momento {
-    #[structopt(name = "verbose", global = true, long)]
+    #[arg(name = "verbose", global = true, long)]
     verbose: bool,
 
-    #[structopt(
+    #[arg(
         long,
         short,
         default_value = "default",
@@ -33,47 +32,47 @@ struct Momento {
     )]
     profile: String,
 
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     command: Subcommand,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum Subcommand {
-    #[structopt(about = "Interact with caches")]
+    #[command(about = "Interact with caches")]
     Cache {
-        #[structopt(subcommand)]
+        #[command(subcommand)]
         operation: CacheCommand,
     },
-    #[structopt(about = "Configure credentials")]
+    #[command(about = "Configure credentials")]
     Configure {
-        #[structopt(long, short)]
+        #[arg(long, short)]
         quick: bool,
     },
-    #[structopt(about = "Manage accounts")]
+    #[command(about = "Manage accounts")]
     Account {
-        #[structopt(subcommand)]
+        #[command(subcommand)]
         operation: AccountCommand,
     },
-    #[structopt(about = "Manage signing keys")]
+    #[command(about = "Manage signing keys")]
     SigningKey {
-        #[structopt(subcommand)]
+        #[command(subcommand)]
         operation: SigningKeyCommand,
     },
     #[cfg(feature = "login")]
-    #[structopt(
+    #[command(
         about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account"
     )]
     Login {
-        #[clap(arg_enum, default_value = "browser")]
+        #[arg(arg_enum, default_value = "browser")]
         via: LoginMode,
     },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum SigningKeyCommand {
-    #[structopt(about = "Create a signing key")]
+    #[command(about = "Create a signing key")]
     Create {
-        #[structopt(
+        #[arg(
             long = "ttl",
             short = 't',
             default_value = "86400",
@@ -81,110 +80,110 @@ enum SigningKeyCommand {
         )]
         ttl_minutes: u32,
 
-        #[structopt(long = "endpoint", short = 'e')]
+        #[arg(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
     },
 
-    #[structopt(about = "Revoke the signing key")]
+    #[command(about = "Revoke the signing key")]
     Revoke {
-        #[structopt(long = "key-id", short, help = "Signing Key ID")]
+        #[arg(long = "key-id", short, help = "Signing Key ID")]
         key_id: String,
 
-        #[structopt(long = "endpoint", short = 'e')]
+        #[arg(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
     },
 
-    #[structopt(about = "List all signing keys")]
+    #[command(about = "List all signing keys")]
     List {
-        #[structopt(long = "endpoint", short = 'e')]
+        #[arg(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
     },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum AccountCommand {
-    #[structopt(about = "Sign up for Momento")]
+    #[command(about = "Sign up for Momento")]
     Signup {
-        #[structopt(subcommand)]
+        #[command(subcommand)]
         signup_operation: CloudSignupCommand,
     },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum CloudSignupCommand {
-    #[structopt(about = "Signup for Momento on GCP")]
+    #[command(about = "Signup for Momento on GCP")]
     Gcp {
-        #[structopt(long, short)]
+        #[arg(long, short)]
         email: String,
-        #[structopt(long, short, value_name = "us-east1 or asia-northeast1")]
+        #[arg(long, short, value_name = "us-east1 or asia-northeast1")]
         region: String,
     },
-    #[structopt(about = "Signup for Momento on AWS")]
+    #[command(about = "Signup for Momento on AWS")]
     Aws {
-        #[structopt(long, short)]
+        #[arg(long, short)]
         email: String,
-        #[structopt(long, short, value_name = "us-west-2, us-east-1, or ap-northeast-1")]
+        #[arg(long, short, value_name = "us-west-2, us-east-1, or ap-northeast-1")]
         region: String,
     },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum CacheCommand {
-    #[structopt(about = "Create a cache")]
+    #[command(about = "Create a cache")]
     Create {
-        #[structopt(long = "name", short = 'n')]
+        #[arg(long = "name", short = 'n')]
         cache_name: String,
 
-        #[structopt(long = "endpoint", short = 'e')]
+        #[arg(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
     },
 
-    #[structopt(about = "Store a given item in the cache")]
+    #[command(about = "Store a given item in the cache")]
     Set {
-        #[structopt(long = "name", short = 'n')]
+        #[arg(long = "name", short = 'n')]
         cache_name: Option<String>,
         // TODO: Add support for non-string key-value
-        #[structopt(long, short)]
+        #[arg(long, short)]
         key: String,
 
-        #[structopt(long, short)]
+        #[arg(long, short)]
         value: String,
 
-        #[structopt(
+        #[arg(
             long = "ttl",
             short = 't',
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
         ttl_seconds: Option<u64>,
 
-        #[structopt(long = "endpoint", short = 'e')]
+        #[arg(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
     },
 
-    #[structopt(about = "Get an item from the cache")]
+    #[command(about = "Get an item from the cache")]
     Get {
-        #[structopt(long = "name", short = 'n')]
+        #[arg(long = "name", short = 'n')]
         cache_name: Option<String>,
         // TODO: Add support for non-string key-value
-        #[structopt(long, short)]
+        #[arg(long, short)]
         key: String,
 
-        #[structopt(long = "endpoint", short = 'e')]
+        #[arg(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
     },
 
-    #[structopt(about = "Delete the cache")]
+    #[command(about = "Delete the cache")]
     Delete {
-        #[structopt(long = "name", short = 'n')]
+        #[arg(long = "name", short = 'n')]
         cache_name: String,
 
-        #[structopt(long = "endpoint", short = 'e')]
+        #[arg(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
     },
 
-    #[structopt(about = "List all caches")]
+    #[command(about = "List all caches")]
     List {
-        #[structopt(long = "endpoint", short = 'e')]
+        #[arg(long = "endpoint", short = 'e')]
         endpoint: Option<String>,
     },
 }
