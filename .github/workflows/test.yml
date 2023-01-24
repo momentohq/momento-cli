@@ -23,7 +23,7 @@ jobs:
         env:
           VERSION: 0.26.5
         run: |
-          $installerUrl = https://github.com/momentohq/momento-cli/releases/download/v$env:VERSION/momento-cli-$env:VERSION.windows_x86_64.msi
+          $installerUrl = "https://github.com/momentohq/momento-cli/releases/download/v$env:VERSION/momento-cli-$env:VERSION.windows_x86_64.msi"
           echo "$installerUrl"
           echo "::set-output name=installer_url::$installerUrl"
 
