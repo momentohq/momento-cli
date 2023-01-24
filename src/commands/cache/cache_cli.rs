@@ -60,7 +60,9 @@ pub async fn set(
             &cache_name,
             key,
             value,
-            Some(NonZeroU64::new(ttl_seconds).unwrap()),
+            Some(NonZeroU64::new(ttl_seconds).ok_or_else(|| CliError {
+                msg: "could not create a non-zero u64".to_string(),
+            })?),
         ),
     )
     .await

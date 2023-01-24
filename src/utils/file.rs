@@ -8,19 +8,22 @@ use tokio::{
 
 use crate::error::CliError;
 
-pub fn get_credentials_file_path() -> String {
-    let momento_home = get_momento_dir();
-    format!("{}/credentials", momento_home)
+// FIXME All of this stuff should be using pathbuf and not concatenating strings with /'s...
+pub fn get_credentials_file_path() -> Result<String, CliError> {
+    let momento_home = get_momento_dir()?;
+    Ok(format!("{}/credentials", momento_home))
 }
 
-pub fn get_config_file_path() -> String {
-    let momento_home = get_momento_dir();
-    format!("{}/config", momento_home)
+pub fn get_config_file_path() -> Result<String, CliError> {
+    let momento_home = get_momento_dir()?;
+    Ok(format!("{}/config", momento_home))
 }
 
-pub fn get_momento_dir() -> String {
-    let home = home_dir().unwrap();
-    format!("{}/.momento", home.display())
+pub fn get_momento_dir() -> Result<String, CliError> {
+    let home = home_dir().ok_or_else(|| CliError {
+        msg: "could not find home dir".to_string(),
+    })?;
+    Ok(format!("{}/.momento", home.display()))
 }
 
 pub async fn open_file(path: &str) -> Result<File, CliError> {
@@ -46,15 +49,17 @@ pub async fn read_file(path: &str) -> Result<Ini, CliError> {
     }
 }
 
-pub async fn read_file_contents(file: File) -> Vec<String> {
+pub async fn read_file_contents(file: File) -> Result<Vec<String>, CliError> {
     let reader = BufReader::new(file);
     let mut contents = reader.lines();
     // Put each line read from file to a vector
     let mut file_contents: Vec<String> = vec![];
-    while let Some(line) = contents.next_line().await.unwrap() {
+    while let Some(line) = contents.next_line().await.map_err(|e| CliError {
+        msg: format!("could not read next line: {e:?}"),
+    })? {
         file_contents.push(format!("{}\n", line));
     }
-    file_contents
+    Ok(file_contents)
 }
 
 pub async fn create_file(path: &str) -> Result<(), CliError> {

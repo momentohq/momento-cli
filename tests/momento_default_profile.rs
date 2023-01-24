@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use assert_cmd::Command;
     use std::str;

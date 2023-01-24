@@ -22,9 +22,9 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
     let credentials = prompt_user_for_creds(profile_name).await?;
     let config = prompt_user_for_config(quick, profile_name).await?;
 
-    let momento_dir = get_momento_dir();
-    let credentials_file_path = get_credentials_file_path();
-    let config_file_path = get_config_file_path();
+    let momento_dir = get_momento_dir()?;
+    let credentials_file_path = get_credentials_file_path()?;
+    let config_file_path = get_config_file_path()?;
 
     match fs::create_dir_all(momento_dir).await {
         Ok(_) => (),
@@ -233,16 +233,16 @@ async fn add_profile(
             Err(e) => return Err(e),
         }
         // explicitly allowing read/write access to the file
-        set_file_read_write(path).await.unwrap();
+        set_file_read_write(path).await?;
         match add_new_profile_to_new_file(file_types.clone(), profile_name, path).await {
             Ok(_) => {}
             Err(e) => return Err(e),
         }
     } else {
         // If file already exists, figure out any profiles exist in the file
-        set_file_read_write(path).await.unwrap();
-        let file = open_file(path).await.unwrap();
-        let file_contents = read_file_contents(file).await;
+        set_file_read_write(path).await?;
+        let file = open_file(path).await?;
+        let file_contents = read_file_contents(file).await?;
         let updated_file_contents: Vec<String>;
         // Determine if  file contains profiles
         match find_profile_start(file_contents.clone()) {

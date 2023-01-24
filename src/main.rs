@@ -6,6 +6,7 @@ use commands::login::LoginMode;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
+#[cfg(feature = "login")]
 use utils::console::console_info;
 use utils::user::get_creds_and_config;
 
@@ -40,7 +41,12 @@ struct Momento {
 enum Subcommand {
     #[command(about = "Interact with caches")]
     Cache {
-        #[arg(long = "endpoint", short = 'e', global = true, help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com")]
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
         endpoint: Option<String>,
 
         #[command(subcommand)]
@@ -58,7 +64,12 @@ enum Subcommand {
     },
     #[command(about = "Manage signing keys")]
     SigningKey {
-        #[arg(long = "endpoint", short = 'e', global = true, help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com")]
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
         endpoint: Option<String>,
 
         #[command(subcommand)]
@@ -69,7 +80,7 @@ enum Subcommand {
         about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account"
     )]
     Login {
-        #[arg(arg_enum, default_value = "browser")]
+        #[arg(value_enum, default_value = "browser")]
         via: LoginMode,
     },
 }
@@ -94,8 +105,7 @@ enum SigningKeyCommand {
     },
 
     #[command(about = "List all signing keys")]
-    List {
-    },
+    List {},
 }
 
 #[derive(Debug, Parser)]
@@ -136,7 +146,10 @@ enum CacheCommand {
         ),
     )]
     Create {
-        #[arg(help = "Name of the cache you want to create. Must be at least 3 characters and unique within your account.", value_name = "CACHE")]
+        #[arg(
+            help = "Name of the cache you want to create. Must be at least 3 characters and unique within your account.",
+            value_name = "CACHE"
+        )]
         cache_name: Option<String>,
 
         #[arg(long = "cache", value_name = "CACHE")]
@@ -160,8 +173,7 @@ enum CacheCommand {
     },
 
     #[command(about = "List all caches")]
-    List {
-    },
+    List {},
 
     #[command(
         about = "Store an item in a cache",
@@ -177,7 +189,11 @@ enum CacheCommand {
         ),
     )]
     Set {
-        #[arg(long = "cache", help = "Name of the cache you want to use. If not provided, your profile's default cache is used.", value_name = "CACHE")]
+        #[arg(
+            long = "cache",
+            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            value_name = "CACHE"
+        )]
         cache_name: Option<String>,
 
         // TODO: Add support for non-string key-value
@@ -207,7 +223,11 @@ enum CacheCommand {
         ),
     )]
     Get {
-        #[arg(long = "cache", help = "Name of the cache you want to use. If not provided, your profile's default cache is used.", value_name = "CACHE")]
+        #[arg(
+            long = "cache",
+            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            value_name = "CACHE"
+        )]
         cache_name: Option<String>,
 
         // TODO: Add support for non-string key-value
@@ -236,12 +256,17 @@ async fn entrypoint() -> Result<(), CliError> {
     .init();
 
     match args.command {
-        Subcommand::Cache { endpoint, operation } => match operation {
+        Subcommand::Cache {
+            endpoint,
+            operation,
+        } => match operation {
             CacheCommand::Create {
                 cache_name_flag,
                 cache_name,
             } => {
-                let cache_name = cache_name.or(cache_name_flag).expect("The argument group guarantees 1 or the other");
+                let cache_name = cache_name
+                    .or(cache_name_flag)
+                    .expect("The argument group guarantees 1 or the other");
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token, endpoint)
                     .await?;
@@ -252,12 +277,14 @@ async fn entrypoint() -> Result<(), CliError> {
                 cache_name_flag,
             } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                let cache_name = cache_name.or(cache_name_flag).expect("The argument group guarantees 1 or the other");
+                let cache_name = cache_name
+                    .or(cache_name_flag)
+                    .expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
                     .await?;
                 debug!("deleted cache {}", cache_name)
             }
-            CacheCommand::List { } => {
+            CacheCommand::List {} => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
             }
@@ -271,8 +298,12 @@ async fn entrypoint() -> Result<(), CliError> {
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
                 let cache_name = cache_name.unwrap_or(config.cache);
-                let key = key.or(key_flag).expect("The argument group guarantees 1 or the other");
-                let value = value.or(value_flag).expect("The argument group guarantees 1 or the other");
+                let key = key
+                    .or(key_flag)
+                    .expect("The argument group guarantees 1 or the other");
+                let value = value
+                    .or(value_flag)
+                    .expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::set(
                     cache_name,
                     creds.token,
@@ -289,7 +320,9 @@ async fn entrypoint() -> Result<(), CliError> {
                 key_flag,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
-                let key = key.or(key_flag).expect("The argument group guarantees 1 or the other");
+                let key = key
+                    .or(key_flag)
+                    .expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::get(
                     cache_name.unwrap_or(config.cache),
                     creds.token,
@@ -312,10 +345,11 @@ async fn entrypoint() -> Result<(), CliError> {
                 }
             },
         },
-        Subcommand::SigningKey { endpoint, operation } => match operation {
-            SigningKeyCommand::Create {
-                ttl_minutes,
-            } => {
+        Subcommand::SigningKey {
+            endpoint,
+            operation,
+        } => match operation {
+            SigningKeyCommand::Create { ttl_minutes } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::create_signing_key(
                     ttl_minutes,
@@ -334,7 +368,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 .await?;
                 debug!("revoked signing key {}", key_id)
             }
-            SigningKeyCommand::List { } => {
+            SigningKeyCommand::List {} => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
                     .await?
