@@ -15,12 +15,12 @@ login = []
 chrono = "0.4.19"
 colored = "2.0.0"
 home = "0.5.3"
-toml = "0.5.8"
+toml = "^0.6.0"
 configparser = "3.0.0"
 regex = "1"
 momento = "0.7.2"
 qrcode = "0.12.0"
-webbrowser = "0.7.1"
+webbrowser = "^0.8.4"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
@@ -34,10 +34,10 @@ features = [ "derive",]
 version = "^0.4.14"
 
 [dependencies.env_logger]
-version = "^0.9.0"
+version = "^0.10.0"
 
 [dependencies.tracing-subscriber]
-version = "0.2.16"
+version = "^0.3.16"
 features = [ "fmt",]
 
 [dependencies.tokio]
