@@ -20,7 +20,7 @@ mod utils;
 #[derive(Debug, Parser)]
 #[clap(version, about = "CLI for Momento APIs", name = "momento")]
 struct Momento {
-    #[arg(name = "verbose", global = true, long)]
+    #[arg(name = "verbose", global = true, long, help = "Log more information")]
     verbose: bool,
 
     #[arg(
@@ -40,6 +40,9 @@ struct Momento {
 enum Subcommand {
     #[command(about = "Interact with caches")]
     Cache {
+        #[arg(long = "endpoint", short = 'e', global = true, help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com")]
+        endpoint: Option<String>,
+
         #[command(subcommand)]
         operation: CacheCommand,
     },
@@ -55,6 +58,9 @@ enum Subcommand {
     },
     #[command(about = "Manage signing keys")]
     SigningKey {
+        #[arg(long = "endpoint", short = 'e', global = true, help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com")]
+        endpoint: Option<String>,
+
         #[command(subcommand)]
         operation: SigningKeyCommand,
     },
@@ -79,24 +85,16 @@ enum SigningKeyCommand {
             help = "Duration, in minutes, that the signing key will be valid"
         )]
         ttl_minutes: u32,
-
-        #[arg(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
     #[command(about = "Revoke the signing key")]
     Revoke {
         #[arg(long = "key-id", short, help = "Signing Key ID")]
         key_id: String,
-
-        #[arg(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
     #[command(about = "List all signing keys")]
     List {
-        #[arg(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 }
 
@@ -133,9 +131,6 @@ enum CacheCommand {
     Create {
         #[arg(long = "name", short = 'n')]
         cache_name: String,
-
-        #[arg(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
     #[command(about = "Store a given item in the cache")]
@@ -155,9 +150,6 @@ enum CacheCommand {
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
         ttl_seconds: Option<u64>,
-
-        #[arg(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
     #[command(about = "Get an item from the cache")]
@@ -167,24 +159,16 @@ enum CacheCommand {
         // TODO: Add support for non-string key-value
         #[arg(long, short)]
         key: String,
-
-        #[arg(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
     #[command(about = "Delete the cache")]
     Delete {
         #[arg(long = "name", short = 'n')]
         cache_name: String,
-
-        #[arg(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
     #[command(about = "List all caches")]
     List {
-        #[arg(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 }
 
@@ -206,10 +190,9 @@ async fn entrypoint() -> Result<(), CliError> {
     .init();
 
     match args.command {
-        Subcommand::Cache { operation } => match operation {
+        Subcommand::Cache { endpoint, operation } => match operation {
             CacheCommand::Create {
                 cache_name,
-                endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token, endpoint)
@@ -221,7 +204,6 @@ async fn entrypoint() -> Result<(), CliError> {
                 key,
                 value,
                 ttl_seconds,
-                endpoint,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::set(
@@ -237,7 +219,6 @@ async fn entrypoint() -> Result<(), CliError> {
             CacheCommand::Get {
                 cache_name,
                 key,
-                endpoint,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::get(
@@ -250,14 +231,13 @@ async fn entrypoint() -> Result<(), CliError> {
             }
             CacheCommand::Delete {
                 cache_name,
-                endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
                     .await?;
                 debug!("deleted cache {}", cache_name)
             }
-            CacheCommand::List { endpoint } => {
+            CacheCommand::List { } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
             }
@@ -275,10 +255,9 @@ async fn entrypoint() -> Result<(), CliError> {
                 }
             },
         },
-        Subcommand::SigningKey { operation } => match operation {
+        Subcommand::SigningKey { endpoint, operation } => match operation {
             SigningKeyCommand::Create {
                 ttl_minutes,
-                endpoint,
             } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::create_signing_key(
@@ -288,7 +267,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 )
                 .await?;
             }
-            SigningKeyCommand::Revoke { key_id, endpoint } => {
+            SigningKeyCommand::Revoke { key_id } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::revoke_signing_key(
                     key_id.clone(),
@@ -298,7 +277,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 .await?;
                 debug!("revoked signing key {}", key_id)
             }
-            SigningKeyCommand::List { endpoint } => {
+            SigningKeyCommand::List { } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
                     .await?
