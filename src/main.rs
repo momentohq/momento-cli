@@ -10,6 +10,7 @@ use log::{debug, error, LevelFilter};
 use utils::console::console_info;
 use utils::user::get_creds_and_config;
 
+use crate::utils::console::console_info;
 #[cfg(feature = "login")]
 use crate::utils::user::clobber_session_token;
 
@@ -238,23 +239,7 @@ enum CacheCommand {
     },
 }
 
-async fn entrypoint() -> Result<(), CliError> {
-    let args = Momento::parse();
-
-    let log_level = if args.verbose {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Off
-    }
-    .as_str();
-
-    env_logger::Builder::from_env(
-        Env::default()
-            .default_filter_or(log_level)
-            .default_write_style_or("always"),
-    )
-    .init();
-
+async fn run_momento_command(args: Momento) -> Result<(), CliError> {
     match args.command {
         Subcommand::Cache {
             endpoint,
@@ -397,13 +382,28 @@ async fn entrypoint() -> Result<(), CliError> {
 
 #[tokio::main]
 async fn main() {
+    let args = Momento::parse();
+
+    let log_level = if args.verbose {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Error
+    }
+    .as_str();
+
     panic::set_hook(Box::new(move |info| {
         error!("{}", info);
     }));
 
-    if let Err(e) = entrypoint().await {
-        // We should not exit nonzero without providing the message.
-        eprintln!("{}", e);
+    env_logger::Builder::from_env(
+        Env::default()
+            .default_filter_or(log_level)
+            .default_write_style_or("always"),
+    )
+    .init();
+
+    if let Err(e) = run_momento_command(args).await {
+        console_info!("{}", e);
         exit(1)
     }
 }
