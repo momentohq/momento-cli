@@ -6,8 +6,6 @@ use commands::login::LoginMode;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
-#[cfg(feature = "login")]
-use utils::console::console_info;
 use utils::user::get_creds_and_config;
 
 use crate::utils::console::console_info;
