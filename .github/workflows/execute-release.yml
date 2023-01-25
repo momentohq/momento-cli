@@ -228,6 +228,8 @@ jobs:
   publish-windows-assets:
     runs-on: windows-latest
     needs: [release]
+    outputs:
+      msi_filename: ${{ steps.build_installer.outputs.asset_name }}
     steps:
       - uses: actions/checkout@v3
 
@@ -257,7 +259,7 @@ jobs:
           cargo build --release --target x86_64-pc-windows-gnu
 
           echo "::set-output name=momento_binary_path::.\target\x86_64-pc-windows-gnu\release\momento.exe"
-          $distributableFile64Prefix = "momento-cli-$env:VERSION.windows_x86_64"
+          $distributableFile64Prefix = "momento-cli-$env:VERSION.windows_x64"
           echo "::set-output name=distributable_file_prefix::$distributableFile64Prefix"
 
       - name: Write PFX certificate file
@@ -347,7 +349,7 @@ jobs:
           echo "::set-output name=upload_url_msi::$ghAssetMsi"
           echo "::set-output name=upload_url_zip::$ghAssetZip"
 
-      - name: Upload windows_x86_64 msi
+      - name: Upload windows_x64 msi
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -357,7 +359,7 @@ jobs:
           asset_name: ${{ steps.build_installer.outputs.asset_name }}
           asset_content_type: application/octet-stream
 
-      - name: Upload windows_x86_64 zip
+      - name: Upload windows_x64 zip
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -418,8 +420,9 @@ jobs:
         id: build_installer_url
         env:
           VERSION: ${{ needs.release.outputs.version }}
+          MSI_FILENAME: ${{ needs.publish-windows-assets.outputs.msi_filename }}
         run: |
-          $installerUrl = "https://github.com/momentohq/momento-cli/releases/download/v$env:VERSION/momento-cli-$env:VERSION.windows_x86_64.msi"
+          $installerUrl = "https://github.com/momentohq/momento-cli/releases/download/v$env:VERSION/$env:MSI_FILENAME"
           echo "::set-output name=installer_url::$installerUrl"
 
       - name: Open PR on WinGet
