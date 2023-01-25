@@ -141,7 +141,7 @@ enum CacheCommand {
         group(
             clap::ArgGroup::new("cache-name")
                 .required(true)
-                .args(["cache_name", "cache_name_flag"]),
+                .args(["cache_name", "cache_name_flag", "cache_name_flag_for_backward_compatibility"]),
         ),
     )]
     Create {
@@ -153,6 +153,8 @@ enum CacheCommand {
 
         #[arg(long = "cache", value_name = "CACHE")]
         cache_name_flag: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
     },
 
     #[command(
@@ -160,7 +162,7 @@ enum CacheCommand {
         group(
             clap::ArgGroup::new("cache-name")
                 .required(true)
-                .args(["cache_name", "cache_name_flag"]),
+                .args(["cache_name", "cache_name_flag", "cache_name_flag_for_backward_compatibility"]),
         ),
     )]
     Delete {
@@ -169,6 +171,8 @@ enum CacheCommand {
 
         #[arg(long = "cache", value_name = "CACHE")]
         cache_name_flag: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
     },
 
     #[command(about = "List all caches")]
@@ -186,6 +190,11 @@ enum CacheCommand {
                 .required(true)
                 .args(["value", "value_flag"]),
         ),
+        group(
+            clap::ArgGroup::new("cache-name")
+                .required(true)
+                .args(["cache_name", "cache_name_flag_for_backward_compatibility"]),
+        ),
     )]
     Set {
         #[arg(
@@ -194,6 +203,8 @@ enum CacheCommand {
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
 
         // TODO: Add support for non-string key-value
         #[arg(help = "Cache key under which to store the value")]
@@ -220,6 +231,11 @@ enum CacheCommand {
                 .required(true)
                 .args(["key", "key_flag"]),
         ),
+        group(
+            clap::ArgGroup::new("cache-name")
+                .required(true)
+                .args(["cache_name", "cache_name_flag_for_backward_compatibility"]),
+        ),
     )]
     Get {
         #[arg(
@@ -228,6 +244,8 @@ enum CacheCommand {
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
 
         // TODO: Add support for non-string key-value
         #[arg(help = "Cache key under which to store the value")]
@@ -246,9 +264,11 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
             CacheCommand::Create {
                 cache_name_flag,
                 cache_name,
+                cache_name_flag_for_backward_compatibility,
             } => {
                 let cache_name = cache_name
                     .or(cache_name_flag)
+                    .or(cache_name_flag_for_backward_compatibility)
                     .expect("The argument group guarantees 1 or the other");
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token, endpoint)
@@ -258,10 +278,12 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
             CacheCommand::Delete {
                 cache_name,
                 cache_name_flag,
+                cache_name_flag_for_backward_compatibility,
             } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 let cache_name = cache_name
                     .or(cache_name_flag)
+                    .or(cache_name_flag_for_backward_compatibility)
                     .expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
                     .await?;
@@ -273,6 +295,7 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
             }
             CacheCommand::Set {
                 cache_name,
+                cache_name_flag_for_backward_compatibility,
                 key,
                 key_flag,
                 value,
@@ -280,7 +303,9 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
                 ttl_seconds,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
-                let cache_name = cache_name.unwrap_or(config.cache);
+                let cache_name = cache_name
+                    .or(cache_name_flag_for_backward_compatibility)
+                    .unwrap_or(config.cache);
                 let key = key
                     .or(key_flag)
                     .expect("The argument group guarantees 1 or the other");
@@ -299,6 +324,7 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
             }
             CacheCommand::Get {
                 cache_name,
+                cache_name_flag_for_backward_compatibility,
                 key,
                 key_flag,
             } => {
@@ -307,7 +333,9 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
                     .or(key_flag)
                     .expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::get(
-                    cache_name.unwrap_or(config.cache),
+                    cache_name
+                        .or(cache_name_flag_for_backward_compatibility)
+                        .unwrap_or(config.cache),
                     creds.token,
                     key,
                     endpoint,
