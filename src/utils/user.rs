@@ -52,7 +52,7 @@ pub async fn clobber_session_token(
 ) -> Result<(), CliError> {
     let mut credentials_file = read_credentials().await?;
     set_session_token(&mut credentials_file, session_token, valid_for_seconds);
-    ini_write_to_file(credentials_file, &get_credentials_file_path()).await?;
+    ini_write_to_file(credentials_file, &get_credentials_file_path()?).await?;
     Ok(())
 }
 
@@ -80,17 +80,16 @@ pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliErro
 }
 
 async fn read_credentials() -> Result<Ini, CliError> {
-    let path = get_credentials_file_path();
+    let path = get_credentials_file_path()?;
     read_file(&path).await
 }
 
 pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
-    let path = get_config_file_path();
+    let path = get_config_file_path()?;
     let configs = match read_file(&path).await {
         Ok(c) => c,
-        Err(_) => return Err(CliError {
-            msg: "failed to read credentials, please run 'momento configure' to setup credentials"
-                .to_string(),
+        Err(e) => return Err(CliError {
+            msg: format!("failed to read credentials, please run 'momento configure' to setup credentials. Root cause: {e:?}")
         }),
     };
 
@@ -110,6 +109,8 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
 
     Ok(Config {
         cache: cache_result,
-        ttl: ttl_result.parse::<u64>().unwrap(),
+        ttl: ttl_result.parse::<u64>().map_err(|e| CliError {
+            msg: format!("could not parse a u64: {e:?}"),
+        })?,
     })
 }

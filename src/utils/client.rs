@@ -13,7 +13,9 @@ pub async fn get_momento_client(
 ) -> Result<SimpleCacheClient, CliError> {
     SimpleCacheClientBuilder::new_with_explicit_agent_name(
         auth_token,
-        NonZeroU64::new(100).unwrap(),
+        NonZeroU64::new(100).ok_or_else(|| CliError {
+            msg: "".to_string(),
+        })?,
         "cli",
         endpoint,
     )

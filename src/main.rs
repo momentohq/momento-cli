@@ -1,14 +1,14 @@
 use std::{panic, process::exit};
 
-use clap::StructOpt;
+use clap::Parser;
 #[cfg(feature = "login")]
 use commands::login::LoginMode;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
-use utils::console::console_info;
 use utils::user::get_creds_and_config;
 
+use crate::utils::console::console_info;
 #[cfg(feature = "login")]
 use crate::utils::user::clobber_session_token;
 
@@ -17,14 +17,13 @@ mod config;
 mod error;
 mod utils;
 
-#[derive(Debug, StructOpt)]
-#[clap(version)]
-#[structopt(about = "CLI for Momento APIs", name = "momento")]
+#[derive(Debug, Parser)]
+#[clap(version, about = "CLI for Momento APIs", name = "momento")]
 struct Momento {
-    #[structopt(name = "verbose", global = true, long)]
+    #[arg(name = "verbose", global = true, long, help = "Log more information")]
     verbose: bool,
 
-    #[structopt(
+    #[arg(
         long,
         short,
         default_value = "default",
@@ -33,200 +32,288 @@ struct Momento {
     )]
     profile: String,
 
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     command: Subcommand,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum Subcommand {
-    #[structopt(about = "Interact with caches")]
+    #[command(about = "Interact with caches")]
     Cache {
-        #[structopt(subcommand)]
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
         operation: CacheCommand,
     },
-    #[structopt(about = "Configure credentials")]
+    #[command(about = "Configure credentials")]
     Configure {
-        #[structopt(long, short)]
+        #[arg(long, short)]
         quick: bool,
     },
-    #[structopt(about = "Manage accounts")]
+    #[command(about = "Manage accounts")]
     Account {
-        #[structopt(subcommand)]
+        #[command(subcommand)]
         operation: AccountCommand,
     },
-    #[structopt(about = "Manage signing keys")]
+    #[command(about = "Manage signing keys")]
     SigningKey {
-        #[structopt(subcommand)]
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
         operation: SigningKeyCommand,
     },
     #[cfg(feature = "login")]
-    #[structopt(
+    #[command(
         about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account"
     )]
     Login {
-        #[clap(arg_enum, default_value = "browser")]
+        #[arg(value_enum, default_value = "browser")]
         via: LoginMode,
     },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum SigningKeyCommand {
-    #[structopt(about = "Create a signing key")]
+    #[command(about = "Create a signing key")]
     Create {
-        #[structopt(
+        #[arg(
             long = "ttl",
             short = 't',
             default_value = "86400",
             help = "Duration, in minutes, that the signing key will be valid"
         )]
         ttl_minutes: u32,
-
-        #[structopt(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
-    #[structopt(about = "Revoke the signing key")]
+    #[command(about = "Revoke the signing key")]
     Revoke {
-        #[structopt(long = "key-id", short, help = "Signing Key ID")]
+        #[arg(long = "key-id", short, help = "Signing Key ID")]
         key_id: String,
-
-        #[structopt(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
-    #[structopt(about = "List all signing keys")]
-    List {
-        #[structopt(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
-    },
+    #[command(about = "List all signing keys")]
+    List {},
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum AccountCommand {
-    #[structopt(about = "Sign up for Momento")]
+    #[command(about = "Sign up for Momento")]
     Signup {
-        #[structopt(subcommand)]
+        #[command(subcommand)]
         signup_operation: CloudSignupCommand,
     },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum CloudSignupCommand {
-    #[structopt(about = "Signup for Momento on GCP")]
+    #[command(about = "Signup for Momento on GCP")]
     Gcp {
-        #[structopt(long, short)]
+        #[arg(long, short)]
         email: String,
-        #[structopt(long, short, value_name = "us-east1 or asia-northeast1")]
+        #[arg(long, short, value_name = "us-east1 or asia-northeast1")]
         region: String,
     },
-    #[structopt(about = "Signup for Momento on AWS")]
+    #[command(about = "Signup for Momento on AWS")]
     Aws {
-        #[structopt(long, short)]
+        #[arg(long, short)]
         email: String,
-        #[structopt(long, short, value_name = "us-west-2, us-east-1, or ap-northeast-1")]
+        #[arg(long, short, value_name = "us-west-2, us-east-1, or ap-northeast-1")]
         region: String,
     },
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 enum CacheCommand {
-    #[structopt(about = "Create a cache")]
+    #[command(
+        about = "Create a cache",
+        group(
+            clap::ArgGroup::new("cache-name")
+                .required(true)
+                .args(["cache_name", "cache_name_flag", "cache_name_flag_for_backward_compatibility"]),
+        ),
+    )]
     Create {
-        #[structopt(long = "name", short = 'n')]
-        cache_name: String,
+        #[arg(
+            help = "Name of the cache you want to create. Must be at least 3 characters and unique within your account.",
+            value_name = "CACHE"
+        )]
+        cache_name: Option<String>,
 
-        #[structopt(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
+        #[arg(long = "cache", value_name = "CACHE")]
+        cache_name_flag: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
     },
 
-    #[structopt(about = "Store a given item in the cache")]
-    Set {
-        #[structopt(long = "name", short = 'n')]
+    #[command(
+        about = "Delete a cache",
+        group(
+            clap::ArgGroup::new("cache-name")
+                .required(true)
+                .args(["cache_name", "cache_name_flag", "cache_name_flag_for_backward_compatibility"]),
+        ),
+    )]
+    Delete {
+        #[arg(help = "Name of the cache you want to delete.", value_name = "CACHE")]
         cache_name: Option<String>,
+
+        #[arg(long = "cache", value_name = "CACHE")]
+        cache_name_flag: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
+    },
+
+    #[command(about = "List all caches")]
+    List {},
+
+    #[command(
+        about = "Store an item in a cache",
+        group(
+            clap::ArgGroup::new("cache-key")
+                .required(true)
+                .args(["key", "key_flag"]),
+        ),
+        group(
+            clap::ArgGroup::new("cache-value")
+                .required(true)
+                .args(["value", "value_flag"]),
+        ),
+        group(
+            clap::ArgGroup::new("cache-name")
+                .required(true)
+                .args(["cache_name", "cache_name_flag_for_backward_compatibility"]),
+        ),
+    )]
+    Set {
+        #[arg(
+            long = "cache",
+            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            value_name = "CACHE"
+        )]
+        cache_name: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
+
         // TODO: Add support for non-string key-value
-        #[structopt(long, short)]
-        key: String,
+        #[arg(help = "Cache key under which to store the value")]
+        key: Option<String>,
+        #[arg(long = "key", value_name = "KEY")]
+        key_flag: Option<String>,
 
-        #[structopt(long, short)]
-        value: String,
+        #[arg(help = "Cache value to store under the key. This will be stored as UTF-8 bytes.")]
+        value: Option<String>,
+        #[arg(long = "value", value_name = "VALUE")]
+        value_flag: Option<String>,
 
-        #[structopt(
+        #[arg(
             long = "ttl",
-            short = 't',
             help = "Max time, in seconds, that the item will be stored in cache"
         )]
         ttl_seconds: Option<u64>,
-
-        #[structopt(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
     },
 
-    #[structopt(about = "Get an item from the cache")]
+    #[command(
+        about = "Get an item from the cache",
+        group(
+            clap::ArgGroup::new("cache-key")
+                .required(true)
+                .args(["key", "key_flag"]),
+        ),
+        group(
+            clap::ArgGroup::new("cache-name")
+                .required(true)
+                .args(["cache_name", "cache_name_flag_for_backward_compatibility"]),
+        ),
+    )]
     Get {
-        #[structopt(long = "name", short = 'n')]
+        #[arg(
+            long = "cache",
+            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            value_name = "CACHE"
+        )]
         cache_name: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
+
         // TODO: Add support for non-string key-value
-        #[structopt(long, short)]
-        key: String,
-
-        #[structopt(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
-    },
-
-    #[structopt(about = "Delete the cache")]
-    Delete {
-        #[structopt(long = "name", short = 'n')]
-        cache_name: String,
-
-        #[structopt(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
-    },
-
-    #[structopt(about = "List all caches")]
-    List {
-        #[structopt(long = "endpoint", short = 'e')]
-        endpoint: Option<String>,
+        #[arg(help = "Cache key under which to store the value")]
+        key: Option<String>,
+        #[arg(long = "key", value_name = "KEY")]
+        key_flag: Option<String>,
     },
 }
 
-async fn entrypoint() -> Result<(), CliError> {
-    let args = Momento::parse();
-
-    let log_level = if args.verbose {
-        LevelFilter::Debug
-    } else {
-        LevelFilter::Off
-    }
-    .as_str();
-
-    env_logger::Builder::from_env(
-        Env::default()
-            .default_filter_or(log_level)
-            .default_write_style_or("always"),
-    )
-    .init();
-
+async fn run_momento_command(args: Momento) -> Result<(), CliError> {
     match args.command {
-        Subcommand::Cache { operation } => match operation {
+        Subcommand::Cache {
+            endpoint,
+            operation,
+        } => match operation {
             CacheCommand::Create {
+                cache_name_flag,
                 cache_name,
-                endpoint,
+                cache_name_flag_for_backward_compatibility,
             } => {
+                let cache_name = cache_name
+                    .or(cache_name_flag)
+                    .or(cache_name_flag_for_backward_compatibility)
+                    .expect("The argument group guarantees 1 or the other");
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::create_cache(cache_name.clone(), creds.token, endpoint)
                     .await?;
                 debug!("created cache {cache_name}")
             }
+            CacheCommand::Delete {
+                cache_name,
+                cache_name_flag,
+                cache_name_flag_for_backward_compatibility,
+            } => {
+                let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                let cache_name = cache_name
+                    .or(cache_name_flag)
+                    .or(cache_name_flag_for_backward_compatibility)
+                    .expect("The argument group guarantees 1 or the other");
+                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
+                    .await?;
+                debug!("deleted cache {}", cache_name)
+            }
+            CacheCommand::List {} => {
+                let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
+            }
             CacheCommand::Set {
                 cache_name,
+                cache_name_flag_for_backward_compatibility,
                 key,
+                key_flag,
                 value,
+                value_flag,
                 ttl_seconds,
-                endpoint,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
+                let cache_name = cache_name
+                    .or(cache_name_flag_for_backward_compatibility)
+                    .unwrap_or(config.cache);
+                let key = key
+                    .or(key_flag)
+                    .expect("The argument group guarantees 1 or the other");
+                let value = value
+                    .or(value_flag)
+                    .expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::set(
-                    cache_name.unwrap_or(config.cache),
+                    cache_name,
                     creds.token,
                     key,
                     value,
@@ -237,30 +324,23 @@ async fn entrypoint() -> Result<(), CliError> {
             }
             CacheCommand::Get {
                 cache_name,
+                cache_name_flag_for_backward_compatibility,
                 key,
-                endpoint,
+                key_flag,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
+                let key = key
+                    .or(key_flag)
+                    .expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::get(
-                    cache_name.unwrap_or(config.cache),
+                    cache_name
+                        .or(cache_name_flag_for_backward_compatibility)
+                        .unwrap_or(config.cache),
                     creds.token,
                     key,
                     endpoint,
                 )
                 .await?;
-            }
-            CacheCommand::Delete {
-                cache_name,
-                endpoint,
-            } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds.token, endpoint)
-                    .await?;
-                debug!("deleted cache {}", cache_name)
-            }
-            CacheCommand::List { endpoint } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
             }
         },
         Subcommand::Configure { quick } => {
@@ -276,11 +356,11 @@ async fn entrypoint() -> Result<(), CliError> {
                 }
             },
         },
-        Subcommand::SigningKey { operation } => match operation {
-            SigningKeyCommand::Create {
-                ttl_minutes,
-                endpoint,
-            } => {
+        Subcommand::SigningKey {
+            endpoint,
+            operation,
+        } => match operation {
+            SigningKeyCommand::Create { ttl_minutes } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::create_signing_key(
                     ttl_minutes,
@@ -289,7 +369,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 )
                 .await?;
             }
-            SigningKeyCommand::Revoke { key_id, endpoint } => {
+            SigningKeyCommand::Revoke { key_id } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::revoke_signing_key(
                     key_id.clone(),
@@ -299,7 +379,7 @@ async fn entrypoint() -> Result<(), CliError> {
                 .await?;
                 debug!("revoked signing key {}", key_id)
             }
-            SigningKeyCommand::List { endpoint } => {
+            SigningKeyCommand::List {} => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
                     .await?
@@ -328,11 +408,27 @@ async fn entrypoint() -> Result<(), CliError> {
 
 #[tokio::main]
 async fn main() {
+    let args = Momento::parse();
+
+    let log_level = if args.verbose {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Error
+    }
+    .as_str();
+
     panic::set_hook(Box::new(move |info| {
         error!("{}", info);
     }));
 
-    if let Err(e) = entrypoint().await {
+    env_logger::Builder::from_env(
+        Env::default()
+            .default_filter_or(log_level)
+            .default_write_style_or("always"),
+    )
+    .init();
+
+    if let Err(e) = run_momento_command(args).await {
         console_info!("{}", e);
         exit(1)
     }

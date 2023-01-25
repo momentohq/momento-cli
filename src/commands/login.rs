@@ -4,7 +4,7 @@ use momento::{momento::auth::LoginResult, response::error::MomentoError};
 use qrcode::render::unicode;
 use qrcode::QrCode;
 
-#[derive(clap::ArgEnum, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
     Browser,
     Qr,
@@ -43,14 +43,21 @@ fn login_with_qr_code(action: LoginAction) -> EarlyOutActionResult {
     match action {
         momento::momento::auth::LoginAction::OpenBrowser(open) => {
             console_info!("Navigate here to log in: {}", open.url);
-            let code = QrCode::new(open.url).unwrap();
-            let image = code
-                .render::<unicode::Dense1x2>()
-                .dark_color(unicode::Dense1x2::Dark)
-                .light_color(unicode::Dense1x2::Light)
-                .build();
-            console_info!("{}", image);
-            None
+            match QrCode::new(open.url) {
+                Ok(code) => {
+                    let image = code
+                        .render::<unicode::Dense1x2>()
+                        .dark_color(unicode::Dense1x2::Dark)
+                        .light_color(unicode::Dense1x2::Light)
+                        .build();
+                    console_info!("{}", image);
+                    None
+                }
+                Err(e) => Some(Err(MomentoError::ClientSdkError(format!(
+                    "Unable to generate qr code: {:?}",
+                    e
+                )))),
+            }
         }
         momento::momento::auth::LoginAction::ShowMessage(message) => {
             console_info!("{}", message.text);
