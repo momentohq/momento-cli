@@ -51,4 +51,4 @@ cargo test --test configure_profile_test
 
 ### Deploying
 
-After merge a pr will be created in this repo https://github.com/momentohq/homebrew-tap. Once the pr passes all checks, approve the pr and label it as `pr-pull`. It will then get automatically merged by the homebrew bot, and a release will be created for it.
+After merge a pull request (PR) will be created in this repo https://github.com/momentohq/homebrew-tap. Once the PR passes all checks, approve the PR and label it as `pr-pull`. It will then get automatically merged by the homebrew bot, and a release will be created for it.
