@@ -192,7 +192,6 @@ enum CacheCommand {
         ),
         group(
             clap::ArgGroup::new("cache-name")
-                .required(true)
                 .args(["cache_name", "cache_name_flag_for_backward_compatibility"]),
         ),
     )]
@@ -233,7 +232,6 @@ enum CacheCommand {
         ),
         group(
             clap::ArgGroup::new("cache-name")
-                .required(true)
                 .args(["cache_name", "cache_name_flag_for_backward_compatibility"]),
         ),
     )]
