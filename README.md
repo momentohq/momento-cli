@@ -41,7 +41,14 @@ which you may add anywhere you like in your execution path.
 
 ### Windows
 
-Visit the web page for the latest [github release](https://github.com/momentohq/momento-cli/releases).
+Our CLI is available in the Windows Package Manager (`winget`). To install, run the following from PowerShell or the Command Prompt:
+
+```powershell
+winget install momento.cli
+```
+
+
+Alternatively visit the web page for the latest [github release](https://github.com/momentohq/momento-cli/releases).
 There you will find an `.msi` installer for Windows platforms, as well as a windows `.zip` file if
 you prefer to manually copy the `momento` executable to your preferred location.
 
