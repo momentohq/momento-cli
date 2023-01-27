@@ -67,7 +67,8 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
         ),
         Err(e) => {
             if e.msg.contains("already exists") {
-                console_info!("{} as the default already exists", config.cache);
+                // Nothing to do here; the cache already exists but users won't find that particularly
+                // interesting.
             } else {
                 return Err(e);
             }
