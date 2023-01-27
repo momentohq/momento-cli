@@ -63,7 +63,7 @@ enum Subcommand {
     ///
     /// To create a topic, subscribe to it.
     /// To delete a topic, stop subscribing to it.
-    #[command(verbatim_doc_comment)]
+    #[command(verbatim_doc_comment, hide = true)]
     Topic {
         #[arg(
             long = "endpoint",
