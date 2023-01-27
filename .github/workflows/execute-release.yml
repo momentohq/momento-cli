@@ -67,6 +67,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install protoc
+        run: ./install_protoc_linux.sh
+
       - name: Install prerequisites
         shell: bash
         run: |
@@ -181,6 +184,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install protoc
+        run: ./install_protoc_osx.sh
+
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -232,6 +238,9 @@ jobs:
       msi_filename: ${{ steps.build_installer.outputs.asset_name }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: Install protoc
+        run: ./install_protoc_windows.sh
 
       - name: Setup Python
         uses: actions/setup-python@v2

@@ -31,7 +31,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
-          
+
+      - name: Install protoc
+        run: ./install_protoc_linux.sh
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
