@@ -33,7 +33,7 @@ jobs:
           token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
 
       - name: Install protoc
-        run: ./install_protoc_linux.sh
+        run: ./scripts/install_protoc_linux.sh
 
       - uses: actions-rs/toolchain@v1
         with:
