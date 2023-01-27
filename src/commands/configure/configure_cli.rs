@@ -82,7 +82,9 @@ async fn prompt_user_for_creds(profile_name: &str) -> Result<Credentials, CliErr
         .unwrap_or_default();
 
     console_info!("Please paste your Momento auth token.  (If you do not have an auth token, use `momento account` to generate one.)");
-    console_info!("Windows users: if CTRL-V does not work, try right-click or SHIFT-INSERT to paste.");
+    console_info!(
+        "Windows users: if CTRL-V does not work, try right-click or SHIFT-INSERT to paste."
+    );
     console_info!("");
 
     let token = prompt_user_for_input("Token", current_credentials.token.as_str(), true).await?;
