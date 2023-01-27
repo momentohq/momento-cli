@@ -1,6 +1,6 @@
 use log::debug;
-use std::num::NonZeroU64;
 use std::process::exit;
+use std::time::Duration;
 
 use crate::{
     error::CliError,
@@ -60,9 +60,7 @@ pub async fn set(
             &cache_name,
             key,
             value,
-            Some(NonZeroU64::new(ttl_seconds).ok_or_else(|| CliError {
-                msg: "could not create a non-zero u64".to_string(),
-            })?),
+            Some(Duration::from_secs(ttl_seconds)),
         ),
     )
     .await
@@ -81,14 +79,14 @@ pub async fn get(
 
     let response = interact_with_momento("getting...", client.get(&cache_name, key)).await?;
     match response.result {
-        momento::response::cache_get_response::MomentoGetStatus::HIT => {
+        momento::response::MomentoGetStatus::HIT => {
             console_data!("{}", response.as_string())
         }
-        momento::response::cache_get_response::MomentoGetStatus::MISS => {
+        momento::response::MomentoGetStatus::MISS => {
             debug!("cache miss");
             exit(1)
         }
-        momento::response::cache_get_response::MomentoGetStatus::ERROR => {
+        momento::response::MomentoGetStatus::ERROR => {
             debug!("something terrible happened with the wire protocol");
             exit(13)
         }

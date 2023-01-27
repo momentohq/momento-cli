@@ -3,6 +3,7 @@ use std::{panic, process::exit};
 use clap::Parser;
 #[cfg(feature = "login")]
 use commands::login::LoginMode;
+use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
@@ -50,6 +51,30 @@ enum Subcommand {
 
         #[command(subcommand)]
         operation: CacheCommand,
+    },
+    /// Interact with topics
+    /// !!                            !!
+    /// !!       Preview feature      !!
+    /// !!  Your feedback is welcome  !!
+    /// !!                            !!
+    /// These commands requires a cache, which serves as a namespace
+    /// for your topics. If you haven't already, call `cache create`
+    /// to make one!
+    ///
+    /// To create a topic, subscribe to it.
+    /// To delete a topic, stop subscribing to it.
+    #[command(verbatim_doc_comment)]
+    Topic {
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: TopicCommand,
     },
     #[command(about = "Configure credentials")]
     Configure {
@@ -253,6 +278,39 @@ enum CacheCommand {
     },
 }
 
+#[derive(Debug, Parser)]
+enum TopicCommand {
+    /// Publish a value to all subscribers of a topic.
+    #[command()]
+    Publish {
+        #[arg(
+            long = "cache",
+            help = "Name of the cache you want to use as your topic namespace. If not provided, your profile's default cache is used.",
+            value_name = "CACHE"
+        )]
+        cache_name: Option<String>,
+
+        #[arg(help = "Name of the topic to which you would like to publish")]
+        topic: String,
+        #[arg(help = "String message value to publish")]
+        value: String,
+    },
+
+    /// Subscribe to messages coming in on a topic.
+    #[command()]
+    Subscribe {
+        #[arg(
+            long = "cache",
+            help = "Name of the cache you want to use as your topic namespace. If not provided, your profile's default cache is used.",
+            value_name = "CACHE"
+        )]
+        cache_name: Option<String>,
+
+        #[arg(help = "Name of the topic to which you would like to subscribe")]
+        topic: String,
+    },
+}
+
 async fn run_momento_command(args: Momento) -> Result<(), CliError> {
     match args.command {
         Subcommand::Cache {
@@ -341,6 +399,46 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
                 .await?;
             }
         },
+        Subcommand::Topic {
+            endpoint,
+            operation,
+        } => {
+            let (creds, config) = get_creds_and_config(&args.profile).await?;
+            let mut client =
+                momento::preview::topics::TopicClient::connect(creds.token, endpoint, Some("cli"))
+                    .map_err(|e| CliError {
+                        msg: format!("could not connect: {e:#?}"),
+                    })?;
+            match operation {
+                TopicCommand::Publish {
+                    cache_name,
+                    topic,
+                    value,
+                } => {
+                    let cache_name = cache_name.unwrap_or(config.cache);
+                    client
+                        .publish_mut(cache_name, topic, value)
+                        .await
+                        .map_err(|e| CliError {
+                            msg: format!("could not publish: {e:?}"),
+                        })?;
+                }
+                TopicCommand::Subscribe { cache_name, topic } => {
+                    let cache_name = cache_name.unwrap_or(config.cache);
+                    let subscription = client
+                        .subscribe_mut(cache_name, topic, None)
+                        .await
+                        .map_err(|e| CliError {
+                            msg: format!("could not subscribe: {e:#?}"),
+                        })?;
+                    print_subscription(subscription)
+                        .await
+                        .map_err(|e| CliError {
+                            msg: format!("subscription error: {e:?}"),
+                        })?;
+                }
+            }
+        }
         Subcommand::Configure { quick } => {
             commands::configure::configure_cli::configure_momento(quick, &args.profile).await?
         }
@@ -385,18 +483,20 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
         },
         #[cfg(feature = "login")]
         Subcommand::Login { via } => match commands::login::login(via).await {
-            momento::momento::auth::LoginResult::LoggedIn(logged_in) => {
-                debug!("{}", logged_in.session_token);
+            Ok(credentials) => {
+                let session_token = credentials.token();
+                let session_duration = credentials.valid_for();
+                debug!("{session_token}");
                 clobber_session_token(
-                    Some(logged_in.session_token.to_string()),
-                    logged_in.valid_for_seconds,
+                    Some(session_token.to_string()),
+                    session_duration.as_secs() as u32,
                 )
                 .await?;
-                console_info!("Login valid for {}m", logged_in.valid_for_seconds / 60);
+                console_info!("Login valid for {}m", session_duration.as_secs() / 60);
             }
-            momento::momento::auth::LoginResult::NotLoggedIn(not_logged_in) => {
+            Err(auth_error) => {
                 return Err(CliError {
-                    msg: not_logged_in.error_message,
+                    msg: format!("auth error: {auth_error:?}"),
                 })
             }
         },
