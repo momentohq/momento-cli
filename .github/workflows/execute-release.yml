@@ -246,8 +246,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "3.x"
-      - name: i guess windows-latest does not have protoc or cmake but we need protoc
-        run: choco install protoc
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
