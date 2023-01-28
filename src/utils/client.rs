@@ -1,9 +1,6 @@
-use std::{future::Future, num::NonZeroU64};
+use std::{future::Future, time::Duration};
 
-use momento::{
-    response::error::MomentoError,
-    simple_cache_client::{SimpleCacheClient, SimpleCacheClientBuilder},
-};
+use momento::{response::MomentoError, SimpleCacheClient, SimpleCacheClientBuilder};
 
 use crate::{error::CliError, utils::console::console_data};
 
@@ -13,9 +10,7 @@ pub async fn get_momento_client(
 ) -> Result<SimpleCacheClient, CliError> {
     SimpleCacheClientBuilder::new_with_explicit_agent_name(
         auth_token,
-        NonZeroU64::new(100).ok_or_else(|| CliError {
-            msg: "".to_string(),
-        })?,
+        Duration::from_secs(120),
         "cli",
         endpoint,
     )

@@ -18,6 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Install protoc
+        run: ./scripts/install_protoc_linux.sh
+
       - name: rustfmt
         run: cargo fmt -- --check
       - name: Rigorous lint via Clippy
@@ -32,6 +36,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Install protoc
+        run: ./scripts/install_protoc_linux.sh
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -74,8 +82,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      - name: i guess windows-latest does not have protoc or cmake but we need protoc
-        run: choco install protoc
+
+      - name: Install protoc
+        run: ./scripts/install_protoc_linux.sh
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable

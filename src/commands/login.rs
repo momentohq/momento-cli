@@ -1,6 +1,6 @@
 use crate::utils::console::console_info;
-use momento::momento::auth::{EarlyOutActionResult, LoginAction};
-use momento::{momento::auth::LoginResult, response::error::MomentoError};
+use momento::auth::{AuthError, Credentials, EarlyOutActionResult, LoginAction};
+use momento::MomentoError;
 use qrcode::render::unicode;
 use qrcode::QrCode;
 
@@ -10,8 +10,8 @@ pub enum LoginMode {
     Qr,
 }
 
-pub async fn login(login_mode: LoginMode) -> LoginResult {
-    momento::momento::auth::login(match login_mode {
+pub async fn login(login_mode: LoginMode) -> Result<Credentials, AuthError> {
+    momento::auth::login(match login_mode {
         LoginMode::Browser => login_with_browser,
         LoginMode::Qr => login_with_qr_code,
     })
@@ -20,19 +20,17 @@ pub async fn login(login_mode: LoginMode) -> LoginResult {
 
 fn login_with_browser(action: LoginAction) -> EarlyOutActionResult {
     match action {
-        momento::momento::auth::LoginAction::OpenBrowser(open) => {
-            match webbrowser::open(&open.url) {
-                Ok(_) => {
-                    log::debug!("opened browser to {}", open.url);
-                    None
-                }
-                Err(e) => Some(Err(MomentoError::ClientSdkError(format!(
-                    "Unable to open browser: {:?}",
-                    e
-                )))),
+        momento::auth::LoginAction::OpenBrowser(open) => match webbrowser::open(&open.url) {
+            Ok(_) => {
+                log::debug!("opened browser to {}", open.url);
+                None
             }
-        }
-        momento::momento::auth::LoginAction::ShowMessage(message) => {
+            Err(e) => Some(Err(MomentoError::ClientSdkError(format!(
+                "Unable to open browser: {:?}",
+                e
+            )))),
+        },
+        momento::auth::LoginAction::ShowMessage(message) => {
             console_info!("{}", message.text);
             None
         }
@@ -41,7 +39,7 @@ fn login_with_browser(action: LoginAction) -> EarlyOutActionResult {
 
 fn login_with_qr_code(action: LoginAction) -> EarlyOutActionResult {
     match action {
-        momento::momento::auth::LoginAction::OpenBrowser(open) => {
+        momento::auth::LoginAction::OpenBrowser(open) => {
             console_info!("Navigate here to log in: {}", open.url);
             match QrCode::new(open.url) {
                 Ok(code) => {
@@ -59,7 +57,7 @@ fn login_with_qr_code(action: LoginAction) -> EarlyOutActionResult {
                 )))),
             }
         }
-        momento::momento::auth::LoginAction::ShowMessage(message) => {
+        momento::auth::LoginAction::ShowMessage(message) => {
             console_info!("{}", message.text);
             None
         }

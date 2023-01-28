@@ -18,6 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Install protoc
+        run: ./scripts/install_protoc_linux.sh
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: rustfmt
         run: cargo fmt -- --check
       - name: Rigorous lint via Clippy
@@ -32,11 +38,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
+      - name: Install protoc
+        run: ./scripts/install_protoc_linux.sh
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           components: rustfmt
           override: true
+
+      - uses: Swatinem/rust-cache@v2
+
       - name: Build
         run: cargo build --verbose --features ${{ matrix.feature }}
       - name: Create .momento directory
@@ -74,8 +87,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      - name: i guess windows-latest does not have protoc or cmake but we need protoc
+
+      - name: Install protoc
         run: choco install protoc
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
