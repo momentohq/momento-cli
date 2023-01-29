@@ -266,7 +266,7 @@ fn add_or_update_profile(
 ) -> Result<Vec<String>, CliError> {
     let trimmed_file_contents = trim_file_contents(file_contents2);
     // If profile_name does not exist yet, add new profile and token value
-    if !does_profile_name_exist(trimmed_file_contents.clone(), profile_name) {
+    if !does_profile_name_exist(&trimmed_file_contents, profile_name) {
         Ok(add_new_profile(
             file_types.clone(),
             profile_name,
@@ -278,7 +278,7 @@ fn add_or_update_profile(
             FileTypes::Credentials(cr) => {
                 match update_profile_values(
                     profile_name,
-                    trimmed_file_contents,
+                    &trimmed_file_contents,
                     FileTypes::Credentials(cr),
                 ) {
                     Ok(v) => Ok(v),
@@ -288,7 +288,7 @@ fn add_or_update_profile(
             FileTypes::Config(cf) => {
                 match update_profile_values(
                     profile_name,
-                    trimmed_file_contents,
+                    &trimmed_file_contents,
                     FileTypes::Config(cf),
                 ) {
                     Ok(v) => Ok(v),
