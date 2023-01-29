@@ -158,7 +158,7 @@ fn replace_value(
 
     match file_types {
         FileTypes::Credentials(cr) => {
-            let token_regex = match Regex::new(r"^token\s*=\s*([\w\.-]+)\s*$") {
+            let token_regex = match Regex::new(r"^token\s*=\s*([\w\.-]*)\s*$") {
                 Ok(r) => r,
                 Err(e) => {
                     return Err(CliError {
@@ -174,7 +174,7 @@ fn replace_value(
             Ok(updated_file_contents)
         }
         FileTypes::Config(cf) => {
-            let cache_regex = match Regex::new(r"^cache\s*=\s*([\w-]+)\s*$") {
+            let cache_regex = match Regex::new(r"^cache\s*=\s*([\w-]*)\s*$") {
                 Ok(r) => r,
                 Err(e) => {
                     return Err(CliError {
@@ -188,7 +188,7 @@ fn replace_value(
             );
             updated_file_contents[index] = result.to_string();
 
-            let ttl_regex = match Regex::new(r"^ttl\s*=\s*([\d]+)\s*$") {
+            let ttl_regex = match Regex::new(r"^ttl\s*=\s*([\d]*)\s*$") {
                 Ok(r) => r,
                 Err(e) => {
                     return Err(CliError {
@@ -309,6 +309,33 @@ ttl=90210
             "
 [default]
 token=invalidtoken
+        ",
+        );
+        let file_lines: Vec<&str> = file_contents.split('\n').collect();
+        let creds = Credentials {
+            token: "newtoken".to_string(),
+        };
+        let file_types = FileTypes::Credentials(creds);
+        let result = update_profile_values("default", &file_lines, file_types);
+        assert!(result.is_ok());
+        let new_content = result.expect("d'oh").join("\n");
+
+        let expected_content = test_file_content(
+            "
+[default]
+token=newtoken
+        ",
+        );
+
+        assert_eq!(expected_content, new_content);
+    }
+
+    #[test]
+    fn update_profile_values_credentials_one_existing_profile_with_empty_token() {
+        let file_contents = test_file_content(
+            "
+[default]
+token=
         ",
         );
         let file_lines: Vec<&str> = file_contents.split('\n').collect();
