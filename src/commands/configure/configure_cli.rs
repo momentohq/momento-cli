@@ -12,7 +12,7 @@ use crate::{
             open_file, prompt_user_for_input, read_file_contents, write_to_file,
         },
         ini_config::{
-            add_new_profile_to_config, add_new_profile_to_credentials, update_profile_values,
+            create_new_config_profile, create_new_credentials_profile, update_profile_values,
         },
         user::{get_config_for_profile, get_creds_for_profile},
     },
@@ -30,34 +30,33 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
         Ok(_) => (),
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to create directory: {}", e),
+                msg: format!("failed to create directory: {e}"),
             })
         }
     };
-    match add_profile(
+    let creds_file_contents = ensure_file_exists_and_get_contents(&credentials_file_path).await?;
+    let new_creds_file_contents = add_or_update_profile(
         profile_name,
         FileTypes::Credentials(credentials.clone()),
+        creds_file_contents,
+    )?;
+    write_to_file(
         &credentials_file_path,
+        lines_to_file_content(new_creds_file_contents),
     )
-    .await
-    {
-        Ok(_) => {}
-        Err(e) => {
-            return Err(e);
-        }
-    }
-    match add_profile(
+    .await?;
+    let config_file_contents = ensure_file_exists_and_get_contents(&config_file_path).await?;
+    let new_config_file_contents = add_or_update_profile(
         profile_name,
         FileTypes::Config(config.clone()),
+        config_file_contents,
+    )?;
+    write_to_file(
         &config_file_path,
+        lines_to_file_content(new_config_file_contents),
     )
-    .await
-    {
-        Ok(_) => {}
-        Err(e) => {
-            return Err(e);
-        }
-    }
+    .await?;
+
     // TODO: Update the endpoint to read from config
     match create_cache(config.cache.clone(), credentials.token, None).await {
         Ok(_) => console_info!(
@@ -133,7 +132,7 @@ async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Confi
             Ok(ttl) => ttl,
             Err(e) => {
                 return Err(CliError {
-                    msg: format!("failed to parse ttl: {}", e),
+                    msg: format!("failed to parse ttl: {e}"),
                 })
             }
         };
@@ -152,7 +151,7 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
         Ok(p) => p,
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to get file permissions {}", e),
+                msg: format!("failed to get file permissions {e}"),
             })
         }
     }
@@ -161,7 +160,7 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     match fs::set_permissions(path, perms).await {
         Ok(_) => Ok(()),
         Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {}", e),
+            msg: format!("failed to set file permissions {e}"),
         }),
     }
 }
@@ -173,7 +172,7 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
         Ok(p) => p,
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to get file permissions {}", e),
+                msg: format!("failed to get file permissions {e}"),
             })
         }
     }
@@ -182,7 +181,7 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     match fs::set_permissions(path, perms).await {
         Ok(_) => Ok(()),
         Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {}", e),
+            msg: format!("failed to set file permissions {e}"),
         }),
     }
 }
@@ -194,7 +193,7 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
         Ok(p) => p,
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to get file permissions {}", e),
+                msg: format!("failed to get file permissions {e}"),
             })
         }
     }
@@ -203,7 +202,7 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     match fs::set_permissions(path, perms).await {
         Ok(_) => Ok(()),
         Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {}", e),
+            msg: format!("failed to set file permissions {e}"),
         }),
     }
 }
@@ -214,7 +213,7 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
         Ok(p) => p,
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to get file permissions {}", e),
+                msg: format!("failed to get file permissions {e}"),
             })
         }
     }
@@ -223,104 +222,99 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     match fs::set_permissions(path, perms).await {
         Ok(_) => Ok(()),
         Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {}", e),
+            msg: format!("failed to set file permissions {e}"),
         }),
     }
 }
 
-async fn add_profile(
-    profile_name: &str,
-    file_types: FileTypes,
-    path: &str,
-) -> Result<(), CliError> {
-    // If file does not exists, create one and set default profile with token
+async fn ensure_file_exists_and_get_contents(path: &str) -> Result<Vec<String>, CliError> {
     if !Path::new(path).exists() {
         match create_file(path).await {
             Ok(_) => {}
             Err(e) => return Err(e),
         }
-        // explicitly allowing read/write access to the file
-        set_file_read_write(path).await?;
-        match add_new_profile_to_new_file(file_types.clone(), profile_name, path).await {
-            Ok(_) => {}
-            Err(e) => return Err(e),
-        }
-    } else {
-        // If file already exists, figure out any profiles exist in the file
-        set_file_read_write(path).await?;
-        let file = open_file(path).await?;
-        let file_contents = read_file_contents(file).await?;
-        let updated_file_contents: Vec<String>;
-        // Determine if  file contains profiles
-        match find_profile_start(file_contents.clone()) {
-            // existing_profile_line_numbers contains line number for profile: e.g. [1, 4, 7]
-            Some(existing_profile_line_numbers) => {
-                // If profile_name does not exist yet, add new profile and token value
-                if !does_profile_name_exist(file_contents.clone(), profile_name) {
-                    updated_file_contents = add_new_profile_to_existing_file(
-                        file_types.clone(),
-                        file_contents.clone(),
-                        profile_name,
-                    );
-                } else {
-                    // If profile_name already exists, update token value
-                    let existing_profile_starting_line_num =
-                        find_existing_profile_start(file_contents.clone(), profile_name);
-                    match file_types.clone() {
-                        FileTypes::Credentials(cr) => {
-                            updated_file_contents = match update_profile_values(
-                                existing_profile_line_numbers,
-                                existing_profile_starting_line_num,
-                                file_contents.clone(),
-                                FileTypes::Credentials(cr),
-                            ) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e),
-                            }
-                        }
-                        FileTypes::Config(cf) => {
-                            updated_file_contents = match update_profile_values(
-                                existing_profile_line_numbers,
-                                existing_profile_starting_line_num,
-                                file_contents.clone(),
-                                FileTypes::Config(cf),
-                            ) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e),
-                            }
-                        }
-                    }
-                }
-                match write_to_file(path, updated_file_contents.clone()).await {
-                    Ok(_) => {}
-                    Err(e) => return Err(e),
-                }
-            }
-            None => {
-                // If no profile is found, check there is any contents inside of credentials file.
-                // If no content was found, write new credentials to the file.
-                if file_contents.is_empty() {
-                    match add_new_profile_to_new_file(file_types.clone(), profile_name, path).await
-                    {
-                        Ok(_) => {}
-                        Err(e) => return Err(e),
-                    }
-                } else {
-                    // If there is (such as just comments), then leave it as and new profile and token value
-                    updated_file_contents = add_new_profile_to_existing_file(
-                        file_types.clone(),
-                        file_contents.clone(),
-                        profile_name,
-                    );
-                    match write_to_file(path, updated_file_contents.clone()).await {
-                        Ok(_) => {}
-                        Err(e) => return Err(e),
-                    }
-                }
-            }
-        }
     }
-    Ok(())
+    // explicitly allowing read/write access to the file
+    set_file_read_write(path).await?;
+
+    let file = open_file(path).await?;
+    read_file_contents(file).await
+}
+
+fn lines_to_file_content(lines: Vec<String>) -> String {
+    // ensure a single trailing newline
+    format!("{}\n", lines.join("\n").trim_end())
+}
+
+fn trim_file_contents(lines: Vec<String>) -> Vec<String> {
+    // This is dumb and inefficient but we can optimize it later if necessary
+    let content = lines.join("\n");
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        vec![]
+    } else {
+        trimmed.split('\n').map(|line| line.to_string()).collect()
+    }
+}
+
+fn add_or_update_profile(
+    profile_name: &str,
+    file_types: FileTypes,
+    file_contents2: Vec<String>,
+    // path: &str,
+) -> Result<Vec<String>, CliError> {
+    let trimmed_file_contents = trim_file_contents(file_contents2);
+    // If file already exists, figure out any profiles exist in the file
+    // let updated_file_contents: Vec<String>;
+    // Determine if  file contains profiles
+    match find_profile_start(trimmed_file_contents.clone()) {
+        // existing_profile_line_numbers contains line number for profile: e.g. [1, 4, 7]
+        Some(existing_profile_line_numbers) => {
+            // If profile_name does not exist yet, add new profile and token value
+            if !does_profile_name_exist(trimmed_file_contents.clone(), profile_name) {
+                Ok(add_new_profile(
+                    file_types.clone(),
+                    profile_name,
+                    trimmed_file_contents,
+                ))
+            } else {
+                // If profile_name already exists, update token value
+                let existing_profile_starting_line_num =
+                    find_existing_profile_start(trimmed_file_contents.clone(), profile_name);
+                match file_types {
+                    FileTypes::Credentials(cr) => {
+                        match update_profile_values(
+                            existing_profile_line_numbers,
+                            existing_profile_starting_line_num,
+                            trimmed_file_contents,
+                            FileTypes::Credentials(cr),
+                        ) {
+                            Ok(v) => Ok(v),
+                            Err(e) => Err(e),
+                        }
+                    }
+                    FileTypes::Config(cf) => {
+                        match update_profile_values(
+                            existing_profile_line_numbers,
+                            existing_profile_starting_line_num,
+                            trimmed_file_contents,
+                            FileTypes::Config(cf),
+                        ) {
+                            Ok(v) => Ok(v),
+                            Err(e) => Err(e),
+                        }
+                    }
+                }
+            }
+        }
+        // If no profile is found, check there is any contents inside of credentials file.
+        // If no content was found, write new credentials to the file.
+        None => Ok(add_new_profile(
+            file_types.clone(),
+            profile_name,
+            trimmed_file_contents,
+        )),
+    }
 }
 
 fn find_profile_start(file_contents: Vec<String>) -> Option<Vec<usize>> {
@@ -347,7 +341,7 @@ fn find_profile_start(file_contents: Vec<String>) -> Option<Vec<usize>> {
 fn does_profile_name_exist(file_contents: Vec<String>, profile_name: &str) -> bool {
     for line in file_contents.iter() {
         let trimmed_line = line.replace('\n', "");
-        if trimmed_line.eq(&format!("[{}]", profile_name)) {
+        if trimmed_line.eq(&format!("[{profile_name}]")) {
             return true;
         }
     }
@@ -360,7 +354,7 @@ fn find_existing_profile_start(file_contents: Vec<String>, profile_name: &str) -
 
     while counter < line_array_len {
         let trimmed_line = file_contents[counter].replace('\n', "");
-        if trimmed_line.eq(&format!("[{}]", profile_name)) {
+        if trimmed_line.eq(&format!("[{profile_name}]")) {
             return counter;
         }
         counter += 1;
@@ -368,60 +362,138 @@ fn find_existing_profile_start(file_contents: Vec<String>, profile_name: &str) -
     counter
 }
 
-fn push_to_file_contents(
-    file_contents: Vec<String>,
+fn add_new_profile(
     file_types: FileTypes,
     profile_name: &str,
+    current_file_content: Vec<String>,
 ) -> Vec<String> {
-    let mut updated_file_contents = file_contents;
-    match file_types {
-        FileTypes::Credentials(cr) => {
-            updated_file_contents.push('\n'.to_string());
-            updated_file_contents.push(format!("[{}]\n", profile_name));
-            updated_file_contents.push(format!("token={}", cr.token));
-        }
-        FileTypes::Config(cf) => {
-            updated_file_contents.push('\n'.to_string());
-            updated_file_contents.push(format!("[{}]\n", profile_name));
-            updated_file_contents.push(format!("cache={}\n", cf.cache));
-            updated_file_contents.push(format!("ttl={}", cf.ttl));
-        }
-    }
-    updated_file_contents
-}
-
-async fn add_new_profile_to_new_file(
-    file_types: FileTypes,
-    profile_name: &str,
-    path: &str,
-) -> Result<(), CliError> {
-    match file_types {
-        FileTypes::Credentials(cr) => {
-            match add_new_profile_to_credentials(profile_name, path, cr).await {
-                Ok(_) => {}
-                Err(e) => return Err(e),
-            }
-            Ok(())
-        }
-        FileTypes::Config(cf) => match add_new_profile_to_config(profile_name, path, cf).await {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        },
-    }
-}
-
-fn add_new_profile_to_existing_file(
-    file_types: FileTypes,
-    file_contents: Vec<String>,
-    profile_name: &str,
-) -> Vec<String> {
-    let updated_file_contents: Vec<String> = match file_types {
-        FileTypes::Credentials(cr) => {
-            push_to_file_contents(file_contents, FileTypes::Credentials(cr), profile_name)
-        }
-        FileTypes::Config(cf) => {
-            push_to_file_contents(file_contents, FileTypes::Config(cf), profile_name)
-        }
+    let new_profile = match file_types {
+        FileTypes::Credentials(cr) => create_new_credentials_profile(profile_name, cr),
+        FileTypes::Config(cf) => create_new_config_profile(profile_name, cf),
     };
-    updated_file_contents
+    if current_file_content.is_empty() {
+        new_profile
+    } else {
+        [current_file_content, vec!["\n".to_string()], new_profile].concat()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::commands::configure::configure_cli::add_or_update_profile;
+    use crate::config::{Credentials, FileTypes};
+
+    fn test_file_content(untrimmed_file_contents: &str) -> String {
+        format!("{}\n", untrimmed_file_contents.trim())
+    }
+
+    fn test_content_to_lines(file_contents: &str) -> Vec<String> {
+        file_contents
+            .trim()
+            .split('\n')
+            .map(|line| line.to_string())
+            .collect()
+    }
+
+    #[test]
+    fn add_or_update_profile_creds_no_existing_file() {
+        let existing_content = vec![];
+        let updated = add_or_update_profile(
+            "default",
+            FileTypes::Credentials(Credentials {
+                token: "awesome-token".to_string(),
+            }),
+            existing_content,
+        )
+        .expect("d'oh");
+        let expected = test_file_content(
+            "
+[default]
+token=awesome-token
+        ",
+        );
+        assert_eq!(expected.trim_end(), updated.join("\n"));
+    }
+
+    #[test]
+    fn add_or_update_profile_creds_empty_existing_file() {
+        let existing_content = test_content_to_lines("");
+        let updated = add_or_update_profile(
+            "default",
+            FileTypes::Credentials(Credentials {
+                token: "awesome-token".to_string(),
+            }),
+            existing_content,
+        )
+        .expect("d'oh");
+        let expected = test_file_content(
+            "
+[default]
+token=awesome-token
+        ",
+        );
+        assert_eq!(expected.trim_end(), updated.join("\n"));
+    }
+
+    #[test]
+    fn add_or_update_profile_creds_existing_file_existing_profile_same_token() {
+        let existing_content = test_content_to_lines(
+            "
+[default]
+token=old-token
+        ",
+        );
+        let updated1 = format!(
+            "{}\n",
+            add_or_update_profile(
+                "default",
+                FileTypes::Credentials(Credentials {
+                    token: "old-token".to_string()
+                }),
+                existing_content
+            )
+            .expect("d'oh")
+            .join("\n")
+        );
+        let updated2 = add_or_update_profile(
+            "default",
+            FileTypes::Credentials(Credentials {
+                token: "old-token".to_string(),
+            }),
+            test_content_to_lines(&updated1),
+        )
+        .expect("d'oh");
+        let expected = test_file_content(
+            "
+[default]
+token=old-token
+        ",
+        );
+        assert_eq!(expected.trim_end(), updated2.join("\n"));
+    }
+
+    #[test]
+    fn add_or_update_profile_creds_existing_file_existing_profile_new_token() {
+        let existing_content = test_content_to_lines(
+            "
+[default]
+token=old-token
+        ",
+        );
+        let updated = add_or_update_profile(
+            "default",
+            FileTypes::Credentials(Credentials {
+                token: "awesome-token".to_string(),
+            }),
+            existing_content,
+        )
+        .expect("d'oh");
+        let expected = test_file_content(
+            "
+[default]
+token=awesome-token
+        ",
+        );
+        assert_eq!(expected.trim_end(), updated.join("\n"));
+    }
 }

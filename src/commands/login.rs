@@ -26,8 +26,7 @@ fn login_with_browser(action: LoginAction) -> EarlyOutActionResult {
                 None
             }
             Err(e) => Some(Err(MomentoError::ClientSdkError(format!(
-                "Unable to open browser: {:?}",
-                e
+                "Unable to open browser: {e:?}"
             )))),
         },
         momento::auth::LoginAction::ShowMessage(message) => {
@@ -52,8 +51,7 @@ fn login_with_qr_code(action: LoginAction) -> EarlyOutActionResult {
                     None
                 }
                 Err(e) => Some(Err(MomentoError::ClientSdkError(format!(
-                    "Unable to generate qr code: {:?}",
-                    e
+                    "Unable to generate qr code: {e:?}"
                 )))),
             }
         }
