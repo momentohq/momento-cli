@@ -21,11 +21,22 @@ pub fn create_new_config_profile(profile_name: &str, config: Config) -> Vec<Stri
 }
 
 pub fn update_profile_values(
-    existing_profile_line_numbers: Vec<usize>,
-    existing_profile_starting_line_num: usize,
+    profile_name: &str,
     file_contents: Vec<String>,
     file_types: FileTypes,
 ) -> Result<Vec<String>, CliError> {
+    let existing_profile_line_numbers = match find_profile_line_numbers(file_contents.clone()) {
+        None => {
+            return Err(CliError {
+                msg: "No profiles found!".to_string(),
+            });
+        }
+        Some(line_numbers) => line_numbers,
+    };
+
+    let existing_profile_starting_line_num =
+        find_existing_profile_start(file_contents.clone(), profile_name);
+
     let num_of_profiles = existing_profile_line_numbers.len();
     let file_contents_len = file_contents.len();
     let mut updated_file_contents: Vec<String> = Vec::new();
@@ -192,6 +203,51 @@ fn replace_value(
     }
 }
 
+pub fn does_profile_name_exist(file_contents: Vec<String>, profile_name: &str) -> bool {
+    for line in file_contents.iter() {
+        let trimmed_line = line.replace('\n', "");
+        if trimmed_line.eq(&format!("[{profile_name}]")) {
+            return true;
+        }
+    }
+    false
+}
+
+fn find_profile_line_numbers(file_contents: Vec<String>) -> Option<Vec<usize>> {
+    let mut counter = 0;
+    let mut profile_counter;
+    let line_array_len = file_contents.len();
+    let mut profile_start_line_num_array: Vec<usize> = Vec::new();
+    while counter < line_array_len {
+        let line = file_contents[counter].trim();
+        if line.starts_with('[') && line.ends_with(']') {
+            profile_counter = counter;
+            // Collect line number of profile
+            profile_start_line_num_array.push(profile_counter);
+        }
+        counter += 1;
+    }
+    if profile_start_line_num_array.is_empty() {
+        None
+    } else {
+        Some(profile_start_line_num_array)
+    }
+}
+
+fn find_existing_profile_start(file_contents: Vec<String>, profile_name: &str) -> usize {
+    let mut counter = 0;
+    let line_array_len = file_contents.len();
+
+    while counter < line_array_len {
+        let trimmed_line = file_contents[counter].replace('\n', "");
+        if trimmed_line.eq(&format!("[{profile_name}]")) {
+            return counter;
+        }
+        counter += 1;
+    }
+    counter
+}
+
 #[cfg(test)]
 mod tests {
     use crate::config::{Config, Credentials, FileTypes};
@@ -244,12 +300,6 @@ ttl=90210
     #[test]
     fn update_profile_values_credentials_one_existing_profile() {
         // TODO
-        // TODO these line number bits are fragile and we should refactor to prevent them from
-        // being necessary.  Will hit in a subsequent PR.
-        // TODO
-        let profile_line_numbers = vec![1];
-        let matching_profile_starting_line_num = 1;
-        // TODO
         // TODO can we change the signature to take Vec<&str> so we don't need this map?
         // TODO
         let file_contents: Vec<String> = test_file_content(
@@ -265,12 +315,7 @@ token=invalidtoken
             token: "newtoken".to_string(),
         };
         let file_types = FileTypes::Credentials(creds);
-        let result = update_profile_values(
-            profile_line_numbers,
-            matching_profile_starting_line_num,
-            file_contents,
-            file_types,
-        );
+        let result = update_profile_values("default", file_contents, file_types);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
 
@@ -286,12 +331,6 @@ token=newtoken
 
     #[test]
     fn update_profile_values_credentials_three_existing_profiles() {
-        // TODO
-        // TODO these line number bits are fragile and we should refactor to prevent them from
-        // being necessary.  Will hit in a subsequent PR.
-        // TODO
-        let profile_line_numbers = vec![1, 3, 5];
-        let matching_profile_starting_line_num = 3;
         // TODO
         // TODO can we change the signature to take Vec<&str> so we don't need this map?
         // TODO
@@ -314,12 +353,7 @@ token=spicytoken
             token: "newtoken".to_string(),
         };
         let file_types = FileTypes::Credentials(creds);
-        let result = update_profile_values(
-            profile_line_numbers,
-            matching_profile_starting_line_num,
-            file_contents,
-            file_types,
-        );
+        let result = update_profile_values("default", file_contents, file_types);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
 
@@ -342,12 +376,6 @@ token=spicytoken
     #[test]
     fn update_profile_values_config_one_existing_profile() {
         // TODO
-        // TODO these line number bits are fragile and we should refactor to prevent them from
-        // being necessary.  Will hit in a subsequent PR.
-        // TODO
-        let profile_line_numbers = vec![1];
-        let matching_profile_starting_line_num = 1;
-        // TODO
         // TODO can we change the signature to take Vec<&str> so we don't need this map?
         // TODO
         let file_contents: Vec<String> = test_file_content(
@@ -365,12 +393,7 @@ ttl=600
             ttl: 90210,
         };
         let file_types = FileTypes::Config(config);
-        let result = update_profile_values(
-            profile_line_numbers,
-            matching_profile_starting_line_num,
-            file_contents,
-            file_types,
-        );
+        let result = update_profile_values("default", file_contents, file_types);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
 
@@ -387,12 +410,6 @@ ttl=90210
 
     #[test]
     fn update_profile_values_config_three_existing_profiles() {
-        // TODO
-        // TODO these line number bits are fragile and we should refactor to prevent them from
-        // being necessary.  Will hit in a subsequent PR.
-        // TODO
-        let profile_line_numbers = vec![1, 5, 9];
-        let matching_profile_starting_line_num = 5;
         // TODO
         // TODO can we change the signature to take Vec<&str> so we don't need this map?
         // TODO
@@ -419,12 +436,7 @@ ttl=600
             ttl: 90210,
         };
         let file_types = FileTypes::Config(config);
-        let result = update_profile_values(
-            profile_line_numbers,
-            matching_profile_starting_line_num,
-            file_contents,
-            file_types,
-        );
+        let result = update_profile_values("default", file_contents, file_types);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
 
