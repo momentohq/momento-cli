@@ -1,3 +1,4 @@
+use crate::config::ENV_VAR_NAME_MOMENTO_CONFIG_DIR;
 use configparser::ini::Ini;
 use home::home_dir;
 use log::debug;
@@ -10,16 +11,22 @@ use crate::error::CliError;
 
 // FIXME All of this stuff should be using pathbuf and not concatenating strings with /'s...
 pub fn get_credentials_file_path() -> Result<String, CliError> {
-    let momento_home = get_momento_dir()?;
+    let momento_home = get_momento_config_dir()?;
     Ok(format!("{momento_home}/credentials"))
 }
 
 pub fn get_config_file_path() -> Result<String, CliError> {
-    let momento_home = get_momento_dir()?;
+    let momento_home = get_momento_config_dir()?;
     Ok(format!("{momento_home}/config"))
 }
 
-pub fn get_momento_dir() -> Result<String, CliError> {
+pub fn get_momento_config_dir() -> Result<String, CliError> {
+    let env_var = std::env::var(ENV_VAR_NAME_MOMENTO_CONFIG_DIR);
+
+    if let Ok(val) = env_var {
+        return Ok(val);
+    }
+    // If the env var isn't set we default to ~/.momento
     let home = home_dir().ok_or_else(|| CliError {
         msg: "could not find home dir".to_string(),
     })?;

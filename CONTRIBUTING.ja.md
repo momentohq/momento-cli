@@ -41,8 +41,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 :warning: `cargo test --test configure_profiles_test`を実行する上での注意事項
 
 ```
-export TEST_AUTH_TOKEN_DEFAULT=<YOUR_TEST_AUTH_TOKEN_DEFAULT>
-export TEST_CACHE_DEFAULT=<YOUR_TEST_CACHE_DEFAULT>
+export TEST_AUTH_TOKEN=<YOUR_TEST_AUTH_TOKEN>
 cargo test --test configure_profile_test
 ```
 
