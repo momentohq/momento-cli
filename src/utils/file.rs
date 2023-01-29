@@ -11,12 +11,12 @@ use crate::error::CliError;
 // FIXME All of this stuff should be using pathbuf and not concatenating strings with /'s...
 pub fn get_credentials_file_path() -> Result<String, CliError> {
     let momento_home = get_momento_dir()?;
-    Ok(format!("{}/credentials", momento_home))
+    Ok(format!("{momento_home}/credentials"))
 }
 
 pub fn get_config_file_path() -> Result<String, CliError> {
     let momento_home = get_momento_dir()?;
-    Ok(format!("{}/config", momento_home))
+    Ok(format!("{momento_home}/config"))
 }
 
 pub fn get_momento_dir() -> Result<String, CliError> {
@@ -30,21 +30,21 @@ pub async fn open_file(path: &str) -> Result<File, CliError> {
     let res = File::open(path).await;
     match res {
         Ok(f) => {
-            debug!("opened file {}", path);
+            debug!("opened file {path}");
             Ok(f)
         }
         Err(e) => Err(CliError {
-            msg: format!("failed to create file {}, error: {}", path, e),
+            msg: format!("failed to create file {path}, error: {e}"),
         }),
     }
 }
 
-pub async fn read_file(path: &str) -> Result<Ini, CliError> {
+pub async fn read_ini_file(path: &str) -> Result<Ini, CliError> {
     let mut config = Ini::new_cs();
     match config.load(path) {
         Ok(_) => Ok(config),
         Err(e) => Err(CliError {
-            msg: format!("failed to read file: {}", e),
+            msg: format!("failed to read file: {e}"),
         }),
     }
 }
@@ -57,7 +57,7 @@ pub async fn read_file_contents(file: File) -> Result<Vec<String>, CliError> {
     while let Some(line) = contents.next_line().await.map_err(|e| CliError {
         msg: format!("could not read next line: {e:?}"),
     })? {
-        file_contents.push(format!("{}\n", line));
+        file_contents.push(line.to_string());
     }
     Ok(file_contents)
 }
@@ -70,41 +70,33 @@ pub async fn create_file(path: &str) -> Result<(), CliError> {
             Ok(())
         }
         Err(e) => Err(CliError {
-            msg: format!("failed to create file {}, error: {}", path, e),
+            msg: format!("failed to create file {path}, error: {e}"),
         }),
     }
 }
 
-pub async fn write_to_file(path: &str, file_contents: Vec<String>) -> Result<(), CliError> {
+pub async fn write_to_file(path: &str, file_contents: String) -> Result<(), CliError> {
     let mut file = match fs::File::create(path).await {
         Ok(f) => f,
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to write to file {}, error: {}", path, e),
+                msg: format!("failed to write to file {path}, error: {e}"),
             })
         }
     };
-    // Write to file
-    for line in file_contents.iter() {
-        match file.write(line.as_bytes()).await {
-            Ok(_) => {}
-            Err(e) => {
-                return Err(CliError {
-                    msg: format!("failed to write to file {}, error: {}", path, e),
-                })
-            }
-        };
-    }
-    Ok(())
-}
 
-pub async fn ini_write_to_file(ini_map: Ini, path: &str) -> Result<(), CliError> {
-    match ini_map.write(path) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(CliError {
-            msg: format!("failed to write to file {} with ini, error: {}", path, e),
-        }),
-    }
+    // Write to file
+
+    match file.write(file_contents.as_bytes()).await {
+        Ok(_) => {}
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to write to file {path}, error: {e}"),
+            })
+        }
+    };
+
+    Ok(())
 }
 
 pub async fn prompt_user_for_input(
@@ -115,18 +107,18 @@ pub async fn prompt_user_for_input(
     let mut stdout = io::stdout();
 
     let formatted_prompt = if default_value.is_empty() {
-        format!("{}: ", prompt)
+        format!("{prompt}: ")
     } else if is_secret {
-        format!("{} [****]: ", prompt)
+        format!("{prompt} [****]: ")
     } else {
-        format!("{} [{}]: ", prompt, default_value)
+        format!("{prompt} [{default_value}]: ")
     };
 
     match stdout.write(formatted_prompt.as_bytes()).await {
         Ok(_) => debug!("wrote prompt '{}' to stdout", formatted_prompt),
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to write prompt to stdout: {}", e),
+                msg: format!("failed to write prompt to stdout: {e}"),
             })
         }
     };
@@ -134,7 +126,7 @@ pub async fn prompt_user_for_input(
         Ok(_) => debug!("flushed stdout"),
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to flush stdout: {}", e),
+                msg: format!("failed to flush stdout: {e}"),
             })
         }
     };
@@ -145,7 +137,7 @@ pub async fn prompt_user_for_input(
         Ok(_) => debug!("read line from stdin"),
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to read line from stdin: {}", e),
+                msg: format!("failed to read line from stdin: {e}"),
             })
         }
     };

@@ -33,7 +33,7 @@ fn get_signup_endpoint() -> String {
 
 pub async fn signup_user(email: String, cloud: String, region: String) -> Result<(), CliError> {
     let endpoint = get_signup_endpoint();
-    let url = format!("{}/token/create", endpoint);
+    let url = format!("{endpoint}/token/create");
 
     let body = &CreateTokenBody {
         email,

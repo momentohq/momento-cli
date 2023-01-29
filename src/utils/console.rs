@@ -9,7 +9,7 @@
 /// //stderr> Hello, world!
 /// ```
 pub fn output_info(msg: &str) {
-    eprintln!("{}", msg);
+    eprintln!("{msg}");
 }
 
 /// The console print macro for non-verbose output.
@@ -43,7 +43,7 @@ pub(crate) use console_info;
 // //> {"key": "value"}
 // ```
 pub fn output_data(msg: &str) {
-    println!("{}", msg);
+    println!("{msg}");
 }
 
 /// The console print macro for cache response data.
