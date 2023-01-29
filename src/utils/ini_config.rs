@@ -20,12 +20,12 @@ pub fn create_new_config_profile(profile_name: &str, config: Config) -> Vec<Stri
     ]
 }
 
-pub fn update_profile_values(
+pub fn update_profile_values<T: AsRef<str>>(
     profile_name: &str,
-    file_contents: Vec<String>,
+    file_contents: &[T],
     file_types: FileTypes,
 ) -> Result<Vec<String>, CliError> {
-    let existing_profile_line_numbers = match find_profile_line_numbers(file_contents.clone()) {
+    let existing_profile_line_numbers = match find_profile_line_numbers(file_contents) {
         None => {
             return Err(CliError {
                 msg: "No profiles found!".to_string(),
@@ -35,7 +35,7 @@ pub fn update_profile_values(
     };
 
     let existing_profile_starting_line_num =
-        find_existing_profile_start(file_contents.clone(), profile_name);
+        find_existing_profile_start(file_contents, profile_name);
 
     let num_of_profiles = existing_profile_line_numbers.len();
     let file_contents_len = file_contents.len();
@@ -49,7 +49,7 @@ pub fn update_profile_values(
                         FileTypes::Credentials(ref cr) => {
                             if n == *line_num {
                                 updated_file_contents = match replace_value(
-                                    file_contents.clone(),
+                                    file_contents,
                                     n,
                                     FileTypes::Credentials(cr.clone()),
                                 ) {
@@ -58,7 +58,7 @@ pub fn update_profile_values(
                                 }
                             } else {
                                 updated_file_contents = match replace_value(
-                                    updated_file_contents.clone(),
+                                    &updated_file_contents.clone(),
                                     n,
                                     FileTypes::Credentials(cr.clone()),
                                 ) {
@@ -70,7 +70,7 @@ pub fn update_profile_values(
                         FileTypes::Config(ref cf) => {
                             if n == *line_num {
                                 updated_file_contents = match replace_value(
-                                    file_contents.clone(),
+                                    file_contents,
                                     n,
                                     FileTypes::Config(cf.clone()),
                                 ) {
@@ -79,7 +79,7 @@ pub fn update_profile_values(
                                 }
                             } else {
                                 updated_file_contents = match replace_value(
-                                    updated_file_contents.clone(),
+                                    &updated_file_contents.clone(),
                                     n,
                                     FileTypes::Config(cf.clone()),
                                 ) {
@@ -99,7 +99,7 @@ pub fn update_profile_values(
                         FileTypes::Credentials(ref cr) => {
                             if n == existing_profile_line_numbers[counter] {
                                 updated_file_contents = match replace_value(
-                                    file_contents.clone(),
+                                    file_contents,
                                     n,
                                     FileTypes::Credentials(cr.clone()),
                                 ) {
@@ -108,7 +108,7 @@ pub fn update_profile_values(
                                 }
                             } else {
                                 updated_file_contents = match replace_value(
-                                    updated_file_contents.clone(),
+                                    &updated_file_contents.clone(),
                                     n,
                                     FileTypes::Credentials(cr.clone()),
                                 ) {
@@ -120,7 +120,7 @@ pub fn update_profile_values(
                         FileTypes::Config(ref cf) => {
                             if n == existing_profile_line_numbers[counter] {
                                 updated_file_contents = match replace_value(
-                                    file_contents.clone(),
+                                    file_contents,
                                     n,
                                     FileTypes::Config(cf.clone()),
                                 ) {
@@ -129,7 +129,7 @@ pub fn update_profile_values(
                                 }
                             } else {
                                 updated_file_contents = match replace_value(
-                                    updated_file_contents.clone(),
+                                    &updated_file_contents.clone(),
                                     n,
                                     FileTypes::Config(cf.clone()),
                                 ) {
@@ -146,12 +146,15 @@ pub fn update_profile_values(
     Ok(updated_file_contents)
 }
 
-fn replace_value(
-    file_contents: Vec<String>,
+fn replace_value<T: AsRef<str>>(
+    file_contents: &[T],
     index: usize,
     file_types: FileTypes,
 ) -> Result<Vec<String>, CliError> {
-    let mut updated_file_contents = file_contents;
+    let mut updated_file_contents: Vec<String> = file_contents
+        .iter()
+        .map(|l| l.as_ref().to_string())
+        .collect();
 
     match file_types {
         FileTypes::Credentials(cr) => {
@@ -203,9 +206,9 @@ fn replace_value(
     }
 }
 
-pub fn does_profile_name_exist(file_contents: Vec<String>, profile_name: &str) -> bool {
+pub fn does_profile_name_exist<T: AsRef<str>>(file_contents: &[T], profile_name: &str) -> bool {
     for line in file_contents.iter() {
-        let trimmed_line = line.replace('\n', "");
+        let trimmed_line = line.as_ref().to_string().replace('\n', "");
         if trimmed_line.eq(&format!("[{profile_name}]")) {
             return true;
         }
@@ -213,13 +216,13 @@ pub fn does_profile_name_exist(file_contents: Vec<String>, profile_name: &str) -
     false
 }
 
-fn find_profile_line_numbers(file_contents: Vec<String>) -> Option<Vec<usize>> {
+fn find_profile_line_numbers<T: AsRef<str>>(file_contents: &[T]) -> Option<Vec<usize>> {
     let mut counter = 0;
     let mut profile_counter;
     let line_array_len = file_contents.len();
     let mut profile_start_line_num_array: Vec<usize> = Vec::new();
     while counter < line_array_len {
-        let line = file_contents[counter].trim();
+        let line = file_contents[counter].as_ref().trim().to_string();
         if line.starts_with('[') && line.ends_with(']') {
             profile_counter = counter;
             // Collect line number of profile
@@ -234,12 +237,15 @@ fn find_profile_line_numbers(file_contents: Vec<String>) -> Option<Vec<usize>> {
     }
 }
 
-fn find_existing_profile_start(file_contents: Vec<String>, profile_name: &str) -> usize {
+fn find_existing_profile_start<T: AsRef<str>>(file_contents: &[T], profile_name: &str) -> usize {
     let mut counter = 0;
     let line_array_len = file_contents.len();
 
     while counter < line_array_len {
-        let trimmed_line = file_contents[counter].replace('\n', "");
+        let trimmed_line = file_contents[counter]
+            .as_ref()
+            .to_string()
+            .replace('\n', "");
         if trimmed_line.eq(&format!("[{profile_name}]")) {
             return counter;
         }
@@ -299,23 +305,18 @@ ttl=90210
 
     #[test]
     fn update_profile_values_credentials_one_existing_profile() {
-        // TODO
-        // TODO can we change the signature to take Vec<&str> so we don't need this map?
-        // TODO
-        let file_contents: Vec<String> = test_file_content(
+        let file_contents = test_file_content(
             "
 [default]
 token=invalidtoken
         ",
-        )
-        .split('\n')
-        .map(|line| line.to_string())
-        .collect();
+        );
+        let file_lines: Vec<&str> = file_contents.split('\n').collect();
         let creds = Credentials {
             token: "newtoken".to_string(),
         };
         let file_types = FileTypes::Credentials(creds);
-        let result = update_profile_values("default", file_contents, file_types);
+        let result = update_profile_values("default", &file_lines, file_types);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
 
@@ -331,9 +332,6 @@ token=newtoken
 
     #[test]
     fn update_profile_values_credentials_three_existing_profiles() {
-        // TODO
-        // TODO can we change the signature to take Vec<&str> so we don't need this map?
-        // TODO
         let file_contents = test_file_content(
             "
 [taco]
@@ -345,15 +343,13 @@ token=anotherinvalidtoken
 [habanero]
 token=spicytoken
         ",
-        )
-        .split('\n')
-        .map(|line| line.to_string())
-        .collect();
+        );
+        let file_lines: Vec<&str> = file_contents.split('\n').collect();
         let creds = Credentials {
             token: "newtoken".to_string(),
         };
         let file_types = FileTypes::Credentials(creds);
-        let result = update_profile_values("default", file_contents, file_types);
+        let result = update_profile_values("default", &file_lines, file_types);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
 
@@ -375,25 +371,20 @@ token=spicytoken
 
     #[test]
     fn update_profile_values_config_one_existing_profile() {
-        // TODO
-        // TODO can we change the signature to take Vec<&str> so we don't need this map?
-        // TODO
-        let file_contents: Vec<String> = test_file_content(
+        let file_contents = test_file_content(
             "
 [default]
 cache=default-cache
 ttl=600
         ",
-        )
-        .split('\n')
-        .map(|line| line.to_string())
-        .collect();
+        );
+        let file_lines: Vec<&str> = file_contents.split('\n').collect();
         let config = Config {
             cache: "new-cache".to_string(),
             ttl: 90210,
         };
         let file_types = FileTypes::Config(config);
-        let result = update_profile_values("default", file_contents, file_types);
+        let result = update_profile_values("default", &file_lines, file_types);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
 
@@ -410,9 +401,6 @@ ttl=90210
 
     #[test]
     fn update_profile_values_config_three_existing_profiles() {
-        // TODO
-        // TODO can we change the signature to take Vec<&str> so we don't need this map?
-        // TODO
         let file_contents = test_file_content(
             "
 [taco]
@@ -427,16 +415,14 @@ ttl=600
 cache=spicy-cache
 ttl=600
         ",
-        )
-        .split('\n')
-        .map(|line| line.to_string())
-        .collect();
+        );
+        let file_lines: Vec<&str> = file_contents.split('\n').collect();
         let config = Config {
             cache: "new-cache".to_string(),
             ttl: 90210,
         };
         let file_types = FileTypes::Config(config);
-        let result = update_profile_values("default", file_contents, file_types);
+        let result = update_profile_values("default", &file_lines, file_types);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
 
