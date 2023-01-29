@@ -433,4 +433,29 @@ token=awesome-token
         );
         assert_eq!(expected.trim_end(), updated.join("\n"));
     }
+
+    #[test]
+    fn add_or_update_profile_creds_existing_token_is_empty() {
+        let existing_content = test_content_to_lines(
+            "
+[default]
+token=
+        ",
+        );
+        let updated = add_or_update_profile(
+            "default",
+            FileTypes::Credentials(Credentials {
+                token: "awesome-token".to_string(),
+            }),
+            existing_content,
+        )
+        .expect("d'oh");
+        let expected = test_file_content(
+            "
+[default]
+token=awesome-token
+        ",
+        );
+        assert_eq!(expected.trim_end(), updated.join("\n"));
+    }
 }
