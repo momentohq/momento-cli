@@ -17,5 +17,5 @@ then
   exit 1
 fi
 
-cargo test --test momento_default_profile $features
-cargo test --test momento_additional_profile $features
+cargo test --test momento_default_profile_test $features
+cargo test --test momento_additional_profile_test $features
