@@ -53,7 +53,7 @@ pub fn debug_output_momento_config_files(config_dir: &Path) {
 fn debug_output_file(file_path: &PathBuf) {
     println!("Momento config / creds file ({file_path:?}) contents:");
     let lines = io::BufReader::new(
-        File::open(file_path).unwrap_or_else(|_| panic!("Unable to open file: {file_path:?}")),
+        File::open(file_path).unwrap_or_else(|e| panic!("Unable to open file: {file_path:?}: {e:?}")),
     )
     .lines();
     for l in lines {
