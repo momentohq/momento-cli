@@ -7,8 +7,14 @@ use crate::{
 };
 
 lazy_static! {
-    static ref PROFILE_HEADER_REGEX: Regex =
+    static ref REGEX_PROFILE_HEADER: Regex =
         Regex::new("^\\s*\\[[^\\]]+\\]\\s*$").expect("Unable to compile profile header regex");
+    static ref REGEX_CONFIG_FILE_CACHE_SETTING: Regex = Regex::new(r"^cache\s*=\s*([\w-]*)\s*$")
+        .expect("Unable to compile config file cache setting regex");
+    static ref REGEX_CONFIG_FILE_TTL_SETTING: Regex = Regex::new(r"^ttl\s*=\s*([\d]*)\s*$")
+        .expect("Unable to compile config file ttl setting regex");
+    static ref REGEX_CREDS_FILE_TOKEN_SETTING: Regex = Regex::new(r"^token\s*=\s*([\w\.-]*)\s*$")
+        .expect("Unable to compile creds file token regex");
 }
 
 pub fn create_new_credentials_profile(profile_name: &str, credentials: Credentials) -> Vec<String> {
@@ -29,7 +35,7 @@ pub fn create_new_config_profile(profile_name: &str, config: Config) -> Vec<Stri
 pub fn update_credentials_profile(
     profile_name: &str,
     file_contents: &[impl AsRef<str>],
-    credentials: Credentials
+    credentials: Credentials,
 ) -> Result<Vec<String>, CliError> {
     let (profile_start_line, profile_end_line) =
         find_line_numbers_for_profile(file_contents, profile_name);
@@ -37,12 +43,12 @@ pub fn update_credentials_profile(
         .iter()
         .map(|l| l.as_ref().to_string())
         .collect();
-    for n in profile_start_line..profile_end_line {
-        updated_file_contents =
-            match replace_credentials_value(&updated_file_contents.clone(), n, &credentials) {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            }
+    for l in updated_file_contents
+        .iter_mut()
+        .take(profile_end_line)
+        .skip(profile_start_line)
+    {
+        *l = replace_credentials_value(l, &credentials)
     }
     Ok(updated_file_contents)
 }
@@ -58,85 +64,33 @@ pub fn update_config_profile<T: AsRef<str>>(
         .iter()
         .map(|l| l.as_ref().to_string())
         .collect();
-    for n in profile_start_line..profile_end_line {
-        updated_file_contents =
-            match replace_config_value(&updated_file_contents.clone(), n, &config) {
-                Ok(v) => v,
-                Err(e) => return Err(e),
-            }
+    for l in updated_file_contents
+        .iter_mut()
+        .take(profile_end_line)
+        .skip(profile_start_line)
+    {
+        *l = replace_config_value(l, &config)
     }
     Ok(updated_file_contents)
 }
 
-fn replace_credentials_value(
-    file_contents: &[impl AsRef<str>],
-    index: usize,
-    credentials: &Credentials,
-) -> Result<Vec<String>, CliError> {
-    // TODO
-    // TODO this fn is looping over the entire file in order to just replace one line; we should
-    // TODO simplify this so that it just accepts the single target line and returns the updated
-    // TODO result.
-    // TODO
-    let mut updated_file_contents: Vec<String> = file_contents
-        .iter()
-        .map(|l| l.as_ref().to_string())
-        .collect();
+fn replace_credentials_value(existing_line: &str, credentials: &Credentials) -> String {
+    let line_with_updated_token = REGEX_CREDS_FILE_TOKEN_SETTING
+        .replace(existing_line, format!("token={}", credentials.token));
 
-    let token_regex = match Regex::new(r"^token\s*=\s*([\w\.-]*)\s*$") {
-        Ok(r) => r,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("invalid regex expression is provided, error: {e}"),
-            })
-        }
-    };
-    let result = token_regex.replace(
-        updated_file_contents[index].as_str(),
-        format!("token={}", credentials.token.as_str()),
-    );
-    updated_file_contents[index] = result.to_string();
-    Ok(updated_file_contents)
+    line_with_updated_token.to_string()
 }
 
-fn replace_config_value<T: AsRef<str>>(
-    file_contents: &[T],
-    index: usize,
-    config: &Config,
-) -> Result<Vec<String>, CliError> {
-    let mut updated_file_contents: Vec<String> = file_contents
-        .iter()
-        .map(|l| l.as_ref().to_string())
-        .collect();
+fn replace_config_value(existing_line: &str, config: &Config) -> String {
+    let line_with_updated_cache =
+        REGEX_CONFIG_FILE_CACHE_SETTING.replace(existing_line, format!("cache={}", config.cache));
 
-    let cache_regex = match Regex::new(r"^cache\s*=\s*([\w-]*)\s*$") {
-        Ok(r) => r,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("invalid regex expression is provided, error: {e}"),
-            })
-        }
-    };
-    let result = cache_regex.replace(
-        updated_file_contents[index].as_str(),
-        format!("cache={}", config.cache.as_str()),
+    let line_with_updated_ttl = REGEX_CONFIG_FILE_TTL_SETTING.replace(
+        line_with_updated_cache.as_ref(),
+        format!("ttl={}", config.ttl),
     );
-    updated_file_contents[index] = result.to_string();
 
-    let ttl_regex = match Regex::new(r"^ttl\s*=\s*([\d]*)\s*$") {
-        Ok(r) => r,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("invalid regex expression is provided, error: {e}"),
-            })
-        }
-    };
-    let result = ttl_regex.replace(
-        updated_file_contents[index].as_str(),
-        format!("ttl={}", config.ttl.to_string().as_str()),
-    );
-    updated_file_contents[index] = result.to_string();
-    Ok(updated_file_contents)
+    line_with_updated_ttl.to_string()
 }
 
 pub fn does_profile_name_exist(file_contents: &[impl AsRef<str>], profile_name: &str) -> bool {
@@ -196,7 +150,7 @@ fn find_line_numbers_for_profile(
 }
 
 fn is_profile_header_line(line: &str) -> bool {
-    PROFILE_HEADER_REGEX.is_match(line)
+    REGEX_PROFILE_HEADER.is_match(line)
 }
 
 #[cfg(test)]
