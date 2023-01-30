@@ -2,9 +2,10 @@ use std::path::Path;
 use tokio::fs;
 
 use crate::config::DEFAULT_CACHE_NAME;
+use crate::utils::ini_config::{update_config_profile, update_credentials_profile};
 use crate::{
     commands::cache::cache_cli::create_cache,
-    config::{Config, Credentials, FileTypes},
+    config::{Config, Credentials},
     error::CliError,
     utils::{
         console::console_info,
@@ -14,7 +15,6 @@ use crate::{
         },
         ini_config::{
             create_new_config_profile, create_new_credentials_profile, does_profile_name_exist,
-            update_profile_values,
         },
         user::{get_config_for_profile, get_creds_for_profile},
     },
@@ -37,22 +37,16 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
         }
     };
     let creds_file_contents = ensure_file_exists_and_get_contents(&credentials_file_path).await?;
-    let new_creds_file_contents = add_or_update_profile(
-        profile_name,
-        FileTypes::Credentials(credentials.clone()),
-        creds_file_contents,
-    )?;
+    let new_creds_file_contents =
+        add_or_update_credentials_profile(profile_name, credentials.clone(), creds_file_contents)?;
     write_to_file(
         &credentials_file_path,
         lines_to_file_content(new_creds_file_contents),
     )
     .await?;
     let config_file_contents = ensure_file_exists_and_get_contents(&config_file_path).await?;
-    let new_config_file_contents = add_or_update_profile(
-        profile_name,
-        FileTypes::Config(config.clone()),
-        config_file_contents,
-    )?;
+    let new_config_file_contents =
+        add_or_update_profile_config(profile_name, config.clone(), config_file_contents)?;
     write_to_file(
         &config_file_path,
         lines_to_file_content(new_config_file_contents),
@@ -259,56 +253,63 @@ fn trim_file_contents(lines: Vec<String>) -> Vec<String> {
     }
 }
 
-fn add_or_update_profile(
+fn add_or_update_credentials_profile(
     profile_name: &str,
-    file_types: FileTypes,
-    file_contents2: Vec<String>,
-    // path: &str,
+    credentials: Credentials,
+    file_contents: Vec<String>,
 ) -> Result<Vec<String>, CliError> {
-    let trimmed_file_contents = trim_file_contents(file_contents2);
+    let trimmed_file_contents = trim_file_contents(file_contents);
     // If profile_name does not exist yet, add new profile and token value
     if !does_profile_name_exist(&trimmed_file_contents, profile_name) {
-        Ok(add_new_profile(
-            file_types.clone(),
+        Ok(add_new_credentials_profile(
+            credentials,
             profile_name,
             trimmed_file_contents,
         ))
     } else {
         // If profile_name already exists, update token value
-        match file_types {
-            FileTypes::Credentials(cr) => {
-                match update_profile_values(
-                    profile_name,
-                    &trimmed_file_contents,
-                    FileTypes::Credentials(cr),
-                ) {
-                    Ok(v) => Ok(v),
-                    Err(e) => Err(e),
-                }
-            }
-            FileTypes::Config(cf) => {
-                match update_profile_values(
-                    profile_name,
-                    &trimmed_file_contents,
-                    FileTypes::Config(cf),
-                ) {
-                    Ok(v) => Ok(v),
-                    Err(e) => Err(e),
-                }
-            }
-        }
+        update_credentials_profile(profile_name, &trimmed_file_contents, credentials)
     }
 }
 
-fn add_new_profile(
-    file_types: FileTypes,
+fn add_or_update_profile_config(
+    profile_name: &str,
+    config: Config,
+    file_contents: Vec<String>,
+) -> Result<Vec<String>, CliError> {
+    let trimmed_file_contents = trim_file_contents(file_contents);
+    // If profile_name does not exist yet, add new profile and token value
+    if !does_profile_name_exist(&trimmed_file_contents, profile_name) {
+        Ok(add_new_config_profile(
+            config,
+            profile_name,
+            trimmed_file_contents,
+        ))
+    } else {
+        // If profile_name already exists, update token value
+        update_config_profile(profile_name, &trimmed_file_contents, config)
+    }
+}
+
+fn add_new_credentials_profile(
+    credentials: Credentials,
     profile_name: &str,
     current_file_content: Vec<String>,
 ) -> Vec<String> {
-    let new_profile = match file_types {
-        FileTypes::Credentials(cr) => create_new_credentials_profile(profile_name, cr),
-        FileTypes::Config(cf) => create_new_config_profile(profile_name, cf),
-    };
+    let new_profile = create_new_credentials_profile(profile_name, credentials);
+    if current_file_content.is_empty() {
+        new_profile
+    } else {
+        [current_file_content, vec!["\n".to_string()], new_profile].concat()
+    }
+}
+
+fn add_new_config_profile(
+    config: Config,
+    profile_name: &str,
+    current_file_content: Vec<String>,
+) -> Vec<String> {
+    let new_profile = create_new_config_profile(profile_name, config);
     if current_file_content.is_empty() {
         new_profile
     } else {
@@ -318,8 +319,8 @@ fn add_new_profile(
 
 #[cfg(test)]
 mod tests {
-    use crate::commands::configure::configure_cli::add_or_update_profile;
-    use crate::config::{Credentials, FileTypes};
+    use crate::commands::configure::configure_cli::add_or_update_credentials_profile;
+    use crate::config::Credentials;
 
     fn test_file_content(untrimmed_file_contents: &str) -> String {
         format!("{}\n", untrimmed_file_contents.trim())
@@ -334,13 +335,13 @@ mod tests {
     }
 
     #[test]
-    fn add_or_update_profile_creds_no_existing_file() {
+    fn add_or_update_credentials_profile_no_existing_file() {
         let existing_content = vec![];
-        let updated = add_or_update_profile(
+        let updated = add_or_update_credentials_profile(
             "default",
-            FileTypes::Credentials(Credentials {
+            Credentials {
                 token: "awesome-token".to_string(),
-            }),
+            },
             existing_content,
         )
         .expect("d'oh");
@@ -354,13 +355,13 @@ token=awesome-token
     }
 
     #[test]
-    fn add_or_update_profile_creds_empty_existing_file() {
+    fn add_or_update_credentials_profile_empty_existing_file() {
         let existing_content = test_content_to_lines("");
-        let updated = add_or_update_profile(
+        let updated = add_or_update_credentials_profile(
             "default",
-            FileTypes::Credentials(Credentials {
+            Credentials {
                 token: "awesome-token".to_string(),
-            }),
+            },
             existing_content,
         )
         .expect("d'oh");
@@ -374,7 +375,7 @@ token=awesome-token
     }
 
     #[test]
-    fn add_or_update_profile_creds_existing_file_existing_profile_same_token() {
+    fn add_or_update_credentials_profile_existing_file_existing_profile_same_token() {
         let existing_content = test_content_to_lines(
             "
 [default]
@@ -383,21 +384,21 @@ token=old-token
         );
         let updated1 = format!(
             "{}\n",
-            add_or_update_profile(
+            add_or_update_credentials_profile(
                 "default",
-                FileTypes::Credentials(Credentials {
+                Credentials {
                     token: "old-token".to_string()
-                }),
+                },
                 existing_content
             )
             .expect("d'oh")
             .join("\n")
         );
-        let updated2 = add_or_update_profile(
+        let updated2 = add_or_update_credentials_profile(
             "default",
-            FileTypes::Credentials(Credentials {
+            Credentials {
                 token: "old-token".to_string(),
-            }),
+            },
             test_content_to_lines(&updated1),
         )
         .expect("d'oh");
@@ -411,18 +412,18 @@ token=old-token
     }
 
     #[test]
-    fn add_or_update_profile_creds_existing_file_existing_profile_new_token() {
+    fn add_or_update_credentials_profile_existing_file_existing_profile_new_token() {
         let existing_content = test_content_to_lines(
             "
 [default]
 token=old-token
         ",
         );
-        let updated = add_or_update_profile(
+        let updated = add_or_update_credentials_profile(
             "default",
-            FileTypes::Credentials(Credentials {
+            Credentials {
                 token: "awesome-token".to_string(),
-            }),
+            },
             existing_content,
         )
         .expect("d'oh");
@@ -436,18 +437,18 @@ token=awesome-token
     }
 
     #[test]
-    fn add_or_update_profile_creds_existing_token_is_empty() {
+    fn add_or_update_credentials_profile_existing_token_is_empty() {
         let existing_content = test_content_to_lines(
             "
 [default]
 token=
         ",
         );
-        let updated = add_or_update_profile(
+        let updated = add_or_update_credentials_profile(
             "default",
-            FileTypes::Credentials(Credentials {
+            Credentials {
                 token: "awesome-token".to_string(),
-            }),
+            },
             existing_content,
         )
         .expect("d'oh");
