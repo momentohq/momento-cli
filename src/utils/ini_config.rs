@@ -1,9 +1,15 @@
+use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::{
     config::{Config, Credentials},
     error::CliError,
 };
+
+lazy_static! {
+    static ref PROFILE_HEADER_REGEX: Regex =
+        Regex::new("^\\s*\\[[^\\]]+\\]\\s*$").expect("Unable to compile profile header regex");
+}
 
 pub fn create_new_credentials_profile(profile_name: &str, credentials: Credentials) -> Vec<String> {
     vec![
@@ -25,53 +31,22 @@ pub fn update_credentials_profile(
     file_contents: &[impl AsRef<str>],
     credentials: Credentials
 ) -> Result<Vec<String>, CliError> {
-    let existing_profile_line_numbers = match find_profile_line_numbers(file_contents) {
-        None => {
-            return Err(CliError {
-                msg: "No profiles found!".to_string(),
-            });
-        }
-        Some(line_numbers) => line_numbers,
-    };
-
-    let existing_profile_starting_line_num =
-        find_existing_profile_start(file_contents, profile_name);
-    let existing_profile_index = existing_profile_line_numbers
-        .iter()
-        .position(|ln| *ln == existing_profile_starting_line_num)
-        .ok_or(CliError {
-            msg: "Unable to find index of current profile".to_string(),
-        })?;
-
-    let num_of_profiles = existing_profile_line_numbers.len();
-    let file_contents_len = file_contents.len();
+    let (profile_start_line, profile_end_line) =
+        find_line_numbers_for_profile(file_contents, profile_name);
     let mut updated_file_contents: Vec<String> = Vec::new();
-    let start_line = existing_profile_starting_line_num;
-    let end_line = if existing_profile_index == (num_of_profiles - 1) {
-        file_contents_len
-    } else {
-        existing_profile_line_numbers[existing_profile_index + 1]
-    };
-    for (counter, line_num) in existing_profile_line_numbers.iter().enumerate() {
-        if existing_profile_starting_line_num == *line_num {
-            for n in start_line..end_line {
-                if n == existing_profile_line_numbers[counter] {
-                    updated_file_contents =
-                        match replace_credentials_value(file_contents, n, &credentials) {
-                            Ok(v) => v,
-                            Err(e) => return Err(e),
-                        }
-                } else {
-                    updated_file_contents = match replace_credentials_value(
-                        &updated_file_contents.clone(),
-                        n,
-                        &credentials,
-                    ) {
-                        Ok(v) => v,
-                        Err(e) => return Err(e),
-                    }
-                }
+    for n in profile_start_line..profile_end_line {
+        if n == profile_start_line {
+            updated_file_contents = match replace_credentials_value(file_contents, n, &credentials)
+            {
+                Ok(v) => v,
+                Err(e) => return Err(e),
             }
+        } else {
+            updated_file_contents =
+                match replace_credentials_value(&updated_file_contents.clone(), n, &credentials) {
+                    Ok(v) => v,
+                    Err(e) => return Err(e),
+                }
         }
     }
     Ok(updated_file_contents)
@@ -82,50 +57,21 @@ pub fn update_config_profile<T: AsRef<str>>(
     file_contents: &[T],
     config: Config,
 ) -> Result<Vec<String>, CliError> {
-    let existing_profile_line_numbers = match find_profile_line_numbers(file_contents) {
-        None => {
-            return Err(CliError {
-                msg: "No profiles found!".to_string(),
-            });
-        }
-        Some(line_numbers) => line_numbers,
-    };
-
-    let existing_profile_starting_line_num =
-        find_existing_profile_start(file_contents, profile_name);
-    let existing_profile_index = existing_profile_line_numbers
-        .iter()
-        .position(|ln| *ln == existing_profile_starting_line_num)
-        .ok_or(CliError {
-            msg: "Unable to find index of current profile".to_string(),
-        })?;
-
-    let num_of_profiles = existing_profile_line_numbers.len();
-    let file_contents_len = file_contents.len();
+    let (profile_start_line, profile_end_line) =
+        find_line_numbers_for_profile(file_contents, profile_name);
     let mut updated_file_contents: Vec<String> = Vec::new();
-    let start_line = existing_profile_starting_line_num;
-    let end_line = if existing_profile_index == (num_of_profiles - 1) {
-        file_contents_len
-    } else {
-        existing_profile_line_numbers[existing_profile_index + 1]
-    };
-
-    for (counter, line_num) in existing_profile_line_numbers.iter().enumerate() {
-        if existing_profile_starting_line_num == *line_num {
-            for n in start_line..end_line {
-                if n == existing_profile_line_numbers[counter] {
-                    updated_file_contents = match replace_config_value(file_contents, n, &config) {
-                        Ok(v) => v,
-                        Err(e) => return Err(e),
-                    }
-                } else {
-                    updated_file_contents =
-                        match replace_config_value(&updated_file_contents.clone(), n, &config) {
-                            Ok(v) => v,
-                            Err(e) => return Err(e),
-                        }
-                }
+    for n in profile_start_line..profile_end_line {
+        if n == profile_start_line {
+            updated_file_contents = match replace_config_value(file_contents, n, &config) {
+                Ok(v) => v,
+                Err(e) => return Err(e),
             }
+        } else {
+            updated_file_contents =
+                match replace_config_value(&updated_file_contents.clone(), n, &config) {
+                    Ok(v) => v,
+                    Err(e) => return Err(e),
+                }
         }
     }
     Ok(updated_file_contents)
@@ -136,6 +82,11 @@ fn replace_credentials_value(
     index: usize,
     credentials: &Credentials,
 ) -> Result<Vec<String>, CliError> {
+    // TODO
+    // TODO this fn is looping over the entire file in order to just replace one line; we should
+    // TODO simplify this so that it just accepts the single target line and returns the updated
+    // TODO result.
+    // TODO
     let mut updated_file_contents: Vec<String> = file_contents
         .iter()
         .map(|l| l.as_ref().to_string())
@@ -206,44 +157,94 @@ pub fn does_profile_name_exist(file_contents: &[impl AsRef<str>], profile_name: 
     }
     false
 }
+//
+// fn find_profile_line_numbers<T: AsRef<str>>(file_contents: &[T]) -> Option<Vec<usize>> {
+//     let mut counter = 0;
+//     let mut profile_counter;
+//     let line_array_len = file_contents.len();
+//     let mut profile_start_line_num_array: Vec<usize> = Vec::new();
+//     while counter < line_array_len {
+//         let line = file_contents[counter].as_ref().trim().to_string();
+//         if line.starts_with('[') && line.ends_with(']') {
+//             profile_counter = counter;
+//             // Collect line number of profile
+//             profile_start_line_num_array.push(profile_counter);
+//         }
+//         counter += 1;
+//     }
+//     if profile_start_line_num_array.is_empty() {
+//         None
+//     } else {
+//         Some(profile_start_line_num_array)
+//     }
+// }
 
-fn find_profile_line_numbers(file_contents: &[impl AsRef<str>]) -> Option<Vec<usize>> {
+fn find_line_numbers_for_profile(
+    file_contents: &[impl AsRef<str>],
+    profile_name: &str,
+) -> (usize, usize) {
     let mut counter = 0;
-    let mut profile_counter;
-    let line_array_len = file_contents.len();
-    let mut profile_start_line_num_array: Vec<usize> = Vec::new();
-    while counter < line_array_len {
-        let line = file_contents[counter].as_ref().trim().to_string();
-        if line.starts_with('[') && line.ends_with(']') {
-            profile_counter = counter;
-            // Collect line number of profile
-            profile_start_line_num_array.push(profile_counter);
+    let mut start_line: usize = 0;
+    let mut end_line: usize = file_contents.len();
+
+    let mut lines_iter = file_contents.iter();
+    let expected_profile_line = format!("[{profile_name}]");
+
+    loop {
+        let line = lines_iter.next();
+        match line {
+            None => {
+                break;
+            }
+            Some(l) => {
+                if *(l.as_ref()) == expected_profile_line {
+                    start_line = counter;
+                    break;
+                }
+            }
         }
         counter += 1;
     }
-    if profile_start_line_num_array.is_empty() {
-        None
-    } else {
-        Some(profile_start_line_num_array)
-    }
-}
 
-fn find_existing_profile_start(file_contents: &[impl AsRef<str>], profile_name: &str) -> usize {
-    let mut counter = 0;
-    let line_array_len = file_contents.len();
-
-    while counter < line_array_len {
-        let trimmed_line = file_contents[counter]
-            .as_ref()
-            .to_string()
-            .replace('\n', "");
-        if trimmed_line.eq(&format!("[{profile_name}]")) {
-            return counter;
-        }
+    loop {
         counter += 1;
+        let line = lines_iter.next();
+        match line {
+            None => {
+                break;
+            }
+            Some(l) => {
+                if is_profile_header_line(l.as_ref()) {
+                    end_line = counter;
+                    break;
+                }
+            }
+        }
     }
-    counter
+
+    (start_line, end_line)
 }
+
+fn is_profile_header_line(line: &str) -> bool {
+    PROFILE_HEADER_REGEX.is_match(line)
+}
+//
+// fn find_existing_profile_start<T: AsRef<str>>(file_contents: &[T], profile_name: &str) -> usize {
+//     let mut counter = 0;
+//     let line_array_len = file_contents.len();
+//
+//     while counter < line_array_len {
+//         let trimmed_line = file_contents[counter]
+//             .as_ref()
+//             .to_string()
+//             .replace('\n', "");
+//         if trimmed_line.eq(&format!("[{profile_name}]")) {
+//             return counter;
+//         }
+//         counter += 1;
+//     }
+//     counter
+// }
 
 #[cfg(test)]
 mod tests {
