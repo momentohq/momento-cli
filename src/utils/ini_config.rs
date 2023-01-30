@@ -20,9 +20,9 @@ pub fn create_new_config_profile(profile_name: &str, config: Config) -> Vec<Stri
     ]
 }
 
-pub fn update_profile_values<T: AsRef<str>>(
+pub fn update_profile_values(
     profile_name: &str,
-    file_contents: &[T],
+    file_contents: &[impl AsRef<str>],
     file_types: FileTypes,
 ) -> Result<Vec<String>, CliError> {
     let existing_profile_line_numbers = match find_profile_line_numbers(file_contents) {
@@ -146,8 +146,8 @@ pub fn update_profile_values<T: AsRef<str>>(
     Ok(updated_file_contents)
 }
 
-fn replace_value<T: AsRef<str>>(
-    file_contents: &[T],
+fn replace_value(
+    file_contents: &[impl AsRef<str>],
     index: usize,
     file_types: FileTypes,
 ) -> Result<Vec<String>, CliError> {
@@ -206,7 +206,7 @@ fn replace_value<T: AsRef<str>>(
     }
 }
 
-pub fn does_profile_name_exist<T: AsRef<str>>(file_contents: &[T], profile_name: &str) -> bool {
+pub fn does_profile_name_exist(file_contents: &[impl AsRef<str>], profile_name: &str) -> bool {
     for line in file_contents.iter() {
         let trimmed_line = line.as_ref().to_string().replace('\n', "");
         if trimmed_line.eq(&format!("[{profile_name}]")) {
@@ -216,7 +216,7 @@ pub fn does_profile_name_exist<T: AsRef<str>>(file_contents: &[T], profile_name:
     false
 }
 
-fn find_profile_line_numbers<T: AsRef<str>>(file_contents: &[T]) -> Option<Vec<usize>> {
+fn find_profile_line_numbers(file_contents: &[impl AsRef<str>]) -> Option<Vec<usize>> {
     let mut counter = 0;
     let mut profile_counter;
     let line_array_len = file_contents.len();
@@ -237,7 +237,7 @@ fn find_profile_line_numbers<T: AsRef<str>>(file_contents: &[T]) -> Option<Vec<u
     }
 }
 
-fn find_existing_profile_start<T: AsRef<str>>(file_contents: &[T], profile_name: &str) -> usize {
+fn find_existing_profile_start(file_contents: &[impl AsRef<str>], profile_name: &str) -> usize {
     let mut counter = 0;
     let line_array_len = file_contents.len();
 
