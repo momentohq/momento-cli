@@ -36,52 +36,39 @@ pub fn update_credentials_profile(
 
     let existing_profile_starting_line_num =
         find_existing_profile_start(file_contents, profile_name);
+    let existing_profile_index = existing_profile_line_numbers
+        .iter()
+        .position(|ln| *ln == existing_profile_starting_line_num)
+        .ok_or(CliError {
+            msg: "Unable to find index of current profile".to_string(),
+        })?;
 
     let num_of_profiles = existing_profile_line_numbers.len();
     let file_contents_len = file_contents.len();
     let mut updated_file_contents: Vec<String> = Vec::new();
+    let start_line = existing_profile_starting_line_num;
+    let end_line = if existing_profile_index == (num_of_profiles - 1) {
+        file_contents_len
+    } else {
+        existing_profile_line_numbers[existing_profile_index + 1]
+    };
     for (counter, line_num) in existing_profile_line_numbers.iter().enumerate() {
         if existing_profile_starting_line_num == *line_num {
-            // Case where profile_name is the only or last item in existing_profile_line_numbers
-            if counter == num_of_profiles - 1 {
-                for n in *line_num..file_contents_len {
-                    if n == *line_num {
-                        updated_file_contents =
-                            match replace_credentials_value(file_contents, n, &credentials) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e),
-                            }
-                    } else {
-                        updated_file_contents = match replace_credentials_value(
-                            &updated_file_contents.clone(),
-                            n,
-                            &credentials,
-                        ) {
+            for n in start_line..end_line {
+                if n == existing_profile_line_numbers[counter] {
+                    updated_file_contents =
+                        match replace_credentials_value(file_contents, n, &credentials) {
                             Ok(v) => v,
                             Err(e) => return Err(e),
                         }
-                    }
-                }
-            } else {
-                // Case where profile_name is at the beginning or at the middle of existing_profile_line_numbers
-                for n in existing_profile_line_numbers[counter]
-                    ..existing_profile_line_numbers[counter + 1]
-                {
-                    if n == existing_profile_line_numbers[counter] {
-                        updated_file_contents =
-                            match replace_credentials_value(file_contents, n, &credentials) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e),
-                            }
-                    } else {
-                        updated_file_contents = match replace_credentials_value(
-                            &updated_file_contents.clone(),
-                            n,
-                            &credentials,
-                        ) {
-                            Ok(v) => v,
-                            Err(e) => return Err(e),
-                        }
+                } else {
+                    updated_file_contents = match replace_credentials_value(
+                        &updated_file_contents.clone(),
+                        n,
+                        &credentials,
+                    ) {
+                        Ok(v) => v,
+                        Err(e) => return Err(e),
                     }
                 }
             }
@@ -106,47 +93,37 @@ pub fn update_config_profile<T: AsRef<str>>(
 
     let existing_profile_starting_line_num =
         find_existing_profile_start(file_contents, profile_name);
+    let existing_profile_index = existing_profile_line_numbers
+        .iter()
+        .position(|ln| *ln == existing_profile_starting_line_num)
+        .ok_or(CliError {
+            msg: "Unable to find index of current profile".to_string(),
+        })?;
 
     let num_of_profiles = existing_profile_line_numbers.len();
     let file_contents_len = file_contents.len();
     let mut updated_file_contents: Vec<String> = Vec::new();
+    let start_line = existing_profile_starting_line_num;
+    let end_line = if existing_profile_index == (num_of_profiles - 1) {
+        file_contents_len
+    } else {
+        existing_profile_line_numbers[existing_profile_index + 1]
+    };
+
     for (counter, line_num) in existing_profile_line_numbers.iter().enumerate() {
         if existing_profile_starting_line_num == *line_num {
-            // Case where profile_name is the only or last item in existing_profile_line_numbers
-            if counter == num_of_profiles - 1 {
-                for n in *line_num..file_contents_len {
-                    if n == *line_num {
-                        updated_file_contents =
-                            match replace_config_value(file_contents, n, &config) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e),
-                            }
-                    } else {
-                        updated_file_contents =
-                            match replace_config_value(&updated_file_contents.clone(), n, &config) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e),
-                            }
+            for n in start_line..end_line {
+                if n == existing_profile_line_numbers[counter] {
+                    updated_file_contents = match replace_config_value(file_contents, n, &config) {
+                        Ok(v) => v,
+                        Err(e) => return Err(e),
                     }
-                }
-            } else {
-                // Case where profile_name is at the beginning or at the middle of existing_profile_line_numbers
-                for n in existing_profile_line_numbers[counter]
-                    ..existing_profile_line_numbers[counter + 1]
-                {
-                    if n == existing_profile_line_numbers[counter] {
-                        updated_file_contents =
-                            match replace_config_value(file_contents, n, &config) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e),
-                            }
-                    } else {
-                        updated_file_contents =
-                            match replace_config_value(&updated_file_contents.clone(), n, &config) {
-                                Ok(v) => v,
-                                Err(e) => return Err(e),
-                            }
-                    }
+                } else {
+                    updated_file_contents =
+                        match replace_config_value(&updated_file_contents.clone(), n, &config) {
+                            Ok(v) => v,
+                            Err(e) => return Err(e),
+                        }
                 }
             }
         }
