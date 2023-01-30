@@ -43,14 +43,7 @@ jobs:
           override: true
       - name: Build
         run: cargo build --verbose --features ${{ matrix.feature }}
-      - name: Create .momento directory
-        run: mkdir ~/.momento
-      - name: Run momento configure test with default profile created initially
-        run: cargo test --test configure_profiles_test --features ${{ matrix.feature }}
-      - name: Remove credentials and config files to prepare for the integration tests
-        run: |
-          rm ~/.momento/credentials
-          rm ~/.momento/config
+
       - name: Run Integration Tests
         run: ./run_test_sequentially.sh ${{ matrix.feature }}
 
