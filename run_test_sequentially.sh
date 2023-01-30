@@ -11,28 +11,10 @@ then
   features="--features $1"
 fi
 
-if [ "$TEST_CACHE_DEFAULT" == "" ]
+if [ "$TEST_AUTH_TOKEN" == "" ]
 then
-  echo "Missing required env var TEST_CACHE_DEFAULT"
+  echo "Missing required env var TEST_AUTH_TOKEN"
   exit 1
-else 
-    export TEST_CACHE_DEFAULT=$TEST_CACHE_DEFAULT
-fi
-
-if [ "$TEST_CACHE_WITH_PROFILE" == "" ]
-then
-  echo "Missing required env var TEST_CACHE_WITH_PROFILE"
-  exit 1
-else
-    export TEST_CACHE_WITH_PROFILE=$TEST_CACHE_WITH_PROFILE
-fi
-
-if [ "$TEST_PROFILE" == "" ] 
-then
-  echo "Missing required env var TEST_PROFILE"
-  exit 1
-else 
-    export TEST_PROFILE=$TEST_PROFILE
 fi
 
 cargo test --test momento_default_profile $features
