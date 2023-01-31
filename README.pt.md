@@ -9,7 +9,7 @@ Japonês: [日本語](README.ja.md)
 brew tap momentohq/tap
 brew install momento-cli
 
-## AWS [regiões disponíveis são us-west-2, us-east-1, ap-northeast-1]
+## AWS [regiões disponíveis são us-west-2, us-east-1, ap-south-1, ap-northeast-1]
 momento account signup aws --email <insira_seu_email_aqui> --region <regiao_desejada>
 
 ## GCP [regiões disponíveis são us-east1, ap-northeast1]
@@ -19,11 +19,11 @@ momento account signup gcp --email <insira_seu_email_aqui> --region <regiao_dese
 momento configure
 
 # Crie um primeiro cache
-momento cache create --name example-cache
+momento cache create example-cache
 
 # escreva e leia valores do seu cache
-momento cache set --key key --value value --ttl 100 --name example-cache
-momento cache get --key key --name example-cache
+momento cache set key value --ttl 100 --cache example-cache
+momento cache get key --cache example-cache
 
 ```
 
@@ -91,18 +91,18 @@ Para atualizar sem perfil, use os mesmos comandos anteriores.
 
 ```
 # use default profile
-momento cache create --name example-cache
-momento cache set --key key --value value --ttl 100 --name example-cache
-momento cache get --key key --name example-cache
+momento cache create example-cache
+momento cache set key value --ttl 100 --cache example-cache
+momento cache get key --cache example-cache
 ```
 
 Você também pode especificar seu perfil desejado.
 
 ```
 # usar new-profile
-momento cache create --name example-cache --profile new-profile
-momento cache set --key key --value value --ttl 100 --name example-cache --profile new-profile
-momento cache get --key key --name example-cache --profile new-profile
+momento cache create example-cache --profile new-profile
+momento cache set key value --ttl 100 --cache example-cache --profile new-profile
+momento cache get key --cache example-cache --profile new-profile
 ```
 
 ## Usar Momento no seu Projeto

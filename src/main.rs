@@ -154,7 +154,11 @@ enum CloudSignupCommand {
     Aws {
         #[arg(long, short)]
         email: String,
-        #[arg(long, short, value_name = "us-west-2, us-east-1, or ap-northeast-1")]
+        #[arg(
+            long,
+            short,
+            value_name = "us-west-2, us-east-1, ap-northeast-1, ap-south-1"
+        )]
         region: String,
     },
 }

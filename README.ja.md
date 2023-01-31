@@ -13,18 +13,18 @@ Linux のインストールマニュアルは[こちら](https://github.com/mome
 brew tap momentohq/tap
 brew install momento-cli
 
-# サインアップ [available regions are us-west-2, us-east-1, ap-northeast-1, default is us-west-2]
+# サインアップ [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1]
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 # 上記のメールアドレスに送付されたトークンとデフォルトのキャッシュ名とTTLであなたのアカウントコンフィグ
 momento configure --quick
 
 # キャッシュ作成
-momento cache create --name example-cache
+momento cache create example-cache
 
 # キャッシュからSet・Getでバリューを取得
-momento cache set --key key --value value --ttl 100 --name example-cache
-momento cache get --key key --name example-cache
+momento cache set key value --ttl 100 --cache example-cache
+momento cache get key --cache example-cache
 
 ```
 
@@ -92,9 +92,9 @@ momento configure --profile new-profile
 
 ```
 #　デフォルトプロファイルが使用される
-momento cache create --name example-cache
-momento cache set --key key --value value --ttl 100 --name example-cache
-momento cache get --key key --name example-cache
+momento cache create example-cache
+momento cache set key value --ttl 100 --cache example-cache
+momento cache get key --cache example-cache
 
 ```
 
@@ -102,9 +102,9 @@ momento cache get --key key --name example-cache
 
 ```
 # new-profileが使用される
-momento cache create --name example-cache --profile new-profile
-momento cache set --key key --value value --ttl 100 --name example-cache --profile new-profile
-momento cache get --key key --name example-cache --profile new-profile
+momento cache create example-cache --profile new-profile
+momento cache set key value --ttl 100 --cache example-cache --profile new-profile
+momento cache get key --cache example-cache --profile new-profile
 ```
 
 ## ご自身のプロジェクト内での Momento 使用方法
