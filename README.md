@@ -60,7 +60,7 @@ the appropriate installation steps above.
 
 ```
 # Sign up
-## AWS [available regions are us-west-2, us-east-1, ap-northeast-1]
+## AWS [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1]
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 ## GCP [available regions are us-east1, asia-northeast1]
@@ -70,11 +70,11 @@ momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED
 momento configure --quick
 
 # Make a cache
-momento cache create --name example-cache
+momento cache create example-cache
 
 # Set and Get values from your cache
-momento cache set --key key --value value --ttl 100 --name example-cache
-momento cache get --key key --name example-cache
+momento cache set key value --ttl 100 --cache example-cache
+momento cache get key --cache example-cache
 ```
 
 Upon signing up, Momento sends a token to the email provided. This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager.
@@ -106,18 +106,18 @@ To update your desired profile, use the same command as above.
 
 ```
 # use default profile
-momento cache create --name example-cache
-momento cache set --key key --value value --ttl 100 --name example-cache
-momento cache get --key key --name example-cache
+momento cache create example-cache
+momento cache set key value --ttl 100 --cache example-cache
+momento cache get key --cache example-cache
 ```
 
 You can also specify your desired profile.
 
 ```
 # use new-profile
-momento cache create --name example-cache --profile new-profile
-momento cache set --key key --value value --ttl 100 --name example-cache --profile new-profile
-momento cache get --key key --name example-cache --profile new-profile
+momento cache create example-cache --profile new-profile
+momento cache set key value --ttl 100 --cahe example-cache --profile new-profile
+momento cache get key --cache example-cache --profile new-profile
 ```
 
 ## Use Momento in Your Project
