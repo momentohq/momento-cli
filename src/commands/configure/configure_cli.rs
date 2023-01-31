@@ -1,6 +1,7 @@
 use std::path::Path;
 use tokio::fs;
 
+use crate::config::DEFAULT_CACHE_NAME;
 use crate::{
     commands::cache::cache_cli::create_cache,
     config::{Config, Credentials, FileTypes},
@@ -8,7 +9,7 @@ use crate::{
     utils::{
         console::console_info,
         file::{
-            create_file, get_config_file_path, get_credentials_file_path, get_momento_dir,
+            create_file, get_config_file_path, get_credentials_file_path, get_momento_config_dir,
             open_file, prompt_user_for_input, read_file_contents, write_to_file,
         },
         ini_config::{
@@ -23,7 +24,7 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
     let credentials = prompt_user_for_creds(profile_name).await?;
     let config = prompt_user_for_config(quick, profile_name).await?;
 
-    let momento_dir = get_momento_dir()?;
+    let momento_dir = get_momento_config_dir()?;
     let credentials_file_path = get_credentials_file_path()?;
     let config_file_path = get_config_file_path()?;
 
@@ -99,7 +100,7 @@ async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Confi
         .unwrap_or_default();
 
     let prompt_cache = if current_config.cache.is_empty() {
-        "default-cache"
+        DEFAULT_CACHE_NAME
     } else {
         current_config.cache.as_str()
     };
@@ -111,7 +112,7 @@ async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Confi
         };
     }
     let cache_name_to_use = if cache_name.is_empty() {
-        "default-cache".to_string()
+        DEFAULT_CACHE_NAME.to_string()
     } else {
         cache_name
     };

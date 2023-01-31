@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+pub const ENV_VAR_NAME_MOMENTO_CONFIG_DIR: &str = "MOMENTO_CONFIG_DIR";
+pub const DEFAULT_CACHE_NAME: &str = "default-cache";
+
 #[derive(Clone)]
 pub enum FileTypes {
     Config(Config),
