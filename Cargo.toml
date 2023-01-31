@@ -4,7 +4,7 @@ path = "src/main.rs"
 
 [package]
 name = "momento-cli"
-version = "0.27.1"
+version = "0.28.0"
 edition = "2021"
 
 [features]
@@ -19,15 +19,16 @@ toml = "^0.6.0"
 lazy_static = "1.4.0"
 configparser = "3.0.0"
 regex = "1"
-momento = { version = "0.21" }
 qrcode = "0.12.0"
 webbrowser = "^0.8.4"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
 predicates = "2.1.1"
-uuid = { version = "1.2.2", features = ["v4"] }
 tempdir = "0.3.7"
+
+[dependencies.momento]
+version = "0.21"
 
 [dependencies.clap]
 version = "4.1"
@@ -58,3 +59,7 @@ version = "1.0.79"
 version = "0.11"
 features = [ "json", "rustls-tls",]
 default-features = false
+
+[dev-dependencies.uuid]
+version = "1.2.2"
+features = [ "v4",]
