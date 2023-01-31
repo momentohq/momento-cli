@@ -888,6 +888,7 @@ dependencies = [
  "configparser",
  "env_logger",
  "home",
+ "lazy_static",
  "log",
  "momento",
  "predicates",

@@ -16,6 +16,7 @@ chrono = "0.4.19"
 colored = "2.0.0"
 home = "0.5.3"
 toml = "^0.6.0"
+lazy_static = "1.4.0"
 configparser = "3.0.0"
 regex = "1"
 momento = { version = "0.21" }
