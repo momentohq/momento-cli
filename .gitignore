@@ -1,5 +1,6 @@
 /target
 .idea/
+.vscode/
 client-cli.iml
 .DS_Store
 .vs/

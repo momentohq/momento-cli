@@ -25,9 +25,10 @@ fn login_with_browser(action: LoginAction) -> EarlyOutActionResult {
                 log::debug!("opened browser to {}", open.url);
                 None
             }
-            Err(e) => Some(Err(MomentoError::ClientSdkError(format!(
-                "Unable to open browser: {e:?}"
-            )))),
+            Err(e) => Some(Err(MomentoError::ClientSdkError {
+                description: "Unable to open browser".into(),
+                source: momento::ErrorSource::Unknown(Box::new(e)),
+            })),
         },
         momento::auth::LoginAction::ShowMessage(message) => {
             console_info!("{}", message.text);
@@ -50,9 +51,10 @@ fn login_with_qr_code(action: LoginAction) -> EarlyOutActionResult {
                     console_info!("{}", image);
                     None
                 }
-                Err(e) => Some(Err(MomentoError::ClientSdkError(format!(
-                    "Unable to generate qr code: {e:?}"
-                )))),
+                Err(e) => Some(Err(MomentoError::ClientSdkError {
+                    description: "could not make qr code".into(),
+                    source: momento::ErrorSource::Unknown(Box::new(e)),
+                })),
             }
         }
         momento::auth::LoginAction::ShowMessage(message) => {
