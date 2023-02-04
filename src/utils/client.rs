@@ -15,11 +15,7 @@ pub async fn get_momento_client(
         endpoint,
     )
     .map_or_else(
-        |error| {
-            Err(CliError {
-                msg: error.to_string(),
-            })
-        },
+        |error| Err(Into::<CliError>::into(error)),
         |builder| Ok(builder.build()),
     )
 }
@@ -44,7 +40,5 @@ where
     log::debug!("{}", debug_note);
 
     let result = momento_interaction.await;
-    result.map_err(|error| CliError {
-        msg: error.to_string(),
-    })
+    result.map_err(Into::<CliError>::into)
 }

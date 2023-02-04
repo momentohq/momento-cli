@@ -22,7 +22,7 @@ mod tests {
             .assert()
             .failure()
             .stderr(
-                predicate::str::is_match("ERROR: error trying to connect: dns error:")
+                predicate::str::is_match("error trying to connect: dns error:")
                     .expect("Unable to create dns error predicate"),
             );
 

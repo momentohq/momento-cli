@@ -7,7 +7,8 @@ use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
-use utils::user::get_creds_and_config;
+use momento::MomentoError;
+use utils::{console::output_info, user::get_creds_and_config};
 
 use crate::utils::console::console_info;
 #[cfg(feature = "login")]
@@ -410,9 +411,7 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
             let mut client =
                 momento::preview::topics::TopicClient::connect(creds.token, endpoint, Some("cli"))
-                    .map_err(|e| CliError {
-                        msg: format!("could not connect: {e:#?}"),
-                    })?;
+                    .map_err(Into::<CliError>::into)?;
             match operation {
                 TopicCommand::Publish {
                     cache_name,
@@ -423,9 +422,7 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
                     client
                         .publish_mut(cache_name, topic, value)
                         .await
-                        .map_err(|e| CliError {
-                            msg: format!("could not publish: {e:?}"),
-                        })?;
+                        .map_err(Into::<CliError>::into)?;
                 }
                 TopicCommand::Subscribe { cache_name, topic } => {
                     let cache_name = cache_name.unwrap_or(config.cache);
@@ -433,13 +430,23 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
                         .subscribe_mut(cache_name, topic, None)
                         .await
                         .map_err(|e| CliError {
-                            msg: format!("could not subscribe: {e:#?}"),
+                            msg: format!(
+                                "the subscription ended without receiving any values: {e:?}"
+                            ),
                         })?;
-                    print_subscription(subscription)
-                        .await
-                        .map_err(|e| CliError {
-                            msg: format!("subscription error: {e:?}"),
-                        })?;
+                    match print_subscription(subscription).await {
+                        Ok(_) => console_info!("The subscription ended"),
+                        Err(e) => match e {
+                            momento::MomentoError::Interrupted {
+                                description,
+                                source,
+                            } => {
+                                output_info(&format!("The subscription ended: {description}"));
+                                console_info!("detail: {source:?}");
+                            }
+                            _ => return Err(e.into()),
+                        },
+                    }
                 }
             }
         }
@@ -506,6 +513,16 @@ async fn run_momento_command(args: Momento) -> Result<(), CliError> {
         },
     }
     Ok(())
+}
+
+/// todo: fix CliError to either not exist anymore or actually support sources
+/// todo: pick output strings more intentionally
+impl From<MomentoError> for CliError {
+    fn from(val: MomentoError) -> Self {
+        CliError {
+            msg: format!("{val:?}"),
+        }
+    }
 }
 
 #[tokio::main]
