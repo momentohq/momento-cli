@@ -16,8 +16,8 @@ fn get_session_token(credentials: &Ini) -> Option<String> {
         let expiry = credentials
             .get(".momento_session", "valid_until")
             .map(|s| s.parse::<i64>().unwrap_or(0))
-            .map(|expiry_timestamp| Utc.timestamp(expiry_timestamp, 0));
-        if let Some(expiry_timestamp) = expiry {
+            .map(|expiry_timestamp| Utc.timestamp_opt(expiry_timestamp, 0).single());
+        if let Some(Some(expiry_timestamp)) = expiry {
             if Utc::now() + Duration::seconds(10) < expiry_timestamp {
                 let expiring = expiry_timestamp - Utc::now();
                 log::debug!("Found user session expiring in {}m", expiring.num_minutes());
