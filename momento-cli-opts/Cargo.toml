@@ -1,4 +1,4 @@
 [package]
 name = "momento-cli-opts"
 version = "0.1.0"
-ediition = "2021"
+edition = "2021"
