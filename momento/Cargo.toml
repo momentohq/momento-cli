@@ -12,6 +12,7 @@ default = []
 login = []
 
 [dependencies]
+momento-cli-opts = { path = "../momento-cli-opts" }
 chrono = "0.4.19"
 colored = "2.0.0"
 home = "0.5.3"
