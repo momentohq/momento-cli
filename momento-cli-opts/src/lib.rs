@@ -1,5 +1,11 @@
 use clap::Parser;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
+pub enum LoginMode {
+    Browser,
+    Qr,
+}
+
 #[derive(Debug, Parser)]
 #[clap(version, about = "CLI for Momento APIs", name = "momento")]
 pub struct Momento {
@@ -81,9 +87,9 @@ pub enum Subcommand {
         #[command(subcommand)]
         operation: SigningKeyCommand,
     },
-    #[cfg(feature = "login")]
     #[command(
-        about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account"
+        about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account",
+        hide = true
     )]
     Login {
         #[arg(value_enum, default_value = "browser")]

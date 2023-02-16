@@ -7,8 +7,7 @@ use crate::{
     utils::file::{get_config_file_path, get_credentials_file_path, read_ini_file},
 };
 
-// #[cfg(feature = "login")]
-// use crate::utils::file::write_to_file;
+use crate::utils::file::write_to_file;
 
 fn get_session_token(credentials: &Ini) -> Option<String> {
     let session_token = credentials.get(".momento_session", "token");
@@ -34,38 +33,36 @@ fn get_session_token(credentials: &Ini) -> Option<String> {
     None
 }
 
-// #[cfg(feature = "login")]
-// fn set_session_token(credentials: &mut Ini, session_token: Option<String>, valid_for_seconds: u32) {
-//     let expiry_time = Utc::now() + Duration::seconds(valid_for_seconds.into());
-//     credentials.set(".momento_session", "token", session_token);
-//     credentials.set(
-//         ".momento_session",
-//         "valid_until",
-//         Some(expiry_time.timestamp().to_string()),
-//     );
-// }
-//
-// #[cfg(feature = "login")]
-// pub async fn clobber_session_token(
-//     session_token: Option<String>,
-//     valid_for_seconds: u32,
-// ) -> Result<(), CliError> {
-//     let mut credentials_file = read_credentials().await?;
-//     set_session_token(&mut credentials_file, session_token, valid_for_seconds);
-//     // TODO
-//     // TODO this is silly, should change write_to_file to take a String or have one fn for vec and one for string
-//     // TODO
-//     write_to_file(
-//         &get_credentials_file_path()?,
-//         credentials_file
-//             .writes()
-//             .split('\n')
-//             .map(|line| line.to_string())
-//             .collect(),
-//     )
-//     .await?;
-//     Ok(())
-// }
+fn set_session_token(credentials: &mut Ini, session_token: Option<String>, valid_for_seconds: u32) {
+    let expiry_time = Utc::now() + Duration::seconds(valid_for_seconds.into());
+    credentials.set(".momento_session", "token", session_token);
+    credentials.set(
+        ".momento_session",
+        "valid_until",
+        Some(expiry_time.timestamp().to_string()),
+    );
+}
+
+pub async fn clobber_session_token(
+    session_token: Option<String>,
+    valid_for_seconds: u32,
+) -> Result<(), CliError> {
+    let mut credentials_file = read_credentials().await?;
+    set_session_token(&mut credentials_file, session_token, valid_for_seconds);
+    // TODO
+    // TODO this is silly, should change write_to_file to take a String or have one fn for vec and one for string
+    // TODO
+    write_to_file(
+        &get_credentials_file_path()?,
+        credentials_file
+            .writes()
+            .split('\n')
+            .map(|line| line.to_string())
+            .collect(),
+    )
+    .await?;
+    Ok(())
+}
 
 pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config), CliError> {
     let creds = get_creds_for_profile(profile).await?;
