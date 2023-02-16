@@ -1,8 +1,6 @@
 use std::{panic, process::exit};
 
 use clap::Parser;
-#[cfg(feature = "login")]
-use commands::login::LoginMode;
 use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
@@ -11,8 +9,6 @@ use momento::MomentoError;
 use utils::{console::output_info, user::get_creds_and_config};
 
 use crate::utils::console::console_info;
-#[cfg(feature = "login")]
-use crate::utils::user::clobber_session_token;
 
 mod commands;
 mod config;
@@ -196,25 +192,25 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     .await?
             }
         },
-        #[cfg(feature = "login")]
-        momento_cli_opts::Subcommand::Login { via } => match commands::login::login(via).await {
-            Ok(credentials) => {
-                let session_token = credentials.token();
-                let session_duration = credentials.valid_for();
-                debug!("{session_token}");
-                clobber_session_token(
-                    Some(session_token.to_string()),
-                    session_duration.as_secs() as u32,
-                )
-                .await?;
-                console_info!("Login valid for {}m", session_duration.as_secs() / 60);
-            }
-            Err(auth_error) => {
-                return Err(CliError {
-                    msg: format!("auth error: {auth_error:?}"),
-                })
-            }
-        },
+        // #[cfg(feature = "login")]
+        // momento_cli_opts::Subcommand::Login { via } => match commands::login::login(via).await {
+        //     Ok(credentials) => {
+        //         let session_token = credentials.token();
+        //         let session_duration = credentials.valid_for();
+        //         debug!("{session_token}");
+        //         clobber_session_token(
+        //             Some(session_token.to_string()),
+        //             session_duration.as_secs() as u32,
+        //         )
+        //         .await?;
+        //         console_info!("Login valid for {}m", session_duration.as_secs() / 60);
+        //     }
+        //     Err(auth_error) => {
+        //         return Err(CliError {
+        //             msg: format!("auth error: {auth_error:?}"),
+        //         })
+        //     }
+        // },
     }
     Ok(())
 }
