@@ -949,9 +949,9 @@ dependencies = [
 
 [[package]]
 name = "momento"
-version = "0.23.0"
+version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98417140685135c3c4b34adf0d5f9dc1117a5bb21f65b960381c9463e3b58be4"
+checksum = "4df6c2f18d4244c670726415fa09d9473df27c469bf3afffd3a6cd7a7ae08373"
 dependencies = [
  "h2",
  "hyper",
@@ -999,9 +999,9 @@ version = "0.1.0"
 
 [[package]]
 name = "momento-protos"
-version = "0.42.4"
+version = "0.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67b0a75230854b9bd802d930b371c3088b9dc12d3bf308021001db6c157bacc8"
+checksum = "cc35fd8627a1baffd01fb407dd754abbcc5877809440cf88834060dba73f5d58"
 dependencies = [
  "prost",
  "tonic",
