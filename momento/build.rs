@@ -17,8 +17,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // and such.  cargo does not currently provide us an env var for target dir,
     // so we compute it.  (It happens to be 3 dirs up from OUT_DIR).
     let target_dir = Path::new(&out_dir).join("../../..");
-    generate_to(Zsh, &mut command, "mm", &target_dir)?;
-    generate_to(Bash, &mut command, "mm", &target_dir)?;
+    generate_to(Zsh, &mut command, "momento", &target_dir)?;
+    generate_to(Bash, &mut command, "momento", &target_dir)?;
 
     Ok(())
 }
