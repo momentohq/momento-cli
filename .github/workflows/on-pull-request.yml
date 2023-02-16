@@ -29,8 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
-      matrix:
-        feature: [default, login]
 
     steps:
       - uses: actions/checkout@v2
@@ -47,10 +45,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build
-        run: cargo build --verbose --features ${{ matrix.feature }}
+        run: cargo build --verbose
 
       - name: Run Integration Tests
-        run: ./run_test_sequentially.sh ${{ matrix.feature }}
+        run: ./run_test_sequentially.sh
 
   build-windows:
     runs-on: windows-latest

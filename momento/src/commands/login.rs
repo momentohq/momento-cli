@@ -1,14 +1,9 @@
 use crate::utils::console::console_info;
 use momento::auth::{AuthError, Credentials, EarlyOutActionResult, LoginAction};
 use momento::MomentoError;
+use momento_cli_opts::LoginMode;
 use qrcode::render::unicode;
 use qrcode::QrCode;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
-pub enum LoginMode {
-    Browser,
-    Qr,
-}
 
 pub async fn login(login_mode: LoginMode) -> Result<Credentials, AuthError> {
     momento::auth::login(match login_mode {

@@ -7,11 +7,8 @@ name = "momento-cli"
 version = "0.29.0"
 edition = "2021"
 
-[features]
-default = []
-login = []
-
 [dependencies]
+momento-cli-opts = { path = "../momento-cli-opts" }
 chrono = "0.4.19"
 colored = "2.0.0"
 home = "0.5.3"

@@ -7,7 +7,6 @@ use crate::{
     utils::file::{get_config_file_path, get_credentials_file_path, read_ini_file},
 };
 
-#[cfg(feature = "login")]
 use crate::utils::file::write_to_file;
 
 fn get_session_token(credentials: &Ini) -> Option<String> {
@@ -34,7 +33,6 @@ fn get_session_token(credentials: &Ini) -> Option<String> {
     None
 }
 
-#[cfg(feature = "login")]
 fn set_session_token(credentials: &mut Ini, session_token: Option<String>, valid_for_seconds: u32) {
     let expiry_time = Utc::now() + Duration::seconds(valid_for_seconds.into());
     credentials.set(".momento_session", "token", session_token);
@@ -45,7 +43,6 @@ fn set_session_token(credentials: &mut Ini, session_token: Option<String>, valid
     );
 }
 
-#[cfg(feature = "login")]
 pub async fn clobber_session_token(
     session_token: Option<String>,
     valid_for_seconds: u32,
