@@ -161,7 +161,8 @@ jobs:
       - name: Update nfpm package config for debs
         run: |
           export MOMENTO_VERSION=${{ needs.release.outputs.version }}
-          export MOMENTO_ARCH=${{ matrix.architecture.deb-arch-shortname }}export BUILD_OUTPUT_DIR=./target/${{ matrix.architecture.target }}/release
+          export MOMENTO_ARCH=${{ matrix.architecture.deb-arch-shortname }}
+          export BUILD_OUTPUT_DIR=./target/${{ matrix.architecture.target }}/release
           export MOMENTO_BINARY=$BUILD_OUTPUT_DIR/momento
           export MOMENTO_BASH_COMPLETION=$BUILD_OUTPUT_DIR/bash/momento
           export MOMENTO_ZSH_COMPLETION=$BUILD_OUTPUT_DIR/zsh/_momento
