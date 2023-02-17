@@ -112,14 +112,19 @@ jobs:
       - name: Build tar.gz and publish asset
         run: |
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture.rpm-arch-shortname }}.tar.gz"
-          tar -C ./target/${{ matrix.architecture.target }}/release/ -zcvf $BINARY_FILE momento
+          ARCHIVE_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture.rpm-arch-shortname }}.tar.gz"
+          BUILD_OUTPUT_DIR="./target/${{ matrix.architecture.target }}/release/"
+          mkdir $BUILD_OUTPUT_DIR/bash
+          cp $BUILD_OUTPUT_DIR/momento.bash $BUILD_OUTPUT_DIR/bash/momento
+          mkdir $BUILD_OUTPUT_DIR/zsh
+          cp $BUILD_OUTPUT_DIR/_momento $BUILD_OUTPUT_DIR/zsh/_momento
+          tar -C ./target/${{ matrix.architecture.target }}/release/ -zcvf $ARCHIVE_FILE momento bash/ zsh/
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
-          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${ARCHIVE_FILE}"
           echo $GH_ASSET
-          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+          curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
         shell: bash
 
       - name: Install nfpm to build rpm and deb
@@ -221,14 +226,19 @@ jobs:
       - name: Build tar.gz and publish asset
         run: |
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="momento-cli-$VERSION.${{ matrix.architecture.target }}.tar.gz"
-          tar -C ./target/${{ matrix.architecture.target }}/release/ -zcvf $BINARY_FILE momento
+          ARCHIVE_FILE="momento-cli-$VERSION.${{ matrix.architecture.target }}.tar.gz"
+          BUILD_OUTPUT_DIR="./target/${{ matrix.architecture.target }}/release/"
+          mkdir $BUILD_OUTPUT_DIR/bash
+          cp $BUILD_OUTPUT_DIR/momento.bash $BUILD_OUTPUT_DIR/bash/momento
+          mkdir $BUILD_OUTPUT_DIR/zsh
+          cp $BUILD_OUTPUT_DIR/_momento $BUILD_OUTPUT_DIR/zsh/_momento
+          tar -C $BUILD_OUTPUT_DIR -zcvf $ARCHIVE_FILE momento bash/ zsh/
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
-          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${BINARY_FILE}"
+          GH_ASSET="https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?name=${ARCHIVE_FILE}"
           echo $GH_ASSET
-          curl --data-binary @$BINARY_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
+          curl --data-binary @$ARCHIVE_FILE -H "$AUTH" -H "Content-Type: application/octet-stream" $GH_ASSET
         shell: bash
 
   publish-windows-assets:
