@@ -52,18 +52,21 @@ pub enum Subcommand {
         #[command(subcommand)]
         operation: CacheCommand,
     },
-    /// Interact with topics
-    /// !!                            !!
-    /// !!       Preview feature      !!
-    /// !!  Your feedback is welcome  !!
-    /// !!                            !!
-    /// These commands requires a cache, which serves as a namespace
-    /// for your topics. If you haven't already, call `cache create`
-    /// to make one!
-    ///
-    /// To create a topic, subscribe to it.
-    /// To delete a topic, stop subscribing to it.
-    #[command(verbatim_doc_comment, hide = true)]
+    #[command(
+        hide = true,
+        about = "**PREVIEW** Interact with topics",
+        long_about = "Interact with topics
+!!                            !!
+!!       Preview feature      !!
+!!  Your feedback is welcome  !!
+!!                            !!
+These commands requires a cache, which serves as a namespace
+for your topics. If you haven't already, call `cache create`
+to make one!
+
+To create a topic, subscribe to it.
+To delete a topic, stop subscribing to it."
+    )]
     Topic {
         #[arg(
             long = "endpoint",
@@ -100,7 +103,7 @@ pub enum Subcommand {
         operation: SigningKeyCommand,
     },
     #[command(
-        about = "*Construction Zone* We're working on this! *Construction Zone* Log in to manage your Momento account",
+        about = "**PREVIEW** Log in to manage your Momento account",
         hide = true
     )]
     Login {
