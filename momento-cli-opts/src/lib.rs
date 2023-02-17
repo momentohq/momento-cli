@@ -1,3 +1,4 @@
+use clap::CommandFactory;
 use clap::Parser;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
@@ -7,11 +8,11 @@ pub enum LoginMode {
 }
 
 #[derive(Debug, Parser)]
-#[clap(
+#[command(
     version,
     bin_name = "momento",
-    about = "CLI for Momento APIs",
-    name = "momento"
+    name = "momento",
+    about = "Command line tool for Momento Serverless Cache"
 )]
 pub struct Momento {
     #[arg(name = "verbose", global = true, long, help = "Log more information")]
@@ -28,6 +29,12 @@ pub struct Momento {
 
     #[command(subcommand)]
     pub command: Subcommand,
+}
+
+impl Momento {
+    pub fn meta_command() -> clap::Command {
+        Momento::command()
+    }
 }
 
 #[derive(Debug, Parser)]
