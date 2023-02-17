@@ -7,7 +7,12 @@ pub enum LoginMode {
 }
 
 #[derive(Debug, Parser)]
-#[clap(version, bin_name = "momento", about = "CLI for Momento APIs", name = "momento")]
+#[clap(
+    version,
+    bin_name = "momento",
+    about = "CLI for Momento APIs",
+    name = "momento"
+)]
 pub struct Momento {
     #[arg(name = "verbose", global = true, long, help = "Log more information")]
     pub verbose: bool,
