@@ -4,7 +4,7 @@ path = "src/main.rs"
 
 [package]
 name = "momento-cli"
-version = "0.30.3"
+version = "0.30.4"
 edition = "2021"
 
 [dependencies]
