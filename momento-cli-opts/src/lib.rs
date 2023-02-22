@@ -55,7 +55,7 @@ pub enum Subcommand {
     #[command(
         hide = true,
         about = "**PREVIEW** Interact with topics",
-        long_about = "Interact with topics
+        before_help = "
 !!                            !!
 !!       Preview feature      !!
 !!  Your feedback is welcome  !!
@@ -89,7 +89,20 @@ To delete a topic, stop subscribing to it."
         #[command(subcommand)]
         operation: AccountCommand,
     },
-    #[command(about = "Manage signing keys")]
+    #[command(
+        hide = true,
+        about = "**PREVIEW** Manage signing keys",
+        before_help = "
+!!                                                              !!
+!!                        Preview feature                       !!
+!!   For more information, contact us at support@momento.com.   !!
+!!                                                              !!
+
+Signing keys can be used to generate pre-signed URLs that allow access to a value in the cache
+for a specified period of time.  The URLs can be distributed to browsers or devices to allow
+them to access the cache value without having access to a Momento auth token.
+    "
+    )]
     SigningKey {
         #[arg(
             long = "endpoint",
@@ -103,8 +116,17 @@ To delete a topic, stop subscribing to it."
         operation: SigningKeyCommand,
     },
     #[command(
+        hide = true,
         about = "**PREVIEW** Log in to manage your Momento account",
-        hide = true
+        before_help = "
+!!                                                              !!
+!!                        Preview feature                       !!
+!!   For more information, contact us at support@momento.com.   !!
+!!                                                              !!
+
+This command will be used to log in to your Momento account and generate secure, time-limited
+tokens for accessing your Momento caches.
+"
     )]
     Login {
         #[arg(value_enum, default_value = "browser")]
