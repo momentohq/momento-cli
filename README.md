@@ -53,6 +53,12 @@ you prefer to manually copy the `momento` executable to your preferred location.
 
 If you have problems with the windows packages please file an issue and let us know!
 
+### Tab Completion
+
+We provide tab completion configuration for zsh and bash.  For linux installs via deb/rpm, no additional shell
+configuration should be necessary if you already have zsh/bash tab completion enabled.  For Homebrew, see
+https://docs.brew.sh/Shell-Completion
+
 ## Quick Start
 
 These instructions assume you have the `momento` executable on your path, after following
