@@ -93,10 +93,10 @@ To delete a topic, stop subscribing to it."
         hide = true,
         about = "**PREVIEW** Manage signing keys",
         before_help = "
-!!                                                              !!
-!!                        Preview feature                       !!
-!!   For more information, contact us at support@momento.com.   !!
-!!                                                              !!
+!!                                                                !!
+!!                        Preview feature                         !!
+!!   For more information, contact us at support@gomomento.com.   !!
+!!                                                                !!
 
 Signing keys can be used to generate pre-signed URLs that allow access to a value in the cache
 for a specified period of time.  The URLs can be distributed to browsers or devices to allow
@@ -119,10 +119,10 @@ them to access the cache value without having access to a Momento auth token.
         hide = true,
         about = "**PREVIEW** Log in to manage your Momento account",
         before_help = "
-!!                                                              !!
-!!                        Preview feature                       !!
-!!   For more information, contact us at support@momento.com.   !!
-!!                                                              !!
+!!                                                                !!
+!!                        Preview feature                         !!
+!!   For more information, contact us at support@gomomento.com.   !!
+!!                                                                !!
 
 This command will be used to log in to your Momento account and generate secure, time-limited
 tokens for accessing your Momento caches.
