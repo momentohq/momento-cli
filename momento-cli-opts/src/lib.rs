@@ -210,6 +210,12 @@ pub enum CacheCommand {
     #[command(about = "List all caches")]
     List {},
 
+    #[command(about = "Flush all contents from a cache")]
+    Flush {
+        #[arg(help = "Name of the cache to flush.", value_name = "CACHE")]
+        cache_name: String,
+    },
+
     #[command(
     about = "Store an item in a cache",
     group(

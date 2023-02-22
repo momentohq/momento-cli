@@ -54,6 +54,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
             }
+            momento_cli_opts::CacheCommand::Flush { cache_name } => {
+                let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                commands::cache::cache_cli::flush_cache(cache_name, creds.token, endpoint).await?
+            }
             momento_cli_opts::CacheCommand::Set {
                 cache_name,
                 cache_name_flag_for_backward_compatibility,
