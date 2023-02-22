@@ -23,6 +23,8 @@ contents:
   dst: /usr/share/bash-completion/completions/momento
 - src: $MOMENTO_ZSH_COMPLETION
   dst: /usr/share/zsh/site-functions/_momento
+- src: $MOMENTO_ZSH_COMPLETION
+  dst: /usr/share/zsh/vendor-completions/_momento
 overrides:
   rpm:
     scripts:
