@@ -43,6 +43,16 @@ pub async fn list_caches(auth_token: String, endpoint: Option<String>) -> Result
     Ok(())
 }
 
+pub async fn flush_cache(
+    cache_name: String,
+    auth_token: String,
+    endpoint: Option<String>,
+) -> Result<(), CliError> {
+    let mut client = get_momento_client(auth_token, endpoint).await?;
+    client.flush_cache(&cache_name).await?;
+    Ok(())
+}
+
 pub async fn set(
     cache_name: String,
     auth_token: String,
