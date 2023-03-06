@@ -53,13 +53,8 @@ pub enum Subcommand {
         operation: CacheCommand,
     },
     #[command(
-        hide = true,
-        about = "**PREVIEW** Interact with topics",
+        about = "Interact with topics",
         before_help = "
-!!                            !!
-!!       Preview feature      !!
-!!  Your feedback is welcome  !!
-!!                            !!
 These commands requires a cache, which serves as a namespace
 for your topics. If you haven't already, call `cache create`
 to make one!
@@ -89,48 +84,10 @@ To delete a topic, stop subscribing to it."
         #[command(subcommand)]
         operation: AccountCommand,
     },
-    #[command(
-        hide = true,
-        about = "**PREVIEW** Manage signing keys",
-        before_help = "
-!!                                                                !!
-!!                        Preview feature                         !!
-!!   For more information, contact us at support@gomomento.com.   !!
-!!                                                                !!
-
-Signing keys can be used to generate pre-signed URLs that allow access to a value in the cache
-for a specified period of time.  The URLs can be distributed to browsers or devices to allow
-them to access the cache value without having access to a Momento auth token.
-    "
-    )]
-    SigningKey {
-        #[arg(
-            long = "endpoint",
-            short = 'e',
-            global = true,
-            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
-        )]
-        endpoint: Option<String>,
-
+    #[command(about = "**PREVIEW** features which are in beta. Feedback is welcome!")]
+    Preview {
         #[command(subcommand)]
-        operation: SigningKeyCommand,
-    },
-    #[command(
-        hide = true,
-        about = "**PREVIEW** Log in to manage your Momento account",
-        before_help = "
-!!                                                                !!
-!!                        Preview feature                         !!
-!!   For more information, contact us at support@gomomento.com.   !!
-!!                                                                !!
-
-This command will be used to log in to your Momento account and generate secure, time-limited
-tokens for accessing your Momento caches.
-"
-    )]
-    Login {
-        #[arg(value_enum, default_value = "browser")]
-        via: LoginMode,
+        operation: PreviewCommand,
     },
 }
 
@@ -163,6 +120,51 @@ pub enum AccountCommand {
     Signup {
         #[command(subcommand)]
         signup_operation: CloudSignupCommand,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum PreviewCommand {
+    #[command(
+        about = "**PREVIEW** Manage signing keys",
+        before_help = "
+!!                                                                !!
+!!                        Preview feature                         !!
+!!   For more information, contact us at support@gomomento.com.   !!
+!!                                                                !!
+
+Signing keys can be used to generate pre-signed URLs that allow access to a value in the cache
+for a specified period of time.  The URLs can be distributed to browsers or devices to allow
+them to access the cache value without having access to a Momento auth token.
+    "
+    )]
+    SigningKey {
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: SigningKeyCommand,
+    },
+    #[command(
+        about = "**PREVIEW** Log in to manage your Momento account",
+        before_help = "
+!!                                                                !!
+!!                        Preview feature                         !!
+!!   For more information, contact us at support@gomomento.com.   !!
+!!                                                                !!
+
+This command will be used to log in to your Momento account and generate secure, time-limited
+tokens for accessing your Momento caches.
+"
+    )]
+    Login {
+        #[arg(value_enum, default_value = "browser")]
+        via: LoginMode,
     },
 }
 

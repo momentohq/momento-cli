@@ -168,51 +168,55 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 }
             },
         },
-        momento_cli_opts::Subcommand::SigningKey {
-            endpoint,
-            operation,
-        } => match operation {
-            momento_cli_opts::SigningKeyCommand::Create { ttl_minutes } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::signingkey::signingkey_cli::create_signing_key(
-                    ttl_minutes,
-                    creds.token,
-                    endpoint,
-                )
-                .await?;
-            }
-            momento_cli_opts::SigningKeyCommand::Revoke { key_id } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::signingkey::signingkey_cli::revoke_signing_key(
-                    key_id.clone(),
-                    creds.token,
-                    endpoint,
-                )
-                .await?;
-                debug!("revoked signing key {}", key_id)
-            }
-            momento_cli_opts::SigningKeyCommand::List {} => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
-                    .await?
-            }
-        },
-        momento_cli_opts::Subcommand::Login { via } => match commands::login::login(via).await {
-            Ok(credentials) => {
-                let session_token = credentials.token();
-                let session_duration = credentials.valid_for();
-                debug!("{session_token}");
-                clobber_session_token(
-                    Some(session_token.to_string()),
-                    session_duration.as_secs() as u32,
-                )
-                .await?;
-                console_info!("Login valid for {}m", session_duration.as_secs() / 60);
-            }
-            Err(auth_error) => {
-                return Err(CliError {
-                    msg: format!("auth error: {auth_error:?}"),
-                })
+        momento_cli_opts::Subcommand::Preview { operation } => match operation {
+            momento_cli_opts::PreviewCommand::SigningKey {
+                endpoint,
+                operation,
+            } => match operation {
+                momento_cli_opts::SigningKeyCommand::Create { ttl_minutes } => {
+                    let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                    commands::signingkey::signingkey_cli::create_signing_key(
+                        ttl_minutes,
+                        creds.token,
+                        endpoint,
+                    )
+                    .await?;
+                }
+                momento_cli_opts::SigningKeyCommand::Revoke { key_id } => {
+                    let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                    commands::signingkey::signingkey_cli::revoke_signing_key(
+                        key_id.clone(),
+                        creds.token,
+                        endpoint,
+                    )
+                    .await?;
+                    debug!("revoked signing key {}", key_id)
+                }
+                momento_cli_opts::SigningKeyCommand::List {} => {
+                    let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                    commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
+                        .await?
+                }
+            },
+            momento_cli_opts::PreviewCommand::Login { via } => {
+                match commands::login::login(via).await {
+                    Ok(credentials) => {
+                        let session_token = credentials.token();
+                        let session_duration = credentials.valid_for();
+                        debug!("{session_token}");
+                        clobber_session_token(
+                            Some(session_token.to_string()),
+                            session_duration.as_secs() as u32,
+                        )
+                        .await?;
+                        console_info!("Login valid for {}m", session_duration.as_secs() / 60);
+                    }
+                    Err(auth_error) => {
+                        return Err(CliError {
+                            msg: format!("auth error: {auth_error:?}"),
+                        })
+                    }
+                }
             }
         },
     }
