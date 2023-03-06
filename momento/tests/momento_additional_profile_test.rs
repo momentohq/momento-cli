@@ -103,8 +103,8 @@ mod tests {
             vec!["configure", "--profile", profile_name],
             vec!["--profile", profile_name, "configure"],
             // signing-key subcommand
-            vec!["signing-key", "list", "--profile", profile_name],
-            vec!["signing-key", "--profile", profile_name, "list"],
+            vec!["preview", "signing-key", "list", "--profile", profile_name],
+            vec!["preview", "signing-key", "--profile", profile_name, "list"],
             vec!["--profile", profile_name, "signing-key", "list"],
             // account subcommand
             vec!["account", "signup", "--profile", profile_name, "help"],
