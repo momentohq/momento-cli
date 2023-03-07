@@ -188,7 +188,7 @@ Either `--valid-for_seconds` or `--never` must be specified.
         #[arg(
             long,
             short,
-            help = "Specify how long until the token expires. Ex. 1d, 10min, 2mon"
+            help = "Specify how long until the token expires. Ex. 1d, 10m, 2M"
         )]
         valid_for: Option<String>,
         #[arg(long, help = "Generate a token that never expires")]
