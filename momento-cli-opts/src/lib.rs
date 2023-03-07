@@ -167,6 +167,11 @@ tokens for accessing your Momento caches.
         via: LoginMode,
     },
     #[command(
+        group(
+            clap::ArgGroup::new("generate-token")
+                .required(true)
+                .args(&["valid_for_seconds", "never"]),
+        ),
         about = "**PREVIEW** Generate an api token for Momento",
         before_help = "
 !!                                                                !!
