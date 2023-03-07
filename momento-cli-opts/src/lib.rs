@@ -170,7 +170,7 @@ tokens for accessing your Momento caches.
         group(
             clap::ArgGroup::new("generate-token")
                 .required(true)
-                .args(&["valid_for_seconds", "never"]),
+                .args(&["valid_for", "never_expire"]),
         ),
         about = "**PREVIEW** Generate an api token for Momento",
         before_help = "
@@ -185,10 +185,14 @@ Either `--valid-for_seconds` or `--never` must be specified.
 "
     )]
     GenerateToken {
-        #[arg(long, short)]
-        valid_for_seconds: Option<u32>,
+        #[arg(
+            long,
+            short,
+            help = "Specify how long until the token expires. Ex. 1d, 10min, 2mon"
+        )]
+        valid_for: Option<String>,
         #[arg(long, help = "Generate a token that never expires")]
-        never: bool,
+        never_expire: bool,
         #[arg(
             long = "endpoint",
             short = 'e',
