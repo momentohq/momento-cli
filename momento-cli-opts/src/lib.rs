@@ -179,16 +179,16 @@ tokens for accessing your Momento caches.
 !!   For more information, contact us at support@gomomento.com.   !!
 !!                                                                !!
 
-This command will be used to generate api tokens to use with Momento. If `--never` is specified,
+This command will be used to generate api tokens to use with Momento. If `--never-expire` is specified,
 then the generated token will never expire. Else, it will expire after the specified number of seconds.
-Either `--valid-for_seconds` or `--never` must be specified.
+Either `--valid-for` or `--never-expire` must be specified.
 "
     )]
     GenerateToken {
         #[arg(
             long,
             short,
-            help = "Specify how long until the token expires. Ex. 1d, 10m, 2M"
+            help = "Specify how long until the token expires. ex. 1d, 10m, 2M"
         )]
         valid_for: Option<String>,
         #[arg(long, help = "Generate a token that never expires")]
