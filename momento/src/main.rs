@@ -5,6 +5,7 @@ use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
+use momento::requests::generate_api_token_request::TokenExpiry;
 use momento::MomentoError;
 use utils::{console::output_info, user::get_creds_and_config};
 
@@ -217,6 +218,22 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         })
                     }
                 }
+            }
+            momento_cli_opts::PreviewCommand::GenerateToken {
+                valid_for_seconds,
+                never,
+                endpoint,
+            } => {
+                let expiry = if never {
+                    TokenExpiry::Never {}
+                } else {
+                    TokenExpiry::Expires {
+                        valid_for_seconds: valid_for_seconds
+                            .expect("oneof valid_for_seconds, or never, must be set"),
+                    }
+                };
+                let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                commands::tokens::generate_api_token(creds.token, endpoint, expiry).await?;
             }
         },
     }

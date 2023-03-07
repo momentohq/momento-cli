@@ -27,7 +27,7 @@ tempdir = "0.3.7"
 path = "../momento-cli-opts"
 
 [dependencies.momento]
-version = "0.24.0"
+version = "0.26.2"
 
 [dependencies.clap]
 version = "4.1"

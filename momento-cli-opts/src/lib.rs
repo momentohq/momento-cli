@@ -166,6 +166,32 @@ tokens for accessing your Momento caches.
         #[arg(value_enum, default_value = "browser")]
         via: LoginMode,
     },
+    #[command(
+        about = "**PREVIEW** Generate an api token for Momento",
+        before_help = "
+!!                                                                !!
+!!                        Preview feature                         !!
+!!   For more information, contact us at support@gomomento.com.   !!
+!!                                                                !!
+
+This command will be used to generate api tokens to use with Momento. If `--never` is specified,
+then the generated token will never expire. Else, it will expire after the specified number of seconds.
+Either `--valid-for_seconds` or `--never` must be specified.
+"
+    )]
+    GenerateToken {
+        #[arg(long, short)]
+        valid_for_seconds: Option<u32>,
+        #[arg(long, help = "Generate a token that never expires")]
+        never: bool,
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+    },
 }
 
 #[derive(Debug, Parser)]
