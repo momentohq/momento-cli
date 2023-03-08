@@ -18,7 +18,7 @@ pub async fn generate_api_token(
             .expect("oneof --valid-for, or --never-expire, must be set")
             .as_str()
             .parse::<humantime::Duration>()
-            .expect("unable to parse valid_for duration")
+            .expect("unable to parse valid-for duration")
             .as_secs();
         TokenExpiry::Expires {
             valid_for_seconds: seconds as u32,
