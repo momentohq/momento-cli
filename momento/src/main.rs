@@ -218,6 +218,20 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                 }
             }
+            momento_cli_opts::PreviewCommand::GenerateToken {
+                valid_for,
+                never_expire,
+                endpoint,
+            } => {
+                let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                commands::tokens::generate_api_token(
+                    creds.token,
+                    endpoint,
+                    never_expire,
+                    valid_for,
+                )
+                .await?;
+            }
         },
     }
     Ok(())

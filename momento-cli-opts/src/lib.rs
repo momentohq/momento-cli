@@ -84,7 +84,10 @@ To delete a topic, stop subscribing to it."
         #[command(subcommand)]
         operation: AccountCommand,
     },
-    #[command(about = "**PREVIEW** features which are in beta. Feedback is welcome!")]
+    #[command(
+        about = "**PREVIEW** features which are in beta. Feedback is welcome!",
+        hide = true
+    )]
     Preview {
         #[command(subcommand)]
         operation: PreviewCommand,
@@ -165,6 +168,41 @@ tokens for accessing your Momento caches.
     Login {
         #[arg(value_enum, default_value = "browser")]
         via: LoginMode,
+    },
+    #[command(
+        group(
+            clap::ArgGroup::new("generate-token")
+                .required(true)
+                .args(&["valid_for", "never_expire"]),
+        ),
+        about = "**PREVIEW** Generate an api token for Momento",
+        before_help = "
+!!                                                                !!
+!!                        Preview feature                         !!
+!!   For more information, contact us at support@gomomento.com.   !!
+!!                                                                !!
+
+This command will be used to generate api tokens to use with Momento. If `--never-expire` is specified,
+then the generated token will never expire. Else, it will expire after the specified number of seconds.
+Either `--valid-for` or `--never-expire` must be specified.
+"
+    )]
+    GenerateToken {
+        #[arg(
+            long,
+            short,
+            help = "Specify how long until the token expires. ex. 1d, 10m, 2M"
+        )]
+        valid_for: Option<String>,
+        #[arg(long, help = "Generate a token that never expires")]
+        never_expire: bool,
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
     },
 }
 
