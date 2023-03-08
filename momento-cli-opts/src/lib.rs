@@ -84,7 +84,10 @@ To delete a topic, stop subscribing to it."
         #[command(subcommand)]
         operation: AccountCommand,
     },
-    #[command(about = "**PREVIEW** features which are in beta. Feedback is welcome!")]
+    #[command(
+        about = "**PREVIEW** features which are in beta. Feedback is welcome!",
+        hide = true
+    )]
     Preview {
         #[command(subcommand)]
         operation: PreviewCommand,
