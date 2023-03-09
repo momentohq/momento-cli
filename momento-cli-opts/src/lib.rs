@@ -272,10 +272,17 @@ pub enum CacheCommand {
     #[command(about = "List all caches")]
     List {},
 
-    #[command(about = "Flush all contents from a cache")]
+    #[command(about = "Flush all contents from a cache",
+group(
+clap::ArgGroup::new("cache-name")
+.required(true)
+.args(["cache_name", "cache_name_flag"])))]
     Flush {
         #[arg(help = "Name of the cache to flush.", value_name = "CACHE")]
-        cache_name: String,
+        cache_name: Option<String>,
+
+        #[arg(long = "cache", value_name = "CACHE")]
+        cache_name_flag: Option<String>,
     },
 
     #[command(

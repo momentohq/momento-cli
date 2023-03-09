@@ -54,8 +54,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
                 commands::cache::cache_cli::list_caches(creds.token, endpoint).await?
             }
-            momento_cli_opts::CacheCommand::Flush { cache_name } => {
+            momento_cli_opts::CacheCommand::Flush {
+                cache_name,
+                cache_name_flag,
+            } => {
                 let (creds, _config) = get_creds_and_config(&args.profile).await?;
+                let cache_name = cache_name
+                    .or(cache_name_flag)
+                    .expect("The argument group guarantees 1 or the other");
                 commands::cache::cache_cli::flush_cache(cache_name, creds.token, endpoint).await?
             }
             momento_cli_opts::CacheCommand::Set {
