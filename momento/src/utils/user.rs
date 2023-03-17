@@ -56,7 +56,7 @@ pub async fn clobber_session_token(
         &get_credentials_file_path()?,
         credentials_file
             .writes()
-            .split('\n')
+            .split_inclusive('\n')
             .map(|line| line.to_string())
             .collect(),
     )
