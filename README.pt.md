@@ -9,7 +9,7 @@ Japonês: [日本語](README.ja.md)
 brew tap momentohq/tap
 brew install momento-cli
 
-## AWS [regiões disponíveis são us-west-2, us-east-1, ap-south-1, ap-northeast-1]
+## AWS [regiões disponíveis são us-west-2, us-east-1, ap-south-1, ap-northeast-1, eu-west-1]
 momento account signup aws --email <insira_seu_email_aqui> --region <regiao_desejada>
 
 ## GCP [regiões disponíveis são us-east1, ap-northeast1]
