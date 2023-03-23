@@ -13,7 +13,7 @@ Linux のインストールマニュアルは[こちら](https://github.com/mome
 brew tap momentohq/tap
 brew install momento-cli
 
-# サインアップ [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1]
+# サインアップ [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1, eu-west-1]
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 # 上記のメールアドレスに送付されたトークンとデフォルトのキャッシュ名とTTLであなたのアカウントコンフィグ

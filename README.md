@@ -66,7 +66,7 @@ the appropriate installation steps above.
 
 ```
 # Sign up
-## AWS [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1]
+## AWS [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1, eu-west-1]
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 ## GCP [available regions are us-east1, asia-northeast1]

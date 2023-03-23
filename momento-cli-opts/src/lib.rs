@@ -222,7 +222,7 @@ pub enum CloudSignupCommand {
         #[arg(
             long,
             short,
-            value_name = "us-west-2, us-east-1, ap-northeast-1, ap-south-1"
+            value_name = "us-west-2, us-east-1, ap-northeast-1, ap-south-1, eu-west-1"
         )]
         region: String,
     },
