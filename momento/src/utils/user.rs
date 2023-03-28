@@ -32,24 +32,24 @@ pub fn update_credentials(profile: &str, session_token: &Credentials) -> Result<
         }
         None => (),
     }
-    return session_token_ini.update_credentials_for_profile(profile);
+    session_token_ini.update_credentials_for_profile(profile)
 }
 
 pub fn update_profile(profile: &str, config: &Config) -> Result<(), CliError> {
     let mut config_ini = read_profile_ini()?;
     config_ini.set(profile, CONFIG_CACHE_KEY, Some(config.cache.clone()));
     config_ini.set(profile, CONFIG_TTL_KEY, Some(config.ttl.to_string()));
-    return config_ini.update_config_for_profile(profile);
+    config_ini.update_config_for_profile(profile)
 }
 
 pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
     let config_ini = read_profile_ini()?;
-    Ok(config_ini.get_config_for_profile(profile)?)
+    config_ini.get_config_for_profile(profile)
 }
 
 pub async fn get_credentials_for_profile(profile: &str) -> Result<Credentials, CliError> {
     let session_tokens_ini = read_session_token_ini()?;
-    Ok(session_tokens_ini.get_credentials_for_profile(profile)?)
+    session_tokens_ini.get_credentials_for_profile(profile)
 }
 
 pub async fn prompt_user_for_input(

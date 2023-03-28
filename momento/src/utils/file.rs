@@ -46,7 +46,7 @@ async fn validate_exist_or_create_ini(path: &PathBuf) -> Result<(), CliError> {
     if !path.exists() {
         create_file(path).await?;
     }
-    set_file_read_write(&path)
+    set_file_read_write(path)
         .await
         .map_err(Into::<CliError>::into)?;
     Ok(())
@@ -99,7 +99,7 @@ fn get_momento_config_dir() -> Result<PathBuf, CliError> {
     let home = home_dir().ok_or_else(|| CliError {
         msg: "could not find home dir".to_string(),
     })?;
-    Ok(PathBuf::from(home).join(BASE_DIR))
+    Ok(home.join(BASE_DIR))
 }
 
 fn get_credentials_file_path() -> Result<PathBuf, CliError> {
@@ -230,13 +230,13 @@ impl IniHelpers for Ini {
 
     fn get_credentials_for_profile(&self, profile: &str) -> Result<Credentials, CliError> {
         let token = self.get_ini_value_requried(profile, CREDENTIALS_TOKEN_KEY)?;
-        return match self.getint(profile, CREDENTIALS_VALID_FOR_KEY) {
+        match self.getint(profile, CREDENTIALS_VALID_FOR_KEY) {
             Ok(Some(valid_for)) => Ok(Credentials::new(token, Some(valid_for))),
             Ok(None) => Ok(Credentials::valid_forever(token)),
             Err(_) => Err(CliError {
                 msg: format!("failed to get config for profile {profile}, please run 'momento configure' to configure your profile"),
             }),
-        };
+        }
     }
 
     fn update_credentials_for_profile(&self, profile: &str) -> Result<(), CliError> {
@@ -256,12 +256,12 @@ impl IniHelpers for Ini {
     }
 
     fn get_ini_value_requried(&self, profile: &str, key: &str) -> Result<String, CliError> {
-        return match self.get(profile, key) {
+        match self.get(profile, key) {
             Some(value) => Ok(value),
             None => Err(CliError {
                 msg: format!("failed to get {key} for profile {profile}, please run 'momento configure' to configure your profile"),
             }),
-        };
+        }
     }
 
     fn get_ini_value_uint_required(&self, profile: &str, key: &str) -> Result<u64, CliError> {
@@ -273,12 +273,12 @@ impl IniHelpers for Ini {
                 })
             }
         };
-        return match uint_result {
+        match uint_result {
             Some(value) => Ok(value),
             None => Err(CliError {
                 msg: format!("failed to get {key} for profile {profile}, please run 'momento configure' to configure your profile"),
             }),
-        };
+        }
     }
 
     fn get_ini_value_int_required(&self, profile: &str, key: &str) -> Result<i64, CliError> {
@@ -290,11 +290,11 @@ impl IniHelpers for Ini {
                 })
             }
         };
-        return match uint_result {
+        match uint_result {
             Some(value) => Ok(value),
             None => Err(CliError {
                 msg: format!("failed to get {key} for profile {profile}, please run 'momento configure' to configure your profile"),
             }),
-        };
+        }
     }
 }
