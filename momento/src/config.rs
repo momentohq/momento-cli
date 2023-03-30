@@ -15,18 +15,6 @@ pub struct Config {
     pub ttl: u64,
 }
 
-impl Config {
-    pub fn new<S>(cache: S, ttl: u64) -> Self
-    where
-        S: Into<String>,
-    {
-        Self {
-            cache: cache.into(),
-            ttl,
-        }
-    }
-}
-
 pub const CREDENTIALS_TOKEN_KEY: &str = "token";
 pub const CREDENTIALS_VALID_FOR_KEY: &str = "valid_for";
 

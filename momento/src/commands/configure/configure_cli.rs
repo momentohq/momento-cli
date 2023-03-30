@@ -52,6 +52,7 @@ async fn prompt_user_for_creds(profile_name: &str) -> Result<Credentials, CliErr
 
     let token = prompt_user_for_input("Token", current_credentials.token.as_str(), true).await?;
 
+    // todo: we should remove forever valid tokens once login feature is released
     Ok(Credentials::valid_forever(token))
 }
 
@@ -101,13 +102,8 @@ async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Confi
         };
     }
 
-    Ok(Config::new(cache_name_to_use, ttl))
+    Ok(Config {
+        cache: cache_name_to_use,
+        ttl,
+    })
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use chrono::{Duration, Utc};
-
-//     use crate::config::Credentials;
-
-// }

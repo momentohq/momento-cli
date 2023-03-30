@@ -26,20 +26,25 @@ pub fn update_credentials(profile: &str, session_token: &Credentials) -> Result<
         Some(session_token.clone().token),
     );
 
-    match &session_token.valid_for {
-        Some(valid) => {
-            session_token_ini.set(profile, CREDENTIALS_VALID_FOR_KEY, Some(valid.to_string()));
-        }
-        None => (),
+    if let Some(valid) = &session_token.valid_for {
+        session_token_ini.set(profile, CREDENTIALS_VALID_FOR_KEY, Some(valid.to_string()));
     }
-    session_token_ini.update_credentials_for_profile(profile)
+    session_token_ini
+        .write_self_to_the_credentials_file()
+        .map_err(|e| CliError {
+            msg: format!("Failed to write credentials to session-token file: {e:?}"),
+        })
 }
 
 pub fn update_profile(profile: &str, config: &Config) -> Result<(), CliError> {
     let mut config_ini = read_profile_ini()?;
     config_ini.set(profile, CONFIG_CACHE_KEY, Some(config.cache.clone()));
     config_ini.set(profile, CONFIG_TTL_KEY, Some(config.ttl.to_string()));
-    config_ini.update_config_for_profile(profile)
+    config_ini
+        .write_self_to_the_config_file()
+        .map_err(|e| CliError {
+            msg: format!("Failed to write profile to config file: {e:?}"),
+        })
 }
 
 pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
