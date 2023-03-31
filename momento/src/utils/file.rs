@@ -1,52 +1,80 @@
-use crate::config::ENV_VAR_NAME_MOMENTO_CONFIG_DIR;
+use std::path::PathBuf;
+
 use configparser::ini::Ini;
 use home::home_dir;
 use log::debug;
-use tokio::{
-    fs::{self, File},
-    io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader},
+
+use tokio::fs::{self, File};
+
+use crate::{
+    config::{
+        Config, Credentials, CONFIG_CACHE_KEY, CONFIG_TTL_KEY, CREDENTIALS_TOKEN_KEY,
+        CREDENTIALS_VALID_FOR_KEY, ENV_VAR_NAME_MOMENTO_CONFIG_DIR,
+    },
+    error::CliError,
 };
+pub static BASE_DIR: &str = ".momento";
+pub static SESSION_TOKEN_DIR: &str = "cache";
+pub static SESSION_TOKEN_FILE_PATH: &str = "cache/session-tokens";
+pub static PROFILE_FILE_NAME: &str = "config";
 
-use crate::error::CliError;
+// Validate files exist; if they don't, make 'em
 
-// FIXME All of this stuff should be using pathbuf and not concatenating strings with /'s...
-pub fn get_credentials_file_path() -> Result<String, CliError> {
-    let momento_home = get_momento_config_dir()?;
-    Ok(format!("{momento_home}/credentials"))
-}
-
-pub fn get_config_file_path() -> Result<String, CliError> {
-    let momento_home = get_momento_config_dir()?;
-    Ok(format!("{momento_home}/config"))
-}
-
-pub fn get_momento_config_dir() -> Result<String, CliError> {
-    let env_var = std::env::var(ENV_VAR_NAME_MOMENTO_CONFIG_DIR);
-
-    if let Ok(val) = env_var {
-        return Ok(val);
-    }
-    // If the env var isn't set we default to ~/.momento
-    let home = home_dir().ok_or_else(|| CliError {
-        msg: "could not find home dir".to_string(),
+pub async fn create_necessary_files() -> Result<(), CliError> {
+    fs::create_dir_all(
+        &(get_momento_config_dir()?.join(SESSION_TOKEN_DIR))
+            .to_str()
+            .ok_or_else(|| CliError {
+                msg: "Could not encode the momento directory path as a string".to_string(),
+            })?,
+    )
+    .await
+    .map_err(|e| CliError {
+        msg: format!("failed to create directory: {e}"),
     })?;
-    Ok(format!("{}/.momento", home.display()))
+
+    validate_exist_or_create_ini(&get_config_file_path()?).await?;
+    validate_exist_or_create_ini(&get_credentials_file_path()?).await?;
+
+    Ok(())
 }
 
-pub async fn open_file(path: &str) -> Result<File, CliError> {
-    let res = File::open(path).await;
+async fn validate_exist_or_create_ini(path: &PathBuf) -> Result<(), CliError> {
+    if !path.exists() {
+        create_file(path).await?;
+    }
+    set_file_read_write(path)
+        .await
+        .map_err(Into::<CliError>::into)?;
+    Ok(())
+}
+
+async fn create_file(path: &PathBuf) -> Result<(), CliError> {
+    let res = File::create(&path).await;
     match res {
-        Ok(f) => {
-            debug!("opened file {path}");
-            Ok(f)
+        Ok(_) => {
+            debug!("created file {:?}", path);
+            Ok(())
         }
         Err(e) => Err(CliError {
-            msg: format!("failed to create file {path}, error: {e}"),
+            msg: format!("failed to create file {path:?}, error: {e}"),
         }),
     }
 }
 
-pub async fn read_ini_file(path: &str) -> Result<Ini, CliError> {
+// Read ini files
+
+pub fn read_profile_ini() -> Result<Ini, CliError> {
+    let profile_path = get_config_file_path()?;
+    read_ini(&profile_path.display().to_string())
+}
+
+pub fn read_session_token_ini() -> Result<Ini, CliError> {
+    let creds_path = get_credentials_file_path()?;
+    read_ini(&creds_path.display().to_string())
+}
+
+fn read_ini(path: &str) -> Result<Ini, CliError> {
     let mut config = Ini::new_cs();
     match config.load(path) {
         Ok(_) => Ok(config),
@@ -56,102 +84,191 @@ pub async fn read_ini_file(path: &str) -> Result<Ini, CliError> {
     }
 }
 
-pub async fn read_file_contents(file: File) -> Result<Vec<String>, CliError> {
-    let reader = BufReader::new(file);
-    let mut contents = reader.lines();
-    // Put each line read from file to a vector
-    let mut file_contents: Vec<String> = vec![];
-    while let Some(line) = contents.next_line().await.map_err(|e| CliError {
-        msg: format!("could not read next line: {e:?}"),
-    })? {
-        file_contents.push(line.to_string());
+// Get file paths
+
+fn get_momento_config_dir() -> Result<PathBuf, CliError> {
+    let env_var = std::env::var(ENV_VAR_NAME_MOMENTO_CONFIG_DIR);
+
+    if let Ok(val) = env_var {
+        return Ok(PathBuf::from(val));
     }
-    Ok(file_contents)
+    // If the env var isn't set we default to ~/.momento
+    let home = home_dir().ok_or_else(|| CliError {
+        msg: "could not find home dir".to_string(),
+    })?;
+    Ok(home.join(BASE_DIR))
 }
 
-pub async fn create_file(path: &str) -> Result<(), CliError> {
-    let res = File::create(path).await;
-    match res {
-        Ok(_) => {
-            debug!("created file {}", path);
-            Ok(())
+fn get_credentials_file_path() -> Result<PathBuf, CliError> {
+    Ok(get_momento_config_dir()?.join(SESSION_TOKEN_FILE_PATH))
+}
+
+fn get_config_file_path() -> Result<PathBuf, CliError> {
+    Ok(get_momento_config_dir()?.join(PROFILE_FILE_NAME))
+}
+
+#[cfg(target_os = "linux")]
+async fn set_file_read_write(path: &PathBuf) -> Result<(), CliError> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to get file permissions {e}"),
+            })
         }
+    }
+    .permissions();
+    perms.set_mode(0o600);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
         Err(e) => Err(CliError {
-            msg: format!("failed to create file {path}, error: {e}"),
+            msg: format!("failed to set file permissions {e}"),
         }),
     }
 }
 
-pub async fn write_to_file(path: &str, file_contents: String) -> Result<(), CliError> {
-    let mut file = match fs::File::create(path).await {
-        Ok(f) => f,
+#[cfg(target_os = "macos")]
+async fn set_file_read_write(path: &PathBuf) -> Result<(), CliError> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to write to file {path}, error: {e}"),
+                msg: format!("failed to get file permissions {e}"),
             })
         }
-    };
-
-    // Write to file
-
-    match file.write(file_contents.as_bytes()).await {
-        Ok(_) => {}
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to write to file {path}, error: {e}"),
-            })
-        }
-    };
-
-    Ok(())
+    }
+    .permissions();
+    perms.set_mode(0o600);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError {
+            msg: format!("failed to set file permissions {e}"),
+        }),
+    }
 }
 
-pub async fn prompt_user_for_input(
-    prompt: &str,
-    default_value: &str,
-    is_secret: bool,
-) -> Result<String, CliError> {
-    let mut stdout = io::stdout();
-
-    let formatted_prompt = if default_value.is_empty() {
-        format!("{prompt}: ")
-    } else if is_secret {
-        format!("{prompt} [****]: ")
-    } else {
-        format!("{prompt} [{default_value}]: ")
-    };
-
-    match stdout.write(formatted_prompt.as_bytes()).await {
-        Ok(_) => debug!("wrote prompt '{}' to stdout", formatted_prompt),
+#[cfg(target_os = "ubuntu")]
+async fn set_file_read_write(path: &PathBuf) -> Result<(), CliError> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
         Err(e) => {
             return Err(CliError {
-                msg: format!("failed to write prompt to stdout: {e}"),
+                msg: format!("failed to get file permissions {e}"),
             })
         }
-    };
-    match stdout.flush().await {
-        Ok(_) => debug!("flushed stdout"),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to flush stdout: {e}"),
-            })
-        }
-    };
-    let stdin = io::stdin();
-    let mut buffer = String::new();
-    let mut reader = BufReader::new(stdin);
-    match reader.read_line(&mut buffer).await {
-        Ok(_) => debug!("read line from stdin"),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to read line from stdin: {e}"),
-            })
-        }
-    };
-
-    let input = buffer.as_str().trim().to_string();
-    if input.is_empty() {
-        return Ok(default_value.to_string());
     }
-    Ok(input)
+    .permissions();
+    perms.set_mode(0o600);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError {
+            msg: format!("failed to set file permissions {e}"),
+        }),
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn set_file_read_write(path: &PathBuf) -> Result<(), CliError> {
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to get file permissions {e}"),
+            })
+        }
+    }
+    .permissions();
+    perms.set_readonly(false);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError {
+            msg: format!("failed to set file permissions {e}"),
+        }),
+    }
+}
+
+pub trait IniHelpers {
+    fn get_config_for_profile(&self, profile: &str) -> Result<Config, CliError>;
+    fn write_self_to_the_config_file(&self) -> Result<(), &'static str>;
+    fn get_credentials_for_profile(&self, profile: &str) -> Result<Credentials, CliError>;
+    fn write_self_to_the_credentials_file(&self) -> Result<(), &'static str>;
+
+    fn get_ini_value_required(&self, profile: &str, key: &str) -> Result<String, CliError>;
+    fn get_ini_value_uint_required(&self, profile: &str, key: &str) -> Result<u64, CliError>;
+    fn get_ini_value_int_required(&self, profile: &str, key: &str) -> Result<i64, CliError>;
+}
+
+impl IniHelpers for Ini {
+    fn get_config_for_profile(&self, profile: &str) -> Result<Config, CliError> {
+        Ok(Config {
+            cache: self.get_ini_value_required(profile, CONFIG_CACHE_KEY)?,
+            ttl: self.get_ini_value_uint_required(profile, CONFIG_TTL_KEY)?,
+        })
+    }
+
+    fn write_self_to_the_config_file(&self) -> Result<(), &'static str> {
+        let file_path = match get_config_file_path() {
+            Ok(valid_path) => valid_path,
+            Err(e) => {
+                log::debug!("get_config_file_path failed: {e:?}");
+                return Err("Failed to get config file path");
+            }
+        };
+        self.write(file_path)
+            .map_err(|_e| "failed to write to config file")?;
+        Ok(())
+    }
+
+    fn get_credentials_for_profile(&self, profile: &str) -> Result<Credentials, CliError> {
+        let token = self.get_ini_value_required(profile, CREDENTIALS_TOKEN_KEY)?;
+        match self.getint(profile, CREDENTIALS_VALID_FOR_KEY) {
+            Ok(Some(valid_for)) => Ok(Credentials::new(token, Some(valid_for))),
+            Ok(None) => Ok(Credentials::valid_forever(token)),
+            Err(_) => Err(CliError {
+                msg: format!("failed to get config for profile {profile}, please run 'momento configure' to configure your profile"),
+            }),
+        }
+    }
+
+    fn write_self_to_the_credentials_file(&self) -> Result<(), &'static str> {
+        let file_path = match get_credentials_file_path() {
+            Ok(valid_path) => valid_path,
+            Err(e) => {
+                log::debug!("get_credentials_file_path failed: {e:?}");
+                return Err("Failed to get config file path");
+            }
+        };
+        self.write(file_path)
+            .map_err(|_e| "failed to write to credentials file")?;
+        Ok(())
+    }
+
+    fn get_ini_value_required(&self, profile: &str, key: &str) -> Result<String, CliError> {
+        self.get(profile, key).ok_or_else(|| CliError {
+            msg: format!("failed to get {key} for profile {profile}, please run 'momento configure' to configure your profile"),
+        })
+    }
+
+    fn get_ini_value_uint_required(&self, profile: &str, key: &str) -> Result<u64, CliError> {
+        Ok(self.getuint(profile, key).map_err(|e| {
+            log::debug!(
+                "Uh oh. We failed to get the uint value from {profile:?} with key {key:?}: {e:?}"
+            )
+        }).map_err(|_| CliError {
+            msg: format!("failed to get {key} for profile {profile}, please run 'momento configure' to configure your profile"),
+        })?.unwrap_or_default())
+    }
+
+    fn get_ini_value_int_required(&self, profile: &str, key: &str) -> Result<i64, CliError> {
+        Ok(self.getint(profile, key).map_err(|e| {
+            log::debug!(
+                "Uh oh. We failed to get the int value from {profile:?} with key {key:?}: {e:?}"
+            )
+        }).map_err(|_| CliError {
+            msg: format!("failed to get {key} for profile {profile}, please run 'momento configure' to configure your profile"),
+        })?.unwrap_or_default())
+    }
 }
