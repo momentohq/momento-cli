@@ -12,7 +12,7 @@ brew install momento-cli
 ## AWS [regiões disponíveis são us-west-2, us-east-1, ap-south-1, ap-northeast-1, eu-west-1]
 momento account signup aws --email <insira_seu_email_aqui> --region <regiao_desejada>
 
-## GCP [regiões disponíveis são us-east1, ap-northeast1]
+## GCP [regiões disponíveis são us-east1, us-east4, ap-northeast1]
 momento account signup gcp --email <insira_seu_email_aqui> --region <regiao_desejada>
 
 # Configure sua conta com as credenciais recebidas por email

@@ -212,7 +212,7 @@ pub enum CloudSignupCommand {
     Gcp {
         #[arg(long, short)]
         email: String,
-        #[arg(long, short, value_name = "us-east1 or asia-northeast1")]
+        #[arg(long, short, value_name = "us-east1, us-east4, asia-northeast1")]
         region: String,
     },
     #[command(about = "Signup for Momento on AWS")]
