@@ -6,9 +6,9 @@ cargo build
 
 ### Testing
 
-Make sure you have `~/.momento/cache/session-tokens` and `~/.momento/config` files with the following data.
+Make sure you have `~/.momento/credentials` and `~/.momento/config` files with the following data.
 
-`~/.momento/cache/session-tokens`
+`~/.momento/credentials`
 
 ```
 [default]
