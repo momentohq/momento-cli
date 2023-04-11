@@ -212,7 +212,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         let session_duration = credentials.valid_for();
                         let creds = Credentials::new_from_duration(session_token, session_duration);
                         debug!("{session_token}");
-                        update_credentials("default", &creds)?;
+                        update_credentials("default", &creds).await?;
                         console_info!("Login valid for {}m", session_duration.as_secs() / 60);
                     }
                     Err(auth_error) => {

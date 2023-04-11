@@ -17,8 +17,8 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
     let credentials = prompt_user_for_creds(profile_name).await?;
     let config = prompt_user_for_config(quick, profile_name).await?;
 
-    update_profile(profile_name, &config)?;
-    update_credentials(profile_name, &credentials)?;
+    update_profile(profile_name, &config).await?;
+    update_credentials(profile_name, &credentials).await?;
 
     // TODO: Update the endpoint to read from config
     match create_cache(config.cache.clone(), credentials.token, None).await {

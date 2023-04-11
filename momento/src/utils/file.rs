@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use configparser::ini::Ini;
 use home::home_dir;
@@ -19,7 +19,6 @@ pub static SESSION_TOKEN_FILE_PATH: &str = "cache/session-tokens";
 pub static PROFILE_FILE_NAME: &str = "config";
 
 // Validate files exist; if they don't, make 'em
-
 pub async fn create_necessary_files() -> Result<(), CliError> {
     fs::create_dir_all(
         &(get_momento_config_dir()?.join(SESSION_TOKEN_DIR))
@@ -64,19 +63,22 @@ async fn create_file(path: &PathBuf) -> Result<(), CliError> {
 
 // Read ini files
 
-pub fn read_profile_ini() -> Result<Ini, CliError> {
+pub async fn read_profile_ini() -> Result<Ini, CliError> {
     let profile_path = get_config_file_path()?;
-    read_ini(&profile_path.display().to_string())
+    read_ini(&profile_path).await
 }
 
-pub fn read_session_token_ini() -> Result<Ini, CliError> {
+pub async fn read_session_token_ini() -> Result<Ini, CliError> {
     let creds_path = get_credentials_file_path()?;
-    read_ini(&creds_path.display().to_string())
+    read_ini(&creds_path).await
 }
 
-fn read_ini(path: &str) -> Result<Ini, CliError> {
+async fn read_ini(path: &Path) -> Result<Ini, CliError> {
+    create_necessary_files().await?;
     let mut config = Ini::new_cs();
-    match config.load(path) {
+    match config.load(path.to_str().ok_or_else(|| CliError {
+        msg: "Failed to get ini path".to_string(),
+    })?) {
         Ok(_) => Ok(config),
         Err(e) => Err(CliError {
             msg: format!("failed to read file: {e}"),

@@ -18,8 +18,11 @@ pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config)
     Ok((creds, config))
 }
 
-pub fn update_credentials(profile: &str, session_token: &Credentials) -> Result<(), CliError> {
-    let mut session_token_ini = read_session_token_ini()?;
+pub async fn update_credentials(
+    profile: &str,
+    session_token: &Credentials,
+) -> Result<(), CliError> {
+    let mut session_token_ini = read_session_token_ini().await?;
     session_token_ini.set(
         profile,
         CREDENTIALS_TOKEN_KEY,
@@ -36,8 +39,8 @@ pub fn update_credentials(profile: &str, session_token: &Credentials) -> Result<
         })
 }
 
-pub fn update_profile(profile: &str, config: &Config) -> Result<(), CliError> {
-    let mut config_ini = read_profile_ini()?;
+pub async fn update_profile(profile: &str, config: &Config) -> Result<(), CliError> {
+    let mut config_ini = read_profile_ini().await?;
     config_ini.set(profile, CONFIG_CACHE_KEY, Some(config.cache.clone()));
     config_ini.set(profile, CONFIG_TTL_KEY, Some(config.ttl.to_string()));
     config_ini
@@ -48,12 +51,12 @@ pub fn update_profile(profile: &str, config: &Config) -> Result<(), CliError> {
 }
 
 pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
-    let config_ini = read_profile_ini()?;
+    let config_ini = read_profile_ini().await?;
     config_ini.get_config_for_profile(profile)
 }
 
 pub async fn get_credentials_for_profile(profile: &str) -> Result<Credentials, CliError> {
-    let session_tokens_ini = read_session_token_ini()?;
+    let session_tokens_ini = read_session_token_ini().await?;
     session_tokens_ini.get_credentials_for_profile(profile)
 }
 
