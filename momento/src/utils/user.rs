@@ -1,124 +1,108 @@
-use chrono::{Duration, TimeZone, Utc};
-use configparser::ini::Ini;
+use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-use crate::{
-    config::{Config, Credentials},
-    error::CliError,
-    utils::file::{get_config_file_path, get_credentials_file_path, read_ini_file},
+use log::debug;
+
+use crate::config::{
+    Config, Credentials, CONFIG_CACHE_KEY, CONFIG_TTL_KEY, CREDENTIALS_TOKEN_KEY,
+    CREDENTIALS_VALID_FOR_KEY,
 };
 
-use crate::utils::file::write_to_file;
+use crate::error::CliError;
 
-fn get_session_token(credentials: &Ini) -> Option<String> {
-    let session_token = credentials.get(".momento_session", "token");
-    if session_token.is_some() {
-        let expiry = credentials
-            .get(".momento_session", "valid_until")
-            .map(|s| s.parse::<i64>().unwrap_or(0))
-            .map(|expiry_timestamp| Utc.timestamp_opt(expiry_timestamp, 0).single());
-        if let Some(Some(expiry_timestamp)) = expiry {
-            if Utc::now() + Duration::seconds(10) < expiry_timestamp {
-                let expiring = expiry_timestamp - Utc::now();
-                log::debug!("Found user session expiring in {}m", expiring.num_minutes());
-                return session_token;
-            }
-            log::debug!("Token already expired at: {}", expiry_timestamp);
-        } else {
-            log::debug!(
-                ".momento_session profile is missing the expiry time. Skipping this session..."
-            );
-        }
-    }
-    log::debug!("No session found in .momento_session profile...");
-    None
-}
-
-fn set_session_token(credentials: &mut Ini, session_token: Option<String>, valid_for_seconds: u32) {
-    let expiry_time = Utc::now() + Duration::seconds(valid_for_seconds.into());
-    credentials.set(".momento_session", "token", session_token);
-    credentials.set(
-        ".momento_session",
-        "valid_until",
-        Some(expiry_time.timestamp().to_string()),
-    );
-}
-
-pub async fn clobber_session_token(
-    session_token: Option<String>,
-    valid_for_seconds: u32,
-) -> Result<(), CliError> {
-    let mut credentials_file = read_credentials().await?;
-    set_session_token(&mut credentials_file, session_token, valid_for_seconds);
-    // TODO
-    // TODO this is silly, should change write_to_file to take a String or have one fn for vec and one for string
-    // TODO
-    write_to_file(
-        &get_credentials_file_path()?,
-        credentials_file
-            .writes()
-            .split_inclusive('\n')
-            .map(|line| line.to_string())
-            .collect(),
-    )
-    .await?;
-    Ok(())
-}
+use super::file::{read_profile_ini, read_session_token_ini, IniHelpers};
 
 pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config), CliError> {
-    let creds = get_creds_for_profile(profile).await?;
+    let creds = get_credentials_for_profile(profile).await?;
     let config = get_config_for_profile(profile).await?;
 
     Ok((creds, config))
 }
 
-pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliError> {
-    let credentials_file = read_credentials().await?;
+pub fn update_credentials(profile: &str, session_token: &Credentials) -> Result<(), CliError> {
+    let mut session_token_ini = read_session_token_ini()?;
+    session_token_ini.set(
+        profile,
+        CREDENTIALS_TOKEN_KEY,
+        Some(session_token.clone().token),
+    );
 
-    get_session_token(&credentials_file).or_else(|| {
-        credentials_file.get(profile, "token")
-    }).map(|credentials| {
-        Ok(Credentials {
-            token: credentials,
+    if let Some(valid) = &session_token.valid_for {
+        session_token_ini.set(profile, CREDENTIALS_VALID_FOR_KEY, Some(valid.to_string()));
+    }
+    session_token_ini
+        .write_self_to_the_credentials_file()
+        .map_err(|e| CliError {
+            msg: format!("Failed to write credentials to session-token file: {e:?}"),
         })
-    }).unwrap_or_else(|| {
-        Err(CliError{
-            msg: format!("failed to get credentials for profile {profile}, please run 'momento configure' to configure your profile")
-        })
-    })
 }
 
-async fn read_credentials() -> Result<Ini, CliError> {
-    let path = get_credentials_file_path()?;
-    read_ini_file(&path).await
+pub fn update_profile(profile: &str, config: &Config) -> Result<(), CliError> {
+    let mut config_ini = read_profile_ini()?;
+    config_ini.set(profile, CONFIG_CACHE_KEY, Some(config.cache.clone()));
+    config_ini.set(profile, CONFIG_TTL_KEY, Some(config.ttl.to_string()));
+    config_ini
+        .write_self_to_the_config_file()
+        .map_err(|e| CliError {
+            msg: format!("Failed to write profile to config file: {e:?}"),
+        })
 }
 
 pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
-    let path = get_config_file_path()?;
-    let configs = match read_ini_file(&path).await {
-        Ok(c) => c,
-        Err(e) => return Err(CliError {
-            msg: format!("failed to read credentials, please run 'momento configure' to setup credentials. Root cause: {e:?}")
-        }),
+    let config_ini = read_profile_ini()?;
+    config_ini.get_config_for_profile(profile)
+}
+
+pub async fn get_credentials_for_profile(profile: &str) -> Result<Credentials, CliError> {
+    let session_tokens_ini = read_session_token_ini()?;
+    session_tokens_ini.get_credentials_for_profile(profile)
+}
+
+pub async fn prompt_user_for_input(
+    prompt: &str,
+    default_value: &str,
+    is_secret: bool,
+) -> Result<String, CliError> {
+    let mut stdout = io::stdout();
+
+    let formatted_prompt = if default_value.is_empty() {
+        format!("{prompt}: ")
+    } else if is_secret {
+        format!("{prompt} [****]: ")
+    } else {
+        format!("{prompt} [{default_value}]: ")
     };
 
-    let cache_result = match configs.get(profile, "cache") {
-        Some(c) => c,
-        None => return Err(CliError{
-            msg: format!("failed to get cache config for profile {profile}, please run 'momento configure' to configure your profile")
-        }),
+    match stdout.write(formatted_prompt.as_bytes()).await {
+        Ok(_) => debug!("wrote prompt '{}' to stdout", formatted_prompt),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to write prompt to stdout: {e}"),
+            })
+        }
+    };
+    match stdout.flush().await {
+        Ok(_) => debug!("flushed stdout"),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to flush stdout: {e}"),
+            })
+        }
+    };
+    let stdin = io::stdin();
+    let mut buffer = String::new();
+    let mut reader = BufReader::new(stdin);
+    match reader.read_line(&mut buffer).await {
+        Ok(_) => debug!("read line from stdin"),
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("failed to read line from stdin: {e}"),
+            })
+        }
     };
 
-    let ttl_result = match configs.get(profile, "ttl") {
-        Some(c) => c,
-        None => return Err(CliError{
-            msg: format!("failed to get ttl config for profile {profile}, please run 'momento configure' to configure your profile")
-        }),
-    };
-
-    Ok(Config {
-        cache: cache_result,
-        ttl: ttl_result.parse::<u64>().map_err(|e| CliError {
-            msg: format!("could not parse a u64: {e:?}"),
-        })?,
-    })
+    let input = buffer.as_str().trim().to_string();
+    if input.is_empty() {
+        return Ok(default_value.to_string());
+    }
+    Ok(input)
 }
