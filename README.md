@@ -69,7 +69,7 @@ the appropriate installation steps above.
 ## AWS [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1, eu-west-1]
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
-## GCP [available regions are us-east1, us-east4, us-central1, asia-northeast1]
+## GCP [available regions are us-east4, us-central1, asia-northeast1]
 momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 # Configure your account with the credentials in your email, plus default cache name and TTL
