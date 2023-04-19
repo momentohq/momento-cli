@@ -122,7 +122,7 @@ You can also specify your desired profile.
 ```
 # use new-profile
 momento cache create example-cache --profile new-profile
-momento cache set key value --ttl 100 --cahe example-cache --profile new-profile
+momento cache set key value --ttl 100 --cache example-cache --profile new-profile
 momento cache get key --cache example-cache --profile new-profile
 ```
 
