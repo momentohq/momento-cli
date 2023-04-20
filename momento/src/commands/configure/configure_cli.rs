@@ -1,7 +1,7 @@
 use crate::config::DEFAULT_CACHE_NAME;
 use crate::utils::file::create_necessary_files;
 
-use crate::utils::user::{prompt_user_for_input, update_credentials, update_profile};
+use crate::utils::user::{prompt_user_for_input, update_profile, update_user_credentials};
 use crate::{
     commands::cache::cache_cli::create_cache,
     config::{Config, Credentials},
@@ -18,7 +18,7 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
     let config = prompt_user_for_config(quick, profile_name).await?;
 
     update_profile(profile_name, &config).await?;
-    update_credentials(profile_name, &credentials).await?;
+    update_user_credentials(profile_name, &credentials).await?;
 
     // TODO: Update the endpoint to read from config
     match create_cache(config.cache.clone(), credentials.token, None).await {

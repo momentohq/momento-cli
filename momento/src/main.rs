@@ -10,7 +10,8 @@ use utils::{console::output_info, user::get_creds_and_config};
 
 use crate::config::Credentials;
 use crate::utils::console::console_info;
-use crate::utils::user::update_credentials;
+use crate::utils::file::LOGIN_DEFAULT_SESSION_PROFILE_NAME;
+use crate::utils::user::update_login_credentials;
 
 mod commands;
 mod config;
@@ -212,7 +213,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         let session_duration = credentials.valid_for();
                         let creds = Credentials::new_from_duration(session_token, session_duration);
                         debug!("{session_token}");
-                        update_credentials("default", &creds).await?;
+                        update_login_credentials(LOGIN_DEFAULT_SESSION_PROFILE_NAME, &creds)
+                            .await?;
                         console_info!("Login valid for {}m", session_duration.as_secs() / 60);
                     }
                     Err(auth_error) => {

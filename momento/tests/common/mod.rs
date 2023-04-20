@@ -48,6 +48,10 @@ pub fn debug_output_momento_config_files(config_dir: &Path) {
     println!();
     let final_creds_path = config_dir.join("cache/session-tokens");
     debug_output_file(&final_creds_path);
+
+    println!();
+    let final_customer_creds_path = config_dir.join("credentials");
+    debug_output_file(&final_customer_creds_path);
 }
 
 fn debug_output_file(file_path: &PathBuf) {
