@@ -86,7 +86,7 @@ pub async fn read_session_token_ini() -> Result<Ini, CliError> {
     .await
 }
 
-pub async fn read_user_session_token_ini() -> Result<Ini, CliError> {
+pub async fn read_user_token_ini() -> Result<Ini, CliError> {
     let user_session_token_path = get_user_credentials_file_path()?;
     read_ini_with_custom_default(
         &user_session_token_path,

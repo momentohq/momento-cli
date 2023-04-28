@@ -11,7 +11,7 @@ use crate::config::{
 use crate::error::CliError;
 
 use super::file::{
-    read_profile_ini, read_session_token_ini, read_user_session_token_ini, IniHelpers,
+    read_profile_ini, read_session_token_ini, read_user_token_ini, IniHelpers,
     LOGIN_DEFAULT_SESSION_PROFILE_NAME, USER_DEFAULT_SESSION_PROFILE_NAME,
 };
 use super::messages::failed_to_get_profile;
@@ -27,24 +27,14 @@ pub async fn update_login_credentials(
     profile: &str,
     session_token: &Credentials,
 ) -> Result<(), CliError> {
-    update_credentials(
-        profile,
-        false,
-        session_token,
-        read_user_session_token_ini().await?,
-    )
+    update_credentials(profile, false, session_token, read_user_token_ini().await?)
 }
 
 pub async fn update_user_credentials(
     profile: &str,
     session_token: &Credentials,
 ) -> Result<(), CliError> {
-    update_credentials(
-        profile,
-        true,
-        session_token,
-        read_user_session_token_ini().await?,
-    )
+    update_credentials(profile, true, session_token, read_user_token_ini().await?)
 }
 
 fn update_credentials(
@@ -94,18 +84,14 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
 }
 
 pub async fn get_credentials_for_profile(profile: &str) -> Result<Credentials, CliError> {
-    // Order of credentials lookup
-    // 1. get credentials with user supplied profile
-    // 2. get credentials with user default profile
-    // 3. get credentials with momento login profile
-    if let Ok(creds) = read_user_session_token_ini()
+    if let Ok(creds) = read_user_token_ini()
         .await?
         .get_credentials_for_profile(profile)
     {
         return Ok(creds);
     }
 
-    if let Ok(creds) = read_user_session_token_ini()
+    if let Ok(creds) = read_user_token_ini()
         .await?
         .get_credentials_for_profile(USER_DEFAULT_SESSION_PROFILE_NAME)
     {
