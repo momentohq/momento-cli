@@ -137,7 +137,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 momento_cli_opts::TopicCommand::Subscribe { cache_name, topic } => {
                     let cache_name = cache_name.unwrap_or(config.cache);
                     let subscription = client
-                        .subscribe_mut(cache_name, topic, None)
+                        .subscribe(cache_name, topic, None)
                         .await
                         .map_err(|e| CliError {
                             msg: format!(

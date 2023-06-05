@@ -88,18 +88,15 @@ pub async fn get(
     let mut client = get_momento_client(auth_token, endpoint).await?;
 
     let response = interact_with_momento("getting...", client.get(&cache_name, key)).await?;
-    match response.result {
-        momento::response::MomentoGetStatus::HIT => {
-            console_data!("{}", response.as_string())
+    match response {
+        momento::response::Get::Hit { value } => {
+            let value: String = value.try_into()?;
+            console_data!("{value}");
+            Ok(())
         }
-        momento::response::MomentoGetStatus::MISS => {
+        momento::response::Get::Miss => {
             debug!("cache miss");
             exit(1)
         }
-        momento::response::MomentoGetStatus::ERROR => {
-            debug!("something terrible happened with the wire protocol");
-            exit(13)
-        }
-    };
-    Ok(())
+    }
 }

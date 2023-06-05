@@ -1,9 +1,10 @@
 use momento::{preview::topics::Subscription, MomentoResult};
+use futures::StreamExt;
 
 use crate::utils::console::console_data;
 
 pub async fn print_subscription(mut subscription: Subscription) -> MomentoResult<()> {
-    while let Some(item) = subscription.item().await? {
+    while let Some(item) = subscription.next().await {
         match item {
             momento::preview::topics::SubscriptionItem::Value(value) => match value.kind {
                 momento::preview::topics::ValueKind::Text(text) => console_data!("{text}"),
