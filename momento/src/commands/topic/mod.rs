@@ -1,5 +1,5 @@
-use momento::{preview::topics::Subscription, MomentoResult};
 use futures::StreamExt;
+use momento::{preview::topics::Subscription, MomentoResult};
 
 use crate::utils::console::console_data;
 

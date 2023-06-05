@@ -136,14 +136,15 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 }
                 momento_cli_opts::TopicCommand::Subscribe { cache_name, topic } => {
                     let cache_name = cache_name.unwrap_or(config.cache);
-                    let subscription = client
-                        .subscribe(cache_name, topic, None)
-                        .await
-                        .map_err(|e| CliError {
-                            msg: format!(
-                                "the subscription ended without receiving any values: {e:?}"
-                            ),
-                        })?;
+                    let subscription =
+                        client
+                            .subscribe(cache_name, topic, None)
+                            .await
+                            .map_err(|e| CliError {
+                                msg: format!(
+                                    "the subscription ended without receiving any values: {e:?}"
+                                ),
+                            })?;
                     match print_subscription(subscription).await {
                         Ok(_) => console_info!("The subscription ended"),
                         Err(e) => match e {
