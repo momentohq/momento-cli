@@ -1,6 +1,8 @@
 use std::{future::Future, time::Duration};
 
-use momento::{response::MomentoError, SimpleCacheClient, SimpleCacheClientBuilder};
+use momento::{
+    response::MomentoError, CredentialProviderBuilder, SimpleCacheClient, SimpleCacheClientBuilder,
+};
 
 use crate::{error::CliError, utils::console::console_data};
 
@@ -8,11 +10,16 @@ pub async fn get_momento_client(
     auth_token: String,
     endpoint: Option<String>,
 ) -> Result<SimpleCacheClient, CliError> {
+    let mut credential_provider_builder = CredentialProviderBuilder::from_string(auth_token);
+    if let Some(momento_override) = endpoint {
+        credential_provider_builder =
+            credential_provider_builder.with_momento_endpoint(momento_override);
+    }
+    let credential_provider = credential_provider_builder.build()?;
     SimpleCacheClientBuilder::new_with_explicit_agent_name(
-        auth_token,
+        credential_provider,
         Duration::from_secs(120),
         "cli",
-        endpoint,
     )
     .map_or_else(
         |error| Err(Into::<CliError>::into(error)),
