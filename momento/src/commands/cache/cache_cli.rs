@@ -89,7 +89,7 @@ pub async fn get(
 
     let response = interact_with_momento("getting...", client.get(&cache_name, key)).await?;
     match response {
-        momento::response::Get::Hit { value} => {
+        momento::response::Get::Hit { value } => {
             let value: String = value.try_into()?;
             console_data!("{}", value);
         }

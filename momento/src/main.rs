@@ -119,14 +119,16 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider_builder = CredentialProviderBuilder::from_string(creds.token);
-            if let Some(endpoint_override)  = endpoint {
-                credential_provider_builder = credential_provider_builder.with_momento_endpoint(endpoint_override)
+            let mut credential_provider_builder =
+                CredentialProviderBuilder::from_string(creds.token);
+            if let Some(endpoint_override) = endpoint {
+                credential_provider_builder =
+                    credential_provider_builder.with_momento_endpoint(endpoint_override)
             }
             let credential_provider = credential_provider_builder.build()?;
 
             let mut client =
-                momento::preview::topics::TopicClient::connect(credential_provider,  Some("cli"))
+                momento::preview::topics::TopicClient::connect(credential_provider, Some("cli"))
                     .map_err(Into::<CliError>::into)?;
             match operation {
                 momento_cli_opts::TopicCommand::Publish {
@@ -142,14 +144,15 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 }
                 momento_cli_opts::TopicCommand::Subscribe { cache_name, topic } => {
                     let cache_name = cache_name.unwrap_or(config.cache);
-                    let subscription = client
-                        .subscribe(cache_name, topic, None)
-                        .await
-                        .map_err(|e| CliError {
-                            msg: format!(
-                                "the subscription ended without receiving any values: {e:?}"
-                            ),
-                        })?;
+                    let subscription =
+                        client
+                            .subscribe(cache_name, topic, None)
+                            .await
+                            .map_err(|e| CliError {
+                                msg: format!(
+                                    "the subscription ended without receiving any values: {e:?}"
+                                ),
+                            })?;
                     match print_subscription(subscription).await {
                         Ok(_) => console_info!("The subscription ended"),
                         Err(e) => match e {
