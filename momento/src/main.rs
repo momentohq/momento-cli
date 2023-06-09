@@ -173,10 +173,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             commands::configure::configure_cli::configure_momento(quick, &args.profile).await?
         }
         momento_cli_opts::Subcommand::Account { operation } => match operation {
-            // This command has been deprecated. It now just prints out an error message.
+            // This command has been removed. It now just prints out an error message.
             momento_cli_opts::AccountCommand::Signup {
                 signup_operation: _,
-            } => commands::account::signup_deprecated().await?,
+            } => commands::account::signup_decommissioned().await?,
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
             momento_cli_opts::PreviewCommand::SigningKey {
