@@ -117,12 +117,14 @@ pub enum SigningKeyCommand {
     List {},
 }
 
+const SIGNUP_DEPRECATED_MSG : &str = "**DEPRECATED** Please go to the Momento Console to sign up";
+
 #[derive(Debug, Parser)]
 pub enum AccountCommand {
-    #[command(about = "Sign up for Momento")]
+    #[command(about = SIGNUP_DEPRECATED_MSG)]
     Signup {
         #[command(subcommand)]
-        signup_operation: CloudSignupCommand,
+        signup_operation: Option<CloudSignupCommand>,
     },
 }
 
@@ -206,25 +208,22 @@ Either `--valid-for` or `--never-expire` must be specified.
     },
 }
 
+
 #[derive(Debug, Parser)]
 pub enum CloudSignupCommand {
-    #[command(about = "Signup for Momento on GCP")]
+    #[command(about = SIGNUP_DEPRECATED_MSG)]
     Gcp {
         #[arg(long, short)]
-        email: String,
-        #[arg(long, short, value_name = "us-east4, us-central1, asia-northeast1")]
-        region: String,
+        email: Option<String>,
+        #[arg(long, short)]
+        region: Option<String>,
     },
-    #[command(about = "Signup for Momento on AWS")]
+    #[command(about = SIGNUP_DEPRECATED_MSG)]
     Aws {
         #[arg(long, short)]
-        email: String,
-        #[arg(
-            long,
-            short,
-            value_name = "us-west-2, us-east-1, ap-northeast-1, ap-south-1, eu-west-1"
-        )]
-        region: String,
+        email: Option<String>,
+        #[arg(long, short)]
+        region: Option<String>,
     },
 }
 

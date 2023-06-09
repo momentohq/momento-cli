@@ -173,14 +173,19 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             commands::configure::configure_cli::configure_momento(quick, &args.profile).await?
         }
         momento_cli_opts::Subcommand::Account { operation } => match operation {
-            momento_cli_opts::AccountCommand::Signup { signup_operation } => match signup_operation
-            {
-                momento_cli_opts::CloudSignupCommand::Gcp { email, region } => {
-                    commands::account::signup_user(email, "gcp".to_string(), region).await?
-                }
-                momento_cli_opts::CloudSignupCommand::Aws { email, region } => {
-                    commands::account::signup_user(email, "aws".to_string(), region).await?
-                }
+            // This command has been deprecated. It now just prints out an error message.
+            // We've kept these subcommands so that if someone calls one of them they get a helpful
+            // error message to go to the console.
+            momento_cli_opts::AccountCommand::Signup { signup_operation } => match signup_operation {
+                Some(cloud) => match cloud {
+                    momento_cli_opts::CloudSignupCommand::Gcp { email: _, region : _} => {
+                        commands::account::signup_deprecated().await?
+                    },
+                    momento_cli_opts::CloudSignupCommand::Aws { email: _, region: _ } => {
+                        commands::account::signup_deprecated().await?
+                    }
+                },
+                None => commands::account::signup_deprecated().await?
             },
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
