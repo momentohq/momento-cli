@@ -28,8 +28,7 @@ tempdir = "0.3.7"
 path = "../momento-cli-opts"
 
 [dependencies.momento]
-#version = "0.26.2"
-path = "../../client-sdk-rust"
+version = "0.29.0"
 
 [dependencies.futures]
 version = "0.3.28"
