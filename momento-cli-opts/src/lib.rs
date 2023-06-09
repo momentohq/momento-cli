@@ -117,12 +117,14 @@ pub enum SigningKeyCommand {
     List {},
 }
 
-const SIGNUP_DEPRECATED_MSG : &str = "**DEPRECATED** Please go to the Momento Console to sign up";
+const SIGNUP_DEPRECATED_MSG : &str = "*DECOMMISSIONED* Please go to the Momento Console (https://console.gomomento.com) to sign up.";
 
 #[derive(Debug, Parser)]
 pub enum AccountCommand {
     #[command(about = SIGNUP_DEPRECATED_MSG)]
     Signup {
+        // We've kept these subcommands as options so that if someone calls one of them
+        // they get a helpful error message to go to the console.
         #[command(subcommand)]
         signup_operation: Option<CloudSignupCommand>,
     },

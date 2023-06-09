@@ -174,19 +174,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
         }
         momento_cli_opts::Subcommand::Account { operation } => match operation {
             // This command has been deprecated. It now just prints out an error message.
-            // We've kept these subcommands so that if someone calls one of them they get a helpful
-            // error message to go to the console.
-            momento_cli_opts::AccountCommand::Signup { signup_operation } => match signup_operation {
-                Some(cloud) => match cloud {
-                    momento_cli_opts::CloudSignupCommand::Gcp { email: _, region : _} => {
-                        commands::account::signup_deprecated().await?
-                    },
-                    momento_cli_opts::CloudSignupCommand::Aws { email: _, region: _ } => {
-                        commands::account::signup_deprecated().await?
-                    }
-                },
-                None => commands::account::signup_deprecated().await?
-            },
+            momento_cli_opts::AccountCommand::Signup { signup_operation: _ } => commands::account::signup_deprecated().await?
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
             momento_cli_opts::PreviewCommand::SigningKey {
