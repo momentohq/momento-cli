@@ -117,7 +117,8 @@ pub enum SigningKeyCommand {
     List {},
 }
 
-const SIGNUP_DEPRECATED_MSG : &str = "*DECOMMISSIONED* Please go to the Momento Console (https://console.gomomento.com) to sign up.";
+const SIGNUP_DEPRECATED_MSG: &str =
+    "*DECOMMISSIONED* Please go to the Momento Console (https://console.gomomento.com) to sign up.";
 
 #[derive(Debug, Parser)]
 pub enum AccountCommand {
@@ -209,7 +210,6 @@ Either `--valid-for` or `--never-expire` must be specified.
         endpoint: Option<String>,
     },
 }
-
 
 #[derive(Debug, Parser)]
 pub enum CloudSignupCommand {
