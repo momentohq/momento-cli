@@ -79,7 +79,10 @@ To delete a topic, stop subscribing to it."
         #[arg(long, short)]
         quick: bool,
     },
-    #[command(about = "Manage accounts")]
+    #[command(
+        about = "Manage accounts",
+        hide = true
+    )]
     Account {
         #[command(subcommand)]
         operation: AccountCommand,
