@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "momento-cli"
-version = "0.38.1"
+version = "0.39.0"
 dependencies = [
  "assert_cmd",
  "chrono",
@@ -1060,7 +1060,7 @@ dependencies = [
 
 [[package]]
 name = "momento-cli-opts"
-version = "0.38.1"
+version = "0.39.0"
 dependencies = [
  "clap",
 ]
