@@ -9,7 +9,11 @@ Command-line tool for managing Momento Serverless Cache.  Supports the following
 * Create, list, and delete Momento caches
 * Get and set values in a Momento cache
 
+## Prerequisites
 
+First things first - go to the [Momento Console](https://console.gomomento.com) to sign up. Generate an auth token to use with the CLI in the tokens tab.
+
+This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager. See the [docs](https://docs.momentohq.com/develop/guides/working-with-momento-auth-tokens) for more information on Momento auth tokens.
 
 ## Installation
 
@@ -65,25 +69,22 @@ These instructions assume you have the `momento` executable on your path, after 
 the appropriate installation steps above.
 
 ```
-# Sign up
-## AWS [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1, eu-west-1]
-momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
-
-## GCP [available regions are us-east4, us-central1]
-momento account signup gcp --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
-
-# Configure your account with the credentials in your email, plus default cache name and TTL
+# Configure your account with the auth token copied from the console
+# plus default cache name (`default-cache`) and TTL (600 seconds)
+# This will also create the cache `default-cache` in your account
 momento configure --quick
 
-# Make a cache
+# Set and Get values from your default cache, with default ttl
+momento cache set key value
+momento cache get key
+
+# Make a different cache
 momento cache create example-cache
 
-# Set and Get values from your cache
+# Set and Get values from a non-default cache with a different ttl
 momento cache set key value --ttl 100 --cache example-cache
 momento cache get key --cache example-cache
 ```
-
-Upon signing up, Momento sends a token to the email provided. This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager.
 
 ## Configure
 

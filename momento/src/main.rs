@@ -173,15 +173,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             commands::configure::configure_cli::configure_momento(quick, &args.profile).await?
         }
         momento_cli_opts::Subcommand::Account { operation } => match operation {
-            momento_cli_opts::AccountCommand::Signup { signup_operation } => match signup_operation
-            {
-                momento_cli_opts::CloudSignupCommand::Gcp { email, region } => {
-                    commands::account::signup_user(email, "gcp".to_string(), region).await?
-                }
-                momento_cli_opts::CloudSignupCommand::Aws { email, region } => {
-                    commands::account::signup_user(email, "aws".to_string(), region).await?
-                }
-            },
+            // This command has been removed. It now just prints out an error message.
+            momento_cli_opts::AccountCommand::Signup {
+                signup_operation: _,
+            } => commands::account::signup_decommissioned().await?,
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
             momento_cli_opts::PreviewCommand::SigningKey {
