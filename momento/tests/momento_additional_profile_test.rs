@@ -133,9 +133,9 @@ mod tests {
 
         momento_configure_profiles(&test_auth_token, &test_run_id).await;
         momento_cache_create_with_profile(&test_run_id, &test_run_id).await;
-        momento_cache_delete_key_with_profile(&test_run_id).await;
         momento_cache_set_with_profile(&test_run_id).await;
         momento_cache_get_with_profile(&test_run_id).await;
+        momento_cache_delete_key_with_profile(&test_run_id).await;
         momento_cache_list_with_profile(&test_run_id, &test_run_id).await;
         momento_cache_delete_with_profile(&test_run_id, &test_run_id).await;
         test_profile_allowed_in_any_position(&test_run_id).await;
