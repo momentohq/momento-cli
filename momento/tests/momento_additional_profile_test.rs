@@ -73,9 +73,16 @@ mod tests {
 
     async fn momento_cache_delete_key_with_profile(profile_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "delete-item", "--key", "key", "--profile", profile_name])
-            .assert()
-            .success();
+        cmd.args([
+            "cache",
+            "delete-item",
+            "--key",
+            "key",
+            "--profile",
+            profile_name,
+        ])
+        .assert()
+        .success();
     }
 
     async fn momento_cache_list_with_profile(profile_name: &str, cache_name: &str) {

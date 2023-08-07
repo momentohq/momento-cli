@@ -111,13 +111,7 @@ pub async fn delete_key(
 
     let mut client = get_momento_client(auth_token, endpoint).await?;
 
-    interact_with_momento(
-            "deleting...",
-            client.delete(
-                &cache_name,
-                key
-            ),
-        )
+    interact_with_momento("deleting...", client.delete(&cache_name, key))
         .await
         .map(|_| ())
 }

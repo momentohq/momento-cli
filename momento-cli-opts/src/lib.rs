@@ -374,9 +374,9 @@ clap::ArgGroup::new("cache-name")
     )]
     DeleteItem {
         #[arg(
-        long = "cache",
-        help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
-        value_name = "CACHE"
+            long = "cache",
+            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            value_name = "CACHE"
         )]
         cache_name: Option<String>,
         #[arg(long = "name", value_name = "CACHE")]

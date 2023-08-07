@@ -131,7 +131,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     key,
                     endpoint,
                 )
-                    .await?;
+                .await?;
             }
         },
         momento_cli_opts::Subcommand::Topic {
