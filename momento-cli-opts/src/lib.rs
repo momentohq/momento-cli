@@ -359,6 +359,35 @@ clap::ArgGroup::new("cache-name")
         #[arg(long = "key", value_name = "KEY")]
         key_flag: Option<String>,
     },
+
+    #[command(
+    about = "Delete an item from the cache",
+    group(
+    clap::ArgGroup::new("cache-key")
+    .required(true)
+    .args(["key", "key_flag"]),
+    ),
+    group(
+    clap::ArgGroup::new("cache-name")
+    .args(["cache_name", "cache_name_flag_for_backward_compatibility"]),
+    ),
+    )]
+    DeleteItem {
+        #[arg(
+            long = "cache",
+            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            value_name = "CACHE"
+        )]
+        cache_name: Option<String>,
+        #[arg(long = "name", value_name = "CACHE")]
+        cache_name_flag_for_backward_compatibility: Option<String>,
+
+        // TODO: Add support for non-string key-value
+        #[arg(help = "Cache key to delete")]
+        key: Option<String>,
+        #[arg(long = "key", value_name = "KEY")]
+        key_flag: Option<String>,
+    },
 }
 
 #[derive(Debug, Parser)]

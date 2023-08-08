@@ -71,6 +71,20 @@ mod tests {
             .stdout("value\n");
     }
 
+    async fn momento_cache_delete_key_with_profile(profile_name: &str) {
+        let mut cmd = Command::cargo_bin("momento").unwrap();
+        cmd.args([
+            "cache",
+            "delete-item",
+            "--key",
+            "key",
+            "--profile",
+            profile_name,
+        ])
+        .assert()
+        .success();
+    }
+
     async fn momento_cache_list_with_profile(profile_name: &str, cache_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args(["cache", "list", "--profile", profile_name])
@@ -128,6 +142,7 @@ mod tests {
         momento_cache_create_with_profile(&test_run_id, &test_run_id).await;
         momento_cache_set_with_profile(&test_run_id).await;
         momento_cache_get_with_profile(&test_run_id).await;
+        momento_cache_delete_key_with_profile(&test_run_id).await;
         momento_cache_list_with_profile(&test_run_id, &test_run_id).await;
         momento_cache_delete_with_profile(&test_run_id, &test_run_id).await;
         test_profile_allowed_in_any_position(&test_run_id).await;

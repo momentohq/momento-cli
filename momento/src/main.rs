@@ -113,6 +113,26 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 )
                 .await?;
             }
+            momento_cli_opts::CacheCommand::DeleteItem {
+                cache_name,
+                cache_name_flag_for_backward_compatibility,
+                key,
+                key_flag,
+            } => {
+                let (creds, config) = get_creds_and_config(&args.profile).await?;
+                let key = key
+                    .or(key_flag)
+                    .expect("The argument group guarantees 1 or the other");
+                commands::cache::cache_cli::delete_key(
+                    cache_name
+                        .or(cache_name_flag_for_backward_compatibility)
+                        .unwrap_or(config.cache),
+                    creds.token,
+                    key,
+                    endpoint,
+                )
+                .await?;
+            }
         },
         momento_cli_opts::Subcommand::Topic {
             endpoint,

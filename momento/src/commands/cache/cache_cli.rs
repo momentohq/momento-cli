@@ -100,3 +100,18 @@ pub async fn get(
     };
     Ok(())
 }
+
+pub async fn delete_key(
+    cache_name: String,
+    auth_token: String,
+    key: String,
+    endpoint: Option<String>,
+) -> Result<(), CliError> {
+    debug!("deleting key: {} from cache: {}", key, cache_name);
+
+    let mut client = get_momento_client(auth_token, endpoint).await?;
+
+    interact_with_momento("deleting...", client.delete(&cache_name, key))
+        .await
+        .map(|_| ())
+}
