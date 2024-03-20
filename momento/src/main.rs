@@ -6,6 +6,7 @@ use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
 use momento::{CredentialProviderBuilder, MomentoError};
+use momento_cli_opts::PreviewCommand;
 use utils::{console::output_info, user::get_creds_and_config};
 
 use crate::utils::console::console_info;
@@ -261,6 +262,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     valid_for,
                 )
                 .await?;
+            }
+            PreviewCommand::CloudLinter { .. } => {
+                console_info!("Unimplemented")
             }
         },
     }
