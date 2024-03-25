@@ -1,0 +1,16 @@
+name: CHRIS CERT TEST
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  chris-cert-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Is this thing on
+        id: thing_on
+        run: |
+          echo "hi"
