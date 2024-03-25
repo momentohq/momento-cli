@@ -209,6 +209,19 @@ Either `--valid-for` or `--never-expire` must be specified.
         )]
         endpoint: Option<String>,
     },
+    #[command(
+        about = "**PREVIEW** Query your AWS account to find optimizations with Momento",
+        before_help = "
+!!                                                                !!
+!!                        Preview feature                         !!
+!!   For more information, contact us at support@gomomento.com.   !!
+!!                                                                !!
+
+This command will be used to fetch information about your Elasticache clusters and DynamoDB tables
+to help find opportunities for optimizations with Momento.
+"
+    )]
+    CloudLinter {},
 }
 
 #[derive(Debug, Parser)]
