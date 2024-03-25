@@ -210,8 +210,8 @@ Either `--valid-for` or `--never-expire` must be specified.
         endpoint: Option<String>,
     },
     #[command(
-    about = "**PREVIEW** Query your AWS account to find optimizations with Momento",
-    before_help = "
+        about = "**PREVIEW** Query your AWS account to find optimizations with Momento",
+        before_help = "
 !!                                                                !!
 !!                        Preview feature                         !!
 !!   For more information, contact us at support@gomomento.com.   !!
