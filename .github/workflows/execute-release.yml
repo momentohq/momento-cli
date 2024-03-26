@@ -400,7 +400,7 @@ jobs:
 
       - name: Delete PFX certificate
         env:
-          CERT_PATH: ${{ steps.write_pfx.outputs.pfx_path }}
+          CERT_PATH: "${{ steps.write_client_auth_cert.outputs.p12_path }}"
         run: Remove-Item -Path $env:CERT_PATH
 
       - name: Create zip and installer urls
