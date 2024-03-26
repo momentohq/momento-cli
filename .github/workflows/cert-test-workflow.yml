@@ -42,6 +42,7 @@ jobs:
       - name: Install digicert smtools
         run: |
           $procMain = Start-Process "msiexec" "/i smtools-windows-x64.msi /qn /l*! msi_install.log" -NoNewWindow -PassThru
+          echo $null >> msi_install.log
           $procLog = Start-Process "powershell" "Get-Content -Path msi_install.log -Wait" -NoNewWindow -PassThru
           $procMain.WaitForExit()
           $procLog.Kill()
