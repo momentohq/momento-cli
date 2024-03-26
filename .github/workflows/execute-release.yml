@@ -344,16 +344,8 @@ jobs:
 #          smctl healthcheck
 #        shell: cmd
 
-      - name: Test and cache signtool path
-        id: signtool
-        run: |
-          $signtool = "C:/Program Files (x86)/Windows Kits/10/bin/10.0.17763.0/x86/signtool.exe"
-          Test-Path -Path $signtool -PathType Leaf
-          echo "::set-output name=signtool_path::$signtool"
-
       - name: Sign Momento binary
         env:
-          SIGNTOOL_PATH: ${{ steps.signtool.outputs.signtool_path }}
           MOMENTO_BINARY_PATH: ${{ steps.build.outputs.momento_binary_path }}
           SM_HOST: ${{ secrets.CODE_SIGNING_HOST }}
           SM_API_KEY: ${{ secrets.CODE_SIGNING_API_KEY }}
@@ -362,8 +354,8 @@ jobs:
         run: |
           echo "HERE IS THE SIGNTOOL PATH:"
           echo $env:SIGNTOOL_PATH
-          "$env:SIGNTOOL_PATH" sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 $env:MOMENTO_BINARY_PATH
-          $env:SIGNTOOL_PATH verify /v /pa $env:MOMENTO_BINARY_PATH
+          signtool.exe sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 $env:MOMENTO_BINARY_PATH
+          signtool.exe verify /v /pa $env:MOMENTO_BINARY_PATH
 
       - name: Create zip
         id: create_zip
@@ -399,7 +391,6 @@ jobs:
 
       - name: Sign installer
         env:
-          SIGNTOOL_PATH: ${{ steps.signtool.outputs.signtool_path }}
           MSI_PATH: ${{ steps.build_installer.outputs.asset_path }}
           SM_HOST: ${{ secrets.CODE_SIGNING_HOST }}
           SM_API_KEY: ${{ secrets.CODE_SIGNING_API_KEY }}
@@ -408,8 +399,8 @@ jobs:
         run: |
           echo "HERE IS THE SIGNTOOL PATH:"
           echo $env:SIGNTOOL_PATH
-          "$env:SIGNTOOL_PATH" sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 $env:MSI_PATH
-          $env:SIGNTOOL_PATH verify /v /pa $env:MSI_PATH
+          signtool.exe sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 $env:MSI_PATH
+          signtool.exe verify /v /pa $env:MSI_PATH
 
       - name: Delete PFX certificate
         env:
