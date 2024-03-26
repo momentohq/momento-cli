@@ -87,9 +87,7 @@ jobs:
         shell: cmd
 
       - name: Signing using Signtool
-        env:
-          SM_API_KEY: ${{ secrets.CODE_SIGNING_API_KEY }}
         run: |
-          signtool.exe sign /sha1 ${{ secrets.SM_CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 "smtools-windows-x64.msi"
+          signtool.exe sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 "smtools-windows-x64.msi"
           signtool.exe verify /v /pa "smtools-windows-x64.msi"
 
