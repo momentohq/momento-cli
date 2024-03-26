@@ -71,5 +71,6 @@ jobs:
       - name: Verify KSP Registration
         run: |
           smksp_registrar.exe list
+          smctl healthcheck
         shell: cmd
 
