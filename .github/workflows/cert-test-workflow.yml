@@ -11,11 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Is this thing on
-        id: thing_on
-        run: |
-          echo "hi"
-
       - name: Write client auth certificate file
         id: write_client_auth_cert
         env:
@@ -26,18 +21,12 @@ jobs:
           Set-Content $p12Path -Value $encodedBytes -AsByteStream;
           echo "p12_path=$p12Path" >> $ENV:GITHUB_OUTPUT
 
-      - name: Check cert output
-        run: |
-          echo "Checking the output of the write cert step"
-          echo "${{ steps.write_client_auth_cert.outputs.p12_path }}"
-
       - name: Download digicert smtools
         env:
           SM_API_KEY: ${{ secrets.CODE_SIGNING_API_KEY }}
         run: |
           curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/smtools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o smtools-windows-x64.msi
         shell: cmd
-
 
       - name: Install digicert smtools
         run: |
@@ -62,9 +51,6 @@ jobs:
 
       - name: List digicert dir
         run: |
-          dir "C:\Program Files"
-          dir "C:\Program Files\Amazon"
-          dir "C:\Program Files\DigiCert"
           dir "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools"
         shell: cmd
 
@@ -72,12 +58,9 @@ jobs:
         env:
           SM_HOST: ${{ secrets.CODE_SIGNING_HOST }}
           SM_API_KEY: ${{ secrets.CODE_SIGNING_API_KEY }}
-#          SM_CLIENT_CERT_FILE: "D:\\a\\momento-cli\\momento-cli\\cert.p12"
           SM_CLIENT_CERT_FILE: "${{ steps.write_client_auth_cert.outputs.p12_path }}"
-#          SM_CLIENT_CERT_FILE: "butt"
           SM_CLIENT_CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
         run: |
-          smksp_registrar.exe list
           dir
           smksp_registrar.exe list
           smctl.exe keypair ls
@@ -90,9 +73,7 @@ jobs:
         env:
           SM_HOST: ${{ secrets.CODE_SIGNING_HOST }}
           SM_API_KEY: ${{ secrets.CODE_SIGNING_API_KEY }}
-          #          SM_CLIENT_CERT_FILE: "D:\\a\\momento-cli\\momento-cli\\cert.p12"
           SM_CLIENT_CERT_FILE: "${{ steps.write_client_auth_cert.outputs.p12_path }}"
-          #          SM_CLIENT_CERT_FILE: "butt"
           SM_CLIENT_CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
         run: |
           signtool.exe sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 "smtools-windows-x64.msi"
