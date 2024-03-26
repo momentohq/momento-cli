@@ -41,7 +41,7 @@ jobs:
 
       - name: Install digicert smtools
         run: |
-          msiexec /i smtools-windows-x64.msi /passive /qn
+          msiexec /i smtools-windows-x64.msi /passive /qn /lv
         shell: cmd
 
       - name: Add digicert tools to path
@@ -58,6 +58,8 @@ jobs:
 
       - name: List digicert dir
         run: |
+          dir "C:\Program Files"
+          dir "C:\Program Files\DigiCert"
           dir "C:\Program Files\DigiCert\DigiCert Keylocker Tools"
         shell: cmd
 
