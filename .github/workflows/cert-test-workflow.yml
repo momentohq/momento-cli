@@ -33,9 +33,14 @@ jobs:
           echo "Checking the output of the write cert step"
           echo "${{ steps.write_client_auth_cert.outputs.p12_path }}"
 
-      - name: Setup SSM KSP on windows latest
+      - name: Download digicert smtools
         run: |
           curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/smtools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o smtools-windows-x64.msi
+        shell: cmd
+
+
+      - name: Install digicert smtools
+        run: |
           msiexec /i smtools-windows-x64.msi /quiet /qn
         shell: cmd
 
