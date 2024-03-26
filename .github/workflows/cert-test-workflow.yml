@@ -39,7 +39,15 @@ jobs:
           msiexec /i smtools-windows-x64.msi /quiet /qn
         shell: cmd
 
-      - name: Register KSP
+      - name: Add digicert tools to path
+        id: variables
+        run: |
+          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
+          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
+          echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Verify KSP Registration
         run: |
           smksp_registrar.exe list
         shell: cmd
