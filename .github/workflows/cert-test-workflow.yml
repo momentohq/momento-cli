@@ -51,7 +51,7 @@ jobs:
         run: |
           echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
           echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
-          echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
+          echo "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools" >> $GITHUB_PATH
         shell: bash
 
       - name: Check path
@@ -64,7 +64,7 @@ jobs:
           dir "C:\Program Files"
           dir "C:\Program Files\Amazon"
           dir "C:\Program Files\DigiCert"
-          dir "C:\Program Files\DigiCert\DigiCert Keylocker Tools"
+          dir "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools"
         shell: cmd
 
       - name: Verify KSP Registration
