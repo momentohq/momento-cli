@@ -62,6 +62,7 @@ jobs:
       - name: List digicert dir
         run: |
           dir "C:\Program Files"
+          dir "C:\Program Files\Amazon"
           dir "C:\Program Files\DigiCert"
           dir "C:\Program Files\DigiCert\DigiCert Keylocker Tools"
         shell: cmd
