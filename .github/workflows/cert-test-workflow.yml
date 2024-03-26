@@ -37,12 +37,12 @@ jobs:
 #          $procLog.Kill()
 #        shell: powershell
 #
-#      - name: Add digicert tools to path
-#        run: |
-#          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
-#          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
-#          echo "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools" >> $GITHUB_PATH
-#        shell: bash
+      - name: Add digicert tools to path
+        run: |
+          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
+          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
+          echo "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools" >> $GITHUB_PATH
+        shell: bash
 #
 #      - name: Check path
 #        run: |
@@ -79,12 +79,12 @@ jobs:
 #          signtool.exe sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 "smtools-windows-x64.msi"
 #          signtool.exe verify /v /pa "smtools-windows-x64.msi"
 
-      - name: Test and cache signtool path
-        id: signtool
-        run: |
-          $signtool = "C:/Program Files (x86)/Windows Kits/10/bin/10.0.17763.0/x86/signtool.exe"
-          Test-Path -Path $signtool -PathType Leaf
-          echo "::set-output name=signtool_path::$signtool"
+#      - name: Test and cache signtool path
+#        id: signtool
+#        run: |
+#          $signtool = "C:/Program Files (x86)/Windows Kits/10/bin/10.0.17763.0/x86/signtool.exe"
+#          Test-Path -Path $signtool -PathType Leaf
+#          echo "::set-output name=signtool_path::$signtool"
 
       - name: Sign Momento binary
         env:
@@ -99,7 +99,7 @@ jobs:
           echo "HERE IS THE SIGNTOOL PATH:"
           echo $env:SIGNTOOL_PATH
           echo "THAT WAS THE SIGNTOOL PATH"
-          $env:SIGNTOOL_PATH
+          signtool.exe /help
         shell: powershell
 #          "$env:SIGNTOOL_PATH" sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 $env:MOMENTO_BINARY_PATH
 #          $env:SIGNTOOL_PATH verify /v /pa $env:MOMENTO_BINARY_PATH
