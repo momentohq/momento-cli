@@ -40,12 +40,21 @@ jobs:
         shell: cmd
 
       - name: Add digicert tools to path
-        id: variables
         run: |
           echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
           echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
           echo "C:\Program Files\DigiCert\DigiCert Keylocker Tools" >> $GITHUB_PATH
         shell: bash
+
+      - name: Check path
+        run: |
+          echo %path%
+        shell: cmd
+
+      - name: List digicert dir
+        run: |
+          dir "C:\Program Files\DigiCert\DigiCert Keylocker Tools"
+        shell: cmd
 
       - name: Verify KSP Registration
         run: |
