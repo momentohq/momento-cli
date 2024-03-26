@@ -7,6 +7,9 @@ on:
 jobs:
   chris-cert-test:
     runs-on: windows-latest
+    env:
+      SM_API_KEY: ${{ secrets.CODE_SIGNING_API_KEY }}
+
     steps:
       - uses: actions/checkout@v3
 
@@ -27,6 +30,17 @@ jobs:
 
       - name: Check cert output
         run: |
-          echo "CHecking the output of the write cert step"
+          echo "Checking the output of the write cert step"
           echo "${{ steps.write_client_auth_cert.outputs.p12_path }}"
-          
+
+      - name: Setup SSM KSP on windows latest
+        run: |
+          curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/smtools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o smtools-windows-x64.msi
+          msiexec /i smtools-windows-x64.msi /quiet /qn
+        shell: cmd
+
+      - name: Register KSP
+        run: |
+          smksp_registrar.exe list
+        shell: cmd
+
