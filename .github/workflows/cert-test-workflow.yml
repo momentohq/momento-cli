@@ -71,7 +71,8 @@ jobs:
       - name: Verify KSP Registration
         env:
           SM_API_KEY: ${{ secrets.CODE_SIGNING_API_KEY }}
-          SM_CLIENT_CERT_FILE: ${{ steps.write_client_auth_cert.outputs.p12_path }}
+#          SM_CLIENT_CERT_FILE: ${{ steps.write_client_auth_cert.outputs.p12_path }}
+          SM_CLIENT_CERT_FILE: "D:\a\momento-cli\momento-cli\cert.p12"
           SM_CLIENT_CERT_PASSWORD: ${{ secrets.CODE_SIGNING_CERT_PASSWORD }}
         run: |
           smksp_registrar.exe list
