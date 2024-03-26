@@ -14,3 +14,13 @@ jobs:
         id: thing_on
         run: |
           echo "hi"
+
+      - name: Write client auth certificate file
+        id: write_client_auth_cert
+        env:
+          CLIENT_AUTH_CERT_BASE64_CONTENT: ${{ secrets.CODE_SIGNING_CERT_BASE64 }}
+        run: |
+          $p12Path = "cert.p12";
+          $encodedBytes = [System.Convert]::FromBase64String($env:CLIENT_AUTH_CERT_BASE64_CONTENT);
+          Set-Content $pfxPath -Value $encodedBytes -AsByteStream;
+          echo "::set-output name=p12_path::$p12Path";
