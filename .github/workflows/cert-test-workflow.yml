@@ -22,5 +22,5 @@ jobs:
         run: |
           $p12Path = "cert.p12";
           $encodedBytes = [System.Convert]::FromBase64String($env:CLIENT_AUTH_CERT_BASE64_CONTENT);
-          Set-Content $pfxPath -Value $encodedBytes -AsByteStream;
+          Set-Content $p12Path -Value $encodedBytes -AsByteStream;
           echo "::set-output name=p12_path::$p12Path";
