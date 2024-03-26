@@ -23,4 +23,10 @@ jobs:
           $p12Path = "cert.p12";
           $encodedBytes = [System.Convert]::FromBase64String($env:CLIENT_AUTH_CERT_BASE64_CONTENT);
           Set-Content $p12Path -Value $encodedBytes -AsByteStream;
-          echo "::set-output name=p12_path::$p12Path";
+          echo "p12_path=$p12Path" >> $ENV:GITHUB_OUTPUT
+
+      - name: Check cert output
+        run: |
+          echo "CHecking the output of the write cert step"
+          echo "${{ steps.write_client_auth_cert.outputs.p12_path }}"
+          
