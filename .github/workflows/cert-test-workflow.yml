@@ -98,7 +98,9 @@ jobs:
         run: |
           echo "HERE IS THE SIGNTOOL PATH:"
           echo $env:SIGNTOOL_PATH
+          echo "THAT WAS THE SIGNTOOL PATH"
           $env:SIGNTOOL_PATH
+        shell: cmd
 #          "$env:SIGNTOOL_PATH" sign /sha1 ${{ secrets.CODE_SIGNING_CERT_SHA1_HASH }} /tr http://timestamp.digicert.com /td SHA256 /fd SHA256 $env:MOMENTO_BINARY_PATH
 #          $env:SIGNTOOL_PATH verify /v /pa $env:MOMENTO_BINARY_PATH
 
