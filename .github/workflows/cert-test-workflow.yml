@@ -41,8 +41,11 @@ jobs:
 
       - name: Install digicert smtools
         run: |
-          msiexec /i smtools-windows-x64.msi /passive /qn /lv
-        shell: cmd
+          $procMain = Start-Process "msiexec" "/i smtools-windows-x64.msi /qn /l*! msi_install.log" -NoNewWindow -PassThru
+          $procLog = Start-Process "powershell" "Get-Content -Path msi_install.log -Wait" -NoNewWindow -PassThru
+          $procMain.WaitForExit()
+          $procLog.Kill()
+        shell: powershell
 
       - name: Add digicert tools to path
         run: |
