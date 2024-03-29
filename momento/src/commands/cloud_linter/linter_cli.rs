@@ -1,73 +1,31 @@
-use std::future::Future;
 use std::sync::Arc;
-use std::time::Duration;
 
-use governor::DefaultDirectRateLimiter;
+use aws_config::{BehaviorVersion, Region};
+use governor::{Quota, RateLimiter};
 
-#[allow(dead_code)] // remove after this is used outside a test
-async fn rate_limit<F, Fut, T>(func: F, limiter: Arc<DefaultDirectRateLimiter>) -> T
-    where
-        F: Fn() -> Fut,
-        Fut: Future<Output=T>,
-{
-    loop {
-        let permit = limiter.check();
-        match permit {
-            Ok(_) => {
-                return func().await;
-            }
-            Err(_) => {
-                tokio::time::sleep(Duration::from_millis(100)).await;
-            }
-        }
-    }
-}
+use crate::commands::cloud_linter::dynamodb::get_ddb_metadata;
+use crate::commands::cloud_linter::elasticache::get_elasticache_metadata;
+use crate::error::CliError;
+use crate::utils::console::console_info;
 
-#[cfg(test)]
-mod tests {
-    use governor::{Quota, RateLimiter};
-    use tokio::sync::Mutex;
+pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
+    let config = aws_config::defaults(BehaviorVersion::latest())
+        .region(Region::new(region))
+        .load()
+        .await;
 
-    use super::*;
+    let quota =
+        Quota::per_second(core::num::NonZeroU32::new(1).expect("should create non-zero quota"));
+    let limiter = Arc::new(RateLimiter::direct(quota));
 
-    #[tokio::test]
-    async fn test_rate_limit() {
-        let counter = Arc::new(Mutex::new(0));
+    let ddb_metadata = get_ddb_metadata(&config, Arc::clone(&limiter)).await?;
 
-        let quota =
-            Quota::per_second(core::num::NonZeroU32::new(10).expect("should create non-zero quota"));
-        let limiter = Arc::new(RateLimiter::direct(quota));
+    let ddb_json = serde_json::to_string_pretty(&ddb_metadata)?;
+    console_info!("DynamoDB metadata:\n{}", ddb_json);
 
-        let test_func = {
-            let counter = Arc::clone(&counter);
-            move || {
-                let counter = Arc::clone(&counter);
-                async move {
-                    let mut count = counter.lock().await;
-                    *count += 1;
-                }
-            }
-        };
-        let start_time = tokio::time::Instant::now();
+    let elasticache_metadata = get_elasticache_metadata(&config, Arc::clone(&limiter)).await?;
+    let elasticache_json = serde_json::to_string_pretty(&elasticache_metadata)?;
+    console_info!("ElastiCache metadata:\n{}", elasticache_json);
 
-        let mut tasks = Vec::new();
-        for _ in 0..20 {
-            let limiter = Arc::clone(&limiter);
-            let func = test_func.clone();
-            let task = tokio::spawn(async move {
-                rate_limit(func, limiter).await;
-            });
-            tasks.push(task);
-        }
-
-        for task in tasks {
-            task.await.expect("increment task should succeed");
-        }
-
-        let final_count = *counter.lock().await;
-        assert_eq!(final_count, 20);
-
-        let expected_duration = Duration::from_secs(1);
-        assert!(start_time.elapsed() >= expected_duration);
-    }
+    Ok(())
 }

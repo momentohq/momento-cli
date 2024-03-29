@@ -221,7 +221,10 @@ This command will be used to fetch information about your Elasticache clusters a
 to help find opportunities for optimizations with Momento.
 "
     )]
-    CloudLinter {},
+    CloudLinter {
+        #[arg(long, short, help = "The AWS region to examine")]
+        region: String,
+    },
 }
 
 #[derive(Debug, Parser)]
