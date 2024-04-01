@@ -15,8 +15,6 @@ use crate::utils::console::console_info;
 
 const DDB_TABLE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
         "Sum" => &[
-            "ConsumedReadCapacityUnits",
-            "ConsumedWriteCapacityUnits",
             "ReadThrottleEvents",
             "WriteThrottleEvents",
             "TimeToLiveDeletedItemCount",
@@ -24,6 +22,8 @@ const DDB_TABLE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
             "ConditionalCheckFailedRequests",
         ],
         "Average" => &[
+            "ConsumedReadCapacityUnits",
+            "ConsumedWriteCapacityUnits",
             "ProvisionedReadCapacityUnits",
             "ProvisionedWriteCapacityUnits",
         ],
@@ -39,12 +39,12 @@ const DDB_TABLE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
 
 const DDB_GSI_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
     "Sum" => &[
-            "ConsumedReadCapacityUnits",
-            "ConsumedWriteCapacityUnits",
             "ReadThrottleEvents",
             "WriteThrottleEvents",
         ],
     "Average" => &[
+            "ConsumedReadCapacityUnits",
+            "ConsumedWriteCapacityUnits",
             "ProvisionedReadCapacityUnits",
             "ProvisionedWriteCapacityUnits",
         ],
@@ -211,6 +211,14 @@ async fn fetch_ddb_resources(
     table_name: &str,
     limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<Vec<DynamoDbResource>, CliError> {
+    let region = ddb_client
+        .config()
+        .region()
+        .map(|r| r.as_ref())
+        .ok_or(CliError {
+            msg: "No region configured for client".to_string(),
+        })?;
+
     let ttl = rate_limit(Arc::clone(&limiter), || async {
         ddb_client
             .describe_time_to_live()
@@ -358,7 +366,7 @@ async fn fetch_ddb_resources(
                     metrics: vec![],
                     resource_type: ResourceType::DynamoDbGsi,
                     metadata: metadata.clone_with_gsi(gsi_metadata),
-                    region: "".to_string(),
+                    region: region.to_string(),
                     metric_period_seconds: 0,
                 });
             }
@@ -371,7 +379,7 @@ async fn fetch_ddb_resources(
         metrics: vec![],
         resource_type: ResourceType::DynamoDbTable,
         metadata,
-        region: "".to_string(),
+        region: region.to_string(),
         metric_period_seconds: 0,
     });
 

@@ -107,10 +107,14 @@ pub(crate) async fn get_elasticache_resources(
     limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<Vec<Resource>, CliError> {
     console_info!("Describing ElastiCache clusters");
+    let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
+        msg: "No region configured for client".to_string(),
+    })?;
+
     let elasticache_client = aws_sdk_elasticache::Client::new(config);
     let clusters = describe_clusters(&elasticache_client, limiter).await?;
 
-    convert_to_resources(clusters).await
+    convert_to_resources(clusters, region).await
 }
 
 async fn describe_clusters(
@@ -142,7 +146,10 @@ async fn describe_clusters(
     Ok(elasticache_clusters)
 }
 
-async fn convert_to_resources(clusters: Vec<CacheCluster>) -> Result<Vec<Resource>, CliError> {
+async fn convert_to_resources(
+    clusters: Vec<CacheCluster>,
+    region: &str,
+) -> Result<Vec<Resource>, CliError> {
     let mut resources: Vec<Resource> = Vec::new();
 
     for cluster in clusters {
@@ -182,7 +189,7 @@ async fn convert_to_resources(clusters: Vec<CacheCluster>) -> Result<Vec<Resourc
 
                 let resource = Resource::ElastiCache(ElastiCacheResource {
                     resource_type: ResourceType::ElastiCacheRedisNode,
-                    region: "".to_string(),
+                    region: region.to_string(),
                     id: cache_cluster_id.clone(),
                     metrics: vec![],
                     metric_period_seconds: 0,
@@ -207,7 +214,7 @@ async fn convert_to_resources(clusters: Vec<CacheCluster>) -> Result<Vec<Resourc
                         })?;
                         let resource = Resource::ElastiCache(ElastiCacheResource {
                             resource_type: ResourceType::ElastiCacheMemcachedNode,
-                            region: "".to_string(),
+                            region: region.to_string(),
                             id: cache_node_id,
                             metrics: vec![],
                             metric_period_seconds: 0,
