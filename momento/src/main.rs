@@ -263,8 +263,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 )
                 .await?;
             }
-            PreviewCommand::CloudLinter { .. } => {
-                console_info!("Unimplemented")
+            PreviewCommand::CloudLinter { region } => {
+                commands::cloud_linter::linter_cli::run_cloud_linter(region).await?;
             }
         },
     }

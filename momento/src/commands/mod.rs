@@ -5,5 +5,5 @@ pub mod login;
 pub mod signingkey;
 pub mod tokens;
 
-mod cloud_linter;
+pub mod cloud_linter;
 pub mod topic;
