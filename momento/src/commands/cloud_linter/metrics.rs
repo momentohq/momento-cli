@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::commands::cloud_linter::resource::Resource;
-use crate::commands::cloud_linter::utils::rate_limit;
 use aws_config::SdkConfig;
 use aws_sdk_cloudwatch::primitives::DateTime;
 use aws_sdk_cloudwatch::types::Metric as CloudwatchMetric;
@@ -10,11 +8,13 @@ use aws_sdk_cloudwatch::types::{Dimension, MetricDataQuery, MetricStat};
 use aws_sdk_cloudwatch::Client;
 use chrono::{Duration, Utc};
 use governor::DefaultDirectRateLimiter;
+use indicatif::{ProgressBar, ProgressStyle};
 use phf::Map;
 use serde::{Deserialize, Serialize};
 
+use crate::commands::cloud_linter::resource::Resource;
+use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
-use crate::utils::console::console_info;
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Metric {
@@ -68,7 +68,8 @@ pub(crate) async fn append_metrics_to_resources(
     limiter: Arc<DefaultDirectRateLimiter>,
     mut resources: Vec<Resource>,
 ) -> Result<Vec<Resource>, CliError> {
-    console_info!("Getting metrics...");
+    let bar = ProgressBar::new(resources.len() as u64).with_message("Querying metrics");
+    bar.set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
     let metrics_client = Client::new(config);
 
     for resource in &mut resources {
@@ -84,7 +85,9 @@ pub(crate) async fn append_metrics_to_resources(
                     .await?;
             }
         }
+        bar.inc(1);
     }
+    bar.finish();
 
     Ok(resources)
 }

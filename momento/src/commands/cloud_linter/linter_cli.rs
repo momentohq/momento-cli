@@ -21,9 +21,11 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     let limiter = Arc::new(RateLimiter::direct(quota));
 
     let mut resources = get_ddb_resources(&config, Arc::clone(&limiter)).await?;
+
     let mut elasticache_resources =
         get_elasticache_resources(&config, Arc::clone(&limiter)).await?;
     resources.append(&mut elasticache_resources);
+
     let resources = append_metrics_to_resources(&config, Arc::clone(&limiter), resources).await?;
 
     let data_format = DataFormat { resources };

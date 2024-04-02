@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use aws_config::SdkConfig;
 use aws_sdk_dynamodb::types::{TimeToLiveDescription, TimeToLiveStatus};
 use governor::DefaultDirectRateLimiter;
+use indicatif::{ProgressBar, ProgressStyle};
 use phf::{phf_map, Map};
 use serde::{Deserialize, Serialize};
 
@@ -11,10 +13,13 @@ use crate::commands::cloud_linter::metrics::{Metric, MetricTarget, ResourceWithM
 use crate::commands::cloud_linter::resource::{DynamoDbResource, Resource, ResourceType};
 use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
-use crate::utils::console::console_info;
 
 const DDB_TABLE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
         "Sum" => &[
+            "ConsumedReadCapacityUnits",
+            "ConsumedWriteCapacityUnits",
+            "ProvisionedReadCapacityUnits",
+            "ProvisionedWriteCapacityUnits",
             "ReadThrottleEvents",
             "WriteThrottleEvents",
             "TimeToLiveDeletedItemCount",
@@ -39,6 +44,10 @@ const DDB_TABLE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
 
 const DDB_GSI_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
     "Sum" => &[
+            "ConsumedReadCapacityUnits",
+            "ConsumedWriteCapacityUnits",
+            "ProvisionedReadCapacityUnits",
+            "ProvisionedWriteCapacityUnits",
             "ReadThrottleEvents",
             "WriteThrottleEvents",
         ],
@@ -140,10 +149,7 @@ impl ResourceWithMetrics for DynamoDbResource {
                     targets: DDB_GSI_METRICS,
                 })
             }
-            ResourceType::ElastiCacheRedisNode => Err(CliError {
-                msg: "Invalid resource type".to_string(),
-            }),
-            ResourceType::ElastiCacheMemcachedNode => Err(CliError {
+            _ => Err(CliError {
                 msg: "Invalid resource type".to_string(),
             }),
         }
@@ -164,10 +170,14 @@ pub(crate) async fn get_ddb_resources(
 ) -> Result<Vec<Resource>, CliError> {
     let ddb_client = aws_sdk_dynamodb::Client::new(config);
 
-    console_info!("Listing Dynamo DB tables");
+    let bar = ProgressBar::new_spinner().with_message("Listing Dynamo DB tables");
+    bar.enable_steady_tick(Duration::from_millis(100));
     let table_names = list_table_names(&ddb_client, Arc::clone(&limiter)).await?;
+    bar.finish();
 
-    console_info!("Describing tables");
+    let bar =
+        ProgressBar::new(table_names.len() as u64).with_message("Describing Dynamo DB tables");
+    bar.set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
     let mut resources = Vec::new();
     for table_name in table_names {
         let instances = fetch_ddb_resources(&ddb_client, &table_name, Arc::clone(&limiter)).await?;
@@ -176,7 +186,9 @@ pub(crate) async fn get_ddb_resources(
             .map(Resource::DynamoDb)
             .collect::<Vec<Resource>>();
         resources.extend(wrapped_resources);
+        bar.inc(1);
     }
+    bar.finish();
 
     Ok(resources)
 }

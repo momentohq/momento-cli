@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use aws_config::SdkConfig;
 use aws_sdk_elasticache::types::CacheCluster;
 use governor::DefaultDirectRateLimiter;
+use indicatif::ProgressBar;
 use phf::{phf_map, Map};
 use serde::Serialize;
 
@@ -11,7 +13,6 @@ use crate::commands::cloud_linter::metrics::{Metric, MetricTarget, ResourceWithM
 use crate::commands::cloud_linter::resource::{ElastiCacheResource, Resource, ResourceType};
 use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
-use crate::utils::console::console_info;
 
 pub(crate) const CACHE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
         "Sum" => &[
@@ -84,10 +85,7 @@ impl ResourceWithMetrics for ElastiCacheResource {
                 ]),
                 targets: CACHE_METRICS,
             }),
-            ResourceType::DynamoDbGsi => Err(CliError {
-                msg: "Invalid resource type".to_string(),
-            }),
-            ResourceType::DynamoDbTable => Err(CliError {
+            _ => Err(CliError {
                 msg: "Invalid resource type".to_string(),
             }),
         }
@@ -106,7 +104,6 @@ pub(crate) async fn get_elasticache_resources(
     config: &SdkConfig,
     limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<Vec<Resource>, CliError> {
-    console_info!("Describing ElastiCache clusters");
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
     })?;
@@ -121,6 +118,8 @@ async fn describe_clusters(
     elasticache_client: &aws_sdk_elasticache::Client,
     limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<Vec<CacheCluster>, CliError> {
+    let bar = ProgressBar::new_spinner().with_message("Describing ElastiCache clusters");
+    bar.enable_steady_tick(Duration::from_millis(100));
     let mut elasticache_clusters = Vec::new();
     let mut elasticache_stream = elasticache_client
         .describe_cache_clusters()
@@ -142,6 +141,7 @@ async fn describe_clusters(
             }
         }
     }
+    bar.finish();
 
     Ok(elasticache_clusters)
 }
