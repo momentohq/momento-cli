@@ -29,7 +29,7 @@ pub(crate) async fn get_ddb_metadata(
     config: &SdkConfig,
     limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<Vec<DynamoDbMetadata>, CliError> {
-    let ddb_client = aws_sdk_dynamodb::Client::new(&config);
+    let ddb_client = aws_sdk_dynamodb::Client::new(config);
 
     console_info!("Listing Dynamo DB tables");
     let table_names = list_table_names(&ddb_client, Arc::clone(&limiter)).await?;
