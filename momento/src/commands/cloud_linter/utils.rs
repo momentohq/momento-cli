@@ -46,6 +46,14 @@ impl From<serde_json::Error> for CliError {
     }
 }
 
+impl From<std::io::Error> for CliError {
+    fn from(val: std::io::Error) -> Self {
+        CliError {
+            msg: format!("{val:?}"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use governor::{Quota, RateLimiter};
