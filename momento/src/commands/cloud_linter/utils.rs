@@ -1,9 +1,13 @@
-use crate::error::CliError;
-use aws_sdk_dynamodb::error::{DisplayErrorContext, SdkError};
-use governor::DefaultDirectRateLimiter;
 use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
+
+use aws_config::SdkConfig;
+use aws_sdk_cloudwatch::config::ProvideCredentials;
+use aws_sdk_dynamodb::error::{DisplayErrorContext, SdkError};
+use governor::DefaultDirectRateLimiter;
+
+use crate::error::CliError;
 
 pub(crate) async fn rate_limit<F, Fut>(
     limiter: Arc<DefaultDirectRateLimiter>,
@@ -51,6 +55,26 @@ impl From<std::io::Error> for CliError {
         CliError {
             msg: format!("{val:?}"),
         }
+    }
+}
+
+pub(crate) async fn check_aws_credentials(config: &SdkConfig) -> Result<(), CliError> {
+    if let Some(credentials_provider) = config.credentials_provider() {
+        let credentials = credentials_provider
+            .provide_credentials()
+            .await
+            .expect("Could not load AWS credentials");
+        if credentials.access_key_id().is_empty() || credentials.secret_access_key().is_empty() {
+            Err(CliError {
+                msg: "Invalid AWS credentials. Please ensure that AWS credentials are properly configured.".to_string(),
+            })
+        } else {
+            Ok(())
+        }
+    } else {
+        Err(CliError {
+            msg: "No AWS credential provider found. Please ensure that AWS credentials are properly configured.".to_string(),
+        })
     }
 }
 

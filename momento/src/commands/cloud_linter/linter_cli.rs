@@ -15,6 +15,7 @@ use crate::commands::cloud_linter::dynamodb::get_ddb_resources;
 use crate::commands::cloud_linter::elasticache::get_elasticache_resources;
 use crate::commands::cloud_linter::metrics::append_metrics_to_resources;
 use crate::commands::cloud_linter::resource::DataFormat;
+use crate::commands::cloud_linter::utils::check_aws_credentials;
 use crate::error::CliError;
 
 pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
@@ -22,6 +23,7 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
         .region(Region::new(region))
         .load()
         .await;
+    check_aws_credentials(&config).await?;
 
     let output_file_path = "linter_results.json.gz";
     check_output_is_writable(output_file_path).await?;
