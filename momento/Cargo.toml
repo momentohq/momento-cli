@@ -4,7 +4,7 @@ path = "src/main.rs"
 
 [package]
 name = "momento-cli"
-version = "0.41.9"
+version = "0.42.0"
 edition = "2021"
 
 [dependencies]
@@ -23,7 +23,6 @@ aws-config = "1.1.8"
 aws-sdk-cloudwatch = "1.19.0"
 aws-sdk-dynamodb = "1.19.0"
 aws-sdk-elasticache = "1.18.0"
-phf = { version = "0.11", features = ["macros"] }
 indicatif = "0.17.8"
 flate2 = "1.0.28"
 
@@ -31,6 +30,10 @@ flate2 = "1.0.28"
 assert_cmd = "2.0.2"
 predicates = "2.1.1"
 tempdir = "0.3.7"
+
+[dependencies.phf]
+version = "0.11"
+features = [ "macros",]
 
 [dependencies.momento-cli-opts]
 path = "../momento-cli-opts"
