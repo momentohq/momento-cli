@@ -231,5 +231,5 @@ async fn convert_to_resources(
             }
         };
     }
-    return Ok(resources);
+    Ok(resources)
 }

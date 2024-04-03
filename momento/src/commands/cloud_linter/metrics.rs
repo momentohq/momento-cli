@@ -55,7 +55,7 @@ where
     ) -> Result<(), CliError> {
         let metric_target = self.create_metric_target()?;
         let metrics =
-            query_metrics_for_target(&metrics_client, Arc::clone(&limiter), metric_target).await?;
+            query_metrics_for_target(metrics_client, Arc::clone(&limiter), metric_target).await?;
         self.set_metrics(metrics);
         self.set_metric_period_seconds(60 * 60 * 24);
 
