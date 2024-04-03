@@ -23,7 +23,7 @@ pub(crate) async fn get_elasticache_metadata(
     limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<Vec<ElastiCacheMetadata>, CliError> {
     console_info!("Describing ElastiCache clusters");
-    let elasticache_client = aws_sdk_elasticache::Client::new(&config);
+    let elasticache_client = aws_sdk_elasticache::Client::new(config);
     list_table_names(&elasticache_client, limiter)
         .await?
         .into_iter()
@@ -104,11 +104,9 @@ impl TryFrom<CacheCluster> for ElastiCacheMetadata {
                 preferred_az,
                 cluster_mode_enabled: false,
             }),
-            _ => {
-                return Err(CliError {
-                    msg: format!("Unsupported engine: {}", engine),
-                })
-            }
+            _ => Err(CliError {
+                msg: format!("Unsupported engine: {}", engine),
+            }),
         }
     }
 }
