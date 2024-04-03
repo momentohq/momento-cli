@@ -65,17 +65,22 @@ async fn write_data_to_file(data_format: DataFormat, file_path: &str) -> Result<
 }
 
 async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {
-    let dir = Path::new(file_path).parent().ok_or_else(|| CliError {
-        msg: "Output file has no parent directory".to_string(),
-    })?;
+    let path = Path::new(file_path);
+
+    // Get the parent of the output file path
+    let dir = if path.is_absolute() {
+        path.parent().unwrap_or(path)
+    } else {
+        Path::new(".")
+    };
 
     let metadata = metadata(dir).await.map_err(|_| CliError {
-        msg: "Output file cannot be written".to_string(),
+        msg: format!("Directory '{}' is not accessible", dir.display()),
     })?;
 
     if metadata.permissions().readonly() {
         Err(CliError {
-            msg: "Output file cannot be written".to_string(),
+            msg: format!("Directory '{}' is not writable", dir.display()),
         })
     } else {
         Ok(())
