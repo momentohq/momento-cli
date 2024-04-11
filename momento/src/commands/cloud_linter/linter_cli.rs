@@ -28,12 +28,14 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     let output_file_path = "linter_results.json.gz";
     check_output_is_writable(output_file_path).await?;
 
-    let fast_quota =
-        Quota::per_second(core::num::NonZeroU32::new(10).expect("should create non-zero fast_quota"));
+    let fast_quota = Quota::per_second(
+        core::num::NonZeroU32::new(10).expect("should create non-zero fast_quota"),
+    );
     let fast_limiter = Arc::new(RateLimiter::direct(fast_quota));
 
-    let slow_quota =
-        Quota::per_second(core::num::NonZeroU32::new(1).expect("should create non-zero slow_quota"));
+    let slow_quota = Quota::per_second(
+        core::num::NonZeroU32::new(1).expect("should create non-zero slow_quota"),
+    );
     let slow_limiter = Arc::new(RateLimiter::direct(slow_quota));
 
     let mut resources = get_ddb_resources(&config, Arc::clone(&slow_limiter)).await?;
@@ -42,7 +44,8 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
         get_elasticache_resources(&config, Arc::clone(&fast_limiter)).await?;
     resources.append(&mut elasticache_resources);
 
-    let resources = append_metrics_to_resources(&config, Arc::clone(&fast_limiter), resources).await?;
+    let resources =
+        append_metrics_to_resources(&config, Arc::clone(&fast_limiter), resources).await?;
 
     let data_format = DataFormat { resources };
 
