@@ -18,8 +18,8 @@ use crate::error::CliError;
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Metric {
-    name: String,
-    values: Vec<f64>,
+    pub name: String,
+    pub values: Vec<f64>,
 }
 
 pub(crate) struct MetricTarget {
