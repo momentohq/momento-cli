@@ -164,7 +164,7 @@ impl ResourceWithMetrics for DynamoDbResource {
     }
 }
 
-pub(crate) async fn append_ttl_to_appropriate_resources(
+pub(crate) async fn append_ttl_to_appropriate_ddb_resources(
     config: &SdkConfig,
     mut resources: Vec<Resource>,
     limiter: Arc<DefaultDirectRateLimiter>,
@@ -192,14 +192,14 @@ pub(crate) async fn append_ttl_to_appropriate_resources(
                             r.metrics.get(index).expect("index should exist");
                         let sum: f64 = consumed_write_capacity.values.iter().sum();
                         // a basic heuristic around whether or not we care to check to see if a ttl exists on a ddb table. If the dynamodb table
-                        // has less than 100 tps average, then we don't care to check if ttl is enabled or not.
-                        if sum < 100.0 * 60.0 * 60.0 * 24.0 * 30.0 {
+                        // has less than 10 tps average, then we don't care to check if ttl is enabled or not.
+                        if sum < 10.0 * 60.0 * 60.0 * 24.0 * 30.0 {
                             log::debug!("skipping ttl check for table {}", r.id);
                             continue;
                         }
                         log::debug!("querying ttl for table {}", r.id);
                         let ttl_enabled =
-                            fetch_ddb_ttl(&ddb_client, &r.id, Arc::clone(&limiter)).await?;
+                            is_ddb_ttl_enabled(&ddb_client, &r.id, Arc::clone(&limiter)).await?;
                         r.metadata.ttl_enabled = ttl_enabled;
                     }
                     // we did not find that metric, and therefore we assume that there are no consumed capacity units, meaning we don't care to
@@ -276,7 +276,7 @@ async fn list_table_names(
     Ok(table_names)
 }
 
-async fn fetch_ddb_ttl(
+async fn is_ddb_ttl_enabled(
     ddb_client: &aws_sdk_dynamodb::Client,
     table_name: &str,
     limiter: Arc<DefaultDirectRateLimiter>,

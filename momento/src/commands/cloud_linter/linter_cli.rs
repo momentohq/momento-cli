@@ -18,7 +18,7 @@ use crate::commands::cloud_linter::resource::DataFormat;
 use crate::commands::cloud_linter::utils::check_aws_credentials;
 use crate::error::CliError;
 
-use super::dynamodb::append_ttl_to_appropriate_resources;
+use super::dynamodb::append_ttl_to_appropriate_ddb_resources;
 
 pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     let config = aws_config::defaults(BehaviorVersion::latest())
@@ -53,9 +53,12 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     let resources =
         append_metrics_to_resources(&config, Arc::clone(&metrics_limiter), resources).await?;
 
-    let resources =
-        append_ttl_to_appropriate_resources(&config, resources, Arc::clone(&describe_ttl_limiter))
-            .await?;
+    let resources = append_ttl_to_appropriate_ddb_resources(
+        &config,
+        resources,
+        Arc::clone(&describe_ttl_limiter),
+    )
+    .await?;
 
     let data_format = DataFormat { resources };
 
