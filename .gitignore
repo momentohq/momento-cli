@@ -7,3 +7,5 @@ client-cli.iml
 bin/
 momento.exe
 obj/
+*.gz
+
