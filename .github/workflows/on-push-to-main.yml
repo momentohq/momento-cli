@@ -34,11 +34,6 @@ jobs:
       - name: Install protoc
         run: ./scripts/install_protoc_linux.sh
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          override: true
       - name: Build
         run: cargo build --verbose
 
@@ -53,11 +48,6 @@ jobs:
       - name: Install protoc
         run: choco install protoc
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          override: true
       - name: Build
         run: cargo build --verbose
 
