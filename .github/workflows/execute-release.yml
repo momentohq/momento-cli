@@ -54,7 +54,7 @@ jobs:
 
       - name: Output release
         id: release
-        run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
+        run: echo "release=${{ steps.semrel.outputs.version }}" >> $GITHUB_OUTPUT
 
   publish-linux-assets:
     runs-on: ubuntu-latest
@@ -282,9 +282,9 @@ jobs:
           rustup target add x86_64-pc-windows-gnu
           cargo build --release --target x86_64-pc-windows-gnu
 
-          echo "::set-output name=momento_binary_path::.\target\x86_64-pc-windows-gnu\release\momento.exe"
+          echo "momento_binary_path=.\target\x86_64-pc-windows-gnu\release\momento.exe" >> $GITHUB_OUTPUT
           $distributableFile64Prefix = "momento-cli-$env:VERSION.windows_x64"
-          echo "::set-output name=distributable_file_prefix::$distributableFile64Prefix"
+          echo "distributable_file_prefix=$distributableFile64Prefix" >> $GITHUB_OUTPUT
 
       - name: Write client auth certificate file
         id: write_client_auth_cert
@@ -365,8 +365,8 @@ jobs:
           $zipPath = ".\$zipFilename"
           Compress-Archive -LiteralPath $env:MOMENTO_BINARY_PATH -DestinationPath $zipPath
 
-          echo "::set-output name=asset_path::$zipPath"
-          echo "::set-output name=asset_name::$zipFilename"
+          echo "asset_path=$zipPath" >> $GITHUB_OUTPUT
+          echo "asset_name=$zipFilename" >> $GITHUB_OUTPUT
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
@@ -384,8 +384,8 @@ jobs:
 
           $msiFilename = "$env:DISTRIBUTABLE_FILE_PREFIX.msi"
           $msiPath = ".\windows\installer\bin\Release\$msiFilename"
-          echo "::set-output name=asset_path::$msiPath"
-          echo "::set-output name=asset_name::$msiFilename"
+          echo "asset_path=$msiPath" >> $GITHUB_OUTPUT
+          echo "asset_name=$msiFilename" >> $GITHUB_OUTPUT
 
       - name: Sign installer
         env:
@@ -415,8 +415,8 @@ jobs:
           $releaseId = $latestRelease | jq -r .id
           $ghAssetMsi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:MSI_FILENAME"
           $ghAssetZip = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:ZIP_FILENAME"
-          echo "::set-output name=upload_url_msi::$ghAssetMsi"
-          echo "::set-output name=upload_url_zip::$ghAssetZip"
+          echo "upload_url_msi=$ghAssetMsi" >> $GITHUB_OUTPUT
+          echo "upload_url_zip=$ghAssetZip" >> $GITHUB_OUTPUT
 
       - name: Upload windows_x64 msi
         uses: actions/upload-release-asset@v1
@@ -492,7 +492,7 @@ jobs:
           MSI_FILENAME: ${{ needs.publish-windows-assets.outputs.msi_filename }}
         run: |
           $installerUrl = "https://github.com/momentohq/momento-cli/releases/download/v$env:VERSION/$env:MSI_FILENAME"
-          echo "::set-output name=installer_url::$installerUrl"
+          echo "installer_url=$installerUrl" >> $GITHUB_OUTPUT
 
       - name: Open PR on WinGet
         env:
