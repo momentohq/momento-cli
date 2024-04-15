@@ -18,6 +18,8 @@ use crate::commands::cloud_linter::resource::DataFormat;
 use crate::commands::cloud_linter::utils::check_aws_credentials;
 use crate::error::CliError;
 
+use super::dynamodb::append_ttl_to_appropriate_ddb_resources;
+
 pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     let config = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(region))
@@ -28,17 +30,35 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     let output_file_path = "linter_results.json.gz";
     check_output_is_writable(output_file_path).await?;
 
-    let quota =
-        Quota::per_second(core::num::NonZeroU32::new(1).expect("should create non-zero quota"));
-    let limiter = Arc::new(RateLimiter::direct(quota));
+    let control_plane_quota = Quota::per_second(
+        core::num::NonZeroU32::new(10).expect("should create non-zero control_plane_quota"),
+    );
+    let control_plane_limiter = Arc::new(RateLimiter::direct(control_plane_quota));
 
-    let mut resources = get_ddb_resources(&config, Arc::clone(&limiter)).await?;
+    let describe_ttl_quota = Quota::per_second(
+        core::num::NonZeroU32::new(1).expect("should create non-zero describe_ttl_quota"),
+    );
+    let describe_ttl_limiter = Arc::new(RateLimiter::direct(describe_ttl_quota));
+
+    let metrics_quota =
+        Quota::per_second(core::num::NonZeroU32::new(20).expect("should create non-zero quota"));
+    let metrics_limiter = Arc::new(RateLimiter::direct(metrics_quota));
+
+    let mut resources = get_ddb_resources(&config, Arc::clone(&control_plane_limiter)).await?;
 
     let mut elasticache_resources =
-        get_elasticache_resources(&config, Arc::clone(&limiter)).await?;
+        get_elasticache_resources(&config, Arc::clone(&control_plane_limiter)).await?;
     resources.append(&mut elasticache_resources);
 
-    let resources = append_metrics_to_resources(&config, Arc::clone(&limiter), resources).await?;
+    let resources =
+        append_metrics_to_resources(&config, Arc::clone(&metrics_limiter), resources).await?;
+
+    let resources = append_ttl_to_appropriate_ddb_resources(
+        &config,
+        resources,
+        Arc::clone(&describe_ttl_limiter),
+    )
+    .await?;
 
     let data_format = DataFormat { resources };
 

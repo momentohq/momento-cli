@@ -164,33 +164,91 @@ impl ResourceWithMetrics for DynamoDbResource {
     }
 }
 
+pub(crate) async fn append_ttl_to_appropriate_ddb_resources(
+    config: &SdkConfig,
+    mut resources: Vec<Resource>,
+    limiter: Arc<DefaultDirectRateLimiter>,
+) -> Result<Vec<Resource>, CliError> {
+    log::debug!("describing ttl for dynamodb tables");
+    let ddb_client = aws_sdk_dynamodb::Client::new(config);
+    let describe_ddb_ttl_bar =
+        ProgressBar::new(resources.len() as u64).with_message("Describing Dynamo DB Ttl");
+    describe_ddb_ttl_bar
+        .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
+    for resource in &mut resources {
+        describe_ddb_ttl_bar.inc(1);
+        match resource {
+            Resource::DynamoDb(r) => {
+                if r.resource_type == ResourceType::DynamoDbGsi {
+                    continue;
+                }
+                let consumed_write_ops_index = r.metrics.iter().position(|p| {
+                    p.name
+                        .eq_ignore_ascii_case("consumedwritecapacityunits_sum")
+                });
+                match consumed_write_ops_index {
+                    Some(index) => {
+                        let consumed_write_capacity =
+                            r.metrics.get(index).expect("index should exist");
+                        let sum: f64 = consumed_write_capacity.values.iter().sum();
+                        // a basic heuristic around whether or not we care to check to see if a ttl exists on a ddb table. If the dynamodb table
+                        // has less than 10 tps average, then we don't care to check if ttl is enabled or not.
+                        if sum < 10.0 * 60.0 * 60.0 * 24.0 * 30.0 {
+                            log::debug!("skipping ttl check for table {}", r.id);
+                            continue;
+                        }
+                        log::debug!("querying ttl for table {}", r.id);
+                        let ttl_enabled =
+                            is_ddb_ttl_enabled(&ddb_client, &r.id, Arc::clone(&limiter)).await?;
+                        r.metadata.ttl_enabled = ttl_enabled;
+                    }
+                    // we did not find that metric, and therefore we assume that there are no consumed capacity units, meaning we don't care to
+                    // check for a ttl on the ddb table
+                    None => {
+                        continue;
+                    }
+                }
+            }
+            Resource::ElastiCache(_) => {
+                continue;
+            }
+        };
+    }
+    describe_ddb_ttl_bar.finish();
+    Ok(resources)
+}
+
 pub(crate) async fn get_ddb_resources(
     config: &SdkConfig,
     limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<Vec<Resource>, CliError> {
     let ddb_client = aws_sdk_dynamodb::Client::new(config);
 
-    let bar = ProgressBar::new_spinner().with_message("Listing Dynamo DB tables");
-    bar.enable_steady_tick(Duration::from_millis(100));
+    let list_ddb_tables_bar = ProgressBar::new_spinner().with_message("Listing Dynamo DB tables");
+    list_ddb_tables_bar.enable_steady_tick(Duration::from_millis(100));
     let table_names = list_table_names(&ddb_client, Arc::clone(&limiter)).await?;
-    bar.finish();
+    list_ddb_tables_bar.finish();
 
-    let bar =
+    let describe_ddb_tables_bar =
         ProgressBar::new(table_names.len() as u64).with_message("Describing Dynamo DB tables");
-    bar.set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
-    let mut resources = Vec::new();
+    describe_ddb_tables_bar
+        .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
+    let mut ddb_resources: Vec<DynamoDbResource> = Vec::new();
     for table_name in table_names {
         let instances = fetch_ddb_resources(&ddb_client, &table_name, Arc::clone(&limiter)).await?;
-        let wrapped_resources = instances
-            .into_iter()
-            .map(Resource::DynamoDb)
-            .collect::<Vec<Resource>>();
-        resources.extend(wrapped_resources);
-        bar.inc(1);
+        for instance in instances {
+            ddb_resources.push(instance);
+        }
+        describe_ddb_tables_bar.inc(1);
     }
-    bar.finish();
+    describe_ddb_tables_bar.finish();
 
-    Ok(resources)
+    let wrapped_resources = ddb_resources
+        .into_iter()
+        .map(Resource::DynamoDb)
+        .collect::<Vec<Resource>>();
+
+    Ok(wrapped_resources)
 }
 
 async fn list_table_names(
@@ -218,19 +276,11 @@ async fn list_table_names(
     Ok(table_names)
 }
 
-async fn fetch_ddb_resources(
+async fn is_ddb_ttl_enabled(
     ddb_client: &aws_sdk_dynamodb::Client,
     table_name: &str,
     limiter: Arc<DefaultDirectRateLimiter>,
-) -> Result<Vec<DynamoDbResource>, CliError> {
-    let region = ddb_client
-        .config()
-        .region()
-        .map(|r| r.as_ref())
-        .ok_or(CliError {
-            msg: "No region configured for client".to_string(),
-        })?;
-
+) -> Result<bool, CliError> {
     let ttl = rate_limit(Arc::clone(&limiter), || async {
         ddb_client
             .describe_time_to_live()
@@ -247,6 +297,21 @@ async fn fetch_ddb_resources(
             ..
         })
     );
+    Ok(ttl_enabled)
+}
+
+async fn fetch_ddb_resources(
+    ddb_client: &aws_sdk_dynamodb::Client,
+    table_name: &str,
+    limiter: Arc<DefaultDirectRateLimiter>,
+) -> Result<Vec<DynamoDbResource>, CliError> {
+    let region = ddb_client
+        .config()
+        .region()
+        .map(|r| r.as_ref())
+        .ok_or(CliError {
+            msg: "No region configured for client".to_string(),
+        })?;
 
     let description = rate_limit(Arc::clone(&limiter), || async {
         ddb_client
@@ -309,7 +374,7 @@ async fn fetch_ddb_resources(
         billing_mode,
         gsi_count,
         item_count,
-        ttl_enabled,
+        ttl_enabled: false,
         is_global_table,
         lsi_count,
         table_class,

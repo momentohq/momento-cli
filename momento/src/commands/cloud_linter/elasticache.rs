@@ -104,6 +104,7 @@ pub(crate) async fn get_elasticache_resources(
     config: &SdkConfig,
     limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<Vec<Resource>, CliError> {
+    log::debug!("describing elasticache resources");
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
     })?;

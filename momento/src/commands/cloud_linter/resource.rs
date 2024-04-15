@@ -11,7 +11,7 @@ pub(crate) enum Resource {
     ElastiCache(ElastiCacheResource),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 pub(crate) enum ResourceType {
     #[serde(rename = "AWS::DynamoDB::GSI")]
     DynamoDbGsi,
