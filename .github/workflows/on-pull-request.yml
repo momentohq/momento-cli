@@ -13,7 +13,7 @@ jobs:
     name: Style & Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install protoc
         run: ./scripts/install_protoc_linux.sh
@@ -31,16 +31,10 @@ jobs:
       max-parallel: 1
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install protoc
         run: ./scripts/install_protoc_linux.sh
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          override: true
 
       - uses: Swatinem/rust-cache@v2
 
@@ -53,15 +47,10 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install protoc
         run: choco install protoc
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          override: true
       - name: Build
         run: cargo build --verbose

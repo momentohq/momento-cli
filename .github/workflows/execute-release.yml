@@ -17,7 +17,7 @@ jobs:
     outputs:
       version: ${{ steps.release.outputs.release }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: semrel release
         id: semrel
@@ -54,7 +54,7 @@ jobs:
 
       - name: Output release
         id: release
-        run: echo "::set-output name=release::${{ steps.semrel.outputs.version }}"
+        run: echo "release=${{ steps.semrel.outputs.version }}" >> $GITHUB_OUTPUT
 
   publish-linux-assets:
     runs-on: ubuntu-latest
@@ -65,7 +65,7 @@ jobs:
           - { target: aarch64-unknown-linux-gnu, rpm-arch-shortname: aarch64, deb-arch-shortname: arm64, os: ubuntu-20.04, use-cross: true }
           - { target: x86_64-unknown-linux-gnu, rpm-arch-shortname: x86_64, deb-arch-shortname: amd64, os: ubuntu-20.04, use-cross: true }
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install protoc
         run: ./scripts/install_protoc_linux.sh
@@ -76,14 +76,6 @@ jobs:
           case ${{ matrix.architecture.target }} in
             aarch64-unknown-linux-gnu) sudo apt-get -y update ; sudo apt-get -y install gcc-aarch64-linux-gnu ;;
           esac
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.architecture.target }}
-          override: true
-          profile: minimal # minimal component installation (ie, no documentation)
 
       - name: Show version information (Rust, cargo, GCC)
         shell: bash
@@ -193,18 +185,10 @@ jobs:
           - { target: aarch64-apple-darwin, use-cross: true }
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install protoc
         run: ./scripts/install_protoc_osx.sh
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.architecture.target }}
-          override: true
-          profile: minimal # minimal component installation (ie, no documentation)
 
       - name: Show version information (Rust, cargo, GCC)
         shell: bash
@@ -253,7 +237,7 @@ jobs:
     outputs:
       msi_filename: ${{ steps.build_installer.outputs.asset_name }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install protoc
         run: choco install protoc
@@ -262,12 +246,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: "3.x"
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt
-          override: true
 
       - name: Show Cargo Version
         run: |
@@ -282,9 +260,9 @@ jobs:
           rustup target add x86_64-pc-windows-gnu
           cargo build --release --target x86_64-pc-windows-gnu
 
-          echo "::set-output name=momento_binary_path::.\target\x86_64-pc-windows-gnu\release\momento.exe"
+          echo "momento_binary_path=.\target\x86_64-pc-windows-gnu\release\momento.exe" >> $GITHUB_OUTPUT
           $distributableFile64Prefix = "momento-cli-$env:VERSION.windows_x64"
-          echo "::set-output name=distributable_file_prefix::$distributableFile64Prefix"
+          echo "distributable_file_prefix=$distributableFile64Prefix" >> $GITHUB_OUTPUT
 
       - name: Write client auth certificate file
         id: write_client_auth_cert
@@ -365,8 +343,8 @@ jobs:
           $zipPath = ".\$zipFilename"
           Compress-Archive -LiteralPath $env:MOMENTO_BINARY_PATH -DestinationPath $zipPath
 
-          echo "::set-output name=asset_path::$zipPath"
-          echo "::set-output name=asset_name::$zipFilename"
+          echo "asset_path=$zipPath" >> $GITHUB_OUTPUT
+          echo "asset_name=$zipFilename" >> $GITHUB_OUTPUT
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
@@ -384,8 +362,8 @@ jobs:
 
           $msiFilename = "$env:DISTRIBUTABLE_FILE_PREFIX.msi"
           $msiPath = ".\windows\installer\bin\Release\$msiFilename"
-          echo "::set-output name=asset_path::$msiPath"
-          echo "::set-output name=asset_name::$msiFilename"
+          echo "asset_path=$msiPath" >> $GITHUB_OUTPUT
+          echo "asset_name=$msiFilename" >> $GITHUB_OUTPUT
 
       - name: Sign installer
         env:
@@ -415,8 +393,8 @@ jobs:
           $releaseId = $latestRelease | jq -r .id
           $ghAssetMsi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:MSI_FILENAME"
           $ghAssetZip = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:ZIP_FILENAME"
-          echo "::set-output name=upload_url_msi::$ghAssetMsi"
-          echo "::set-output name=upload_url_zip::$ghAssetZip"
+          echo "upload_url_msi=$ghAssetMsi" >> $GITHUB_OUTPUT
+          echo "upload_url_zip=$ghAssetZip" >> $GITHUB_OUTPUT
 
       - name: Upload windows_x64 msi
         uses: actions/upload-release-asset@v1
@@ -492,7 +470,7 @@ jobs:
           MSI_FILENAME: ${{ needs.publish-windows-assets.outputs.msi_filename }}
         run: |
           $installerUrl = "https://github.com/momentohq/momento-cli/releases/download/v$env:VERSION/$env:MSI_FILENAME"
-          echo "::set-output name=installer_url::$installerUrl"
+          echo "installer_url=$installerUrl" >> $GITHUB_OUTPUT
 
       - name: Open PR on WinGet
         env:
@@ -507,7 +485,7 @@ jobs:
 
     steps:
       - name: Check out homebrew-tap
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           repository: momentohq/homebrew-tap
