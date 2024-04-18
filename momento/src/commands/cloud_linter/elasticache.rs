@@ -8,11 +8,14 @@ use governor::DefaultDirectRateLimiter;
 use indicatif::ProgressBar;
 use phf::{phf_map, Map};
 use serde::Serialize;
+use tokio::sync::mpsc::Sender;
 
 use crate::commands::cloud_linter::metrics::{Metric, MetricTarget, ResourceWithMetrics};
 use crate::commands::cloud_linter::resource::{ElastiCacheResource, Resource, ResourceType};
 use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
+
+use super::metrics::AppendMetrics;
 
 pub(crate) const CACHE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
         "Sum" => &[
@@ -50,7 +53,7 @@ pub(crate) const CACHE_METRICS: Map<&'static str, &'static [&'static str]> = phf
         ],
 };
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 pub(crate) struct ElastiCacheMetadata {
     #[serde(rename = "clusterId")]
     cluster_id: String,
@@ -100,19 +103,21 @@ impl ResourceWithMetrics for ElastiCacheResource {
     }
 }
 
-pub(crate) async fn get_elasticache_resources(
+pub(crate) async fn process_elasticache_resources(
     config: &SdkConfig,
-    limiter: Arc<DefaultDirectRateLimiter>,
-) -> Result<Vec<Resource>, CliError> {
-    log::debug!("describing elasticache resources");
+    control_plane_limiter: Arc<DefaultDirectRateLimiter>,
+    metrics_limiter: Arc<DefaultDirectRateLimiter>,
+    sender: Sender<Resource>,
+) -> Result<(), CliError> {
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
     })?;
 
     let elasticache_client = aws_sdk_elasticache::Client::new(config);
-    let clusters = describe_clusters(&elasticache_client, limiter).await?;
+    let clusters = describe_clusters(&elasticache_client, control_plane_limiter).await?;
 
-    convert_to_resources(clusters, region).await
+    write_resources(clusters, config, region, sender, metrics_limiter).await?;
+    Ok(())
 }
 
 async fn describe_clusters(
@@ -147,10 +152,14 @@ async fn describe_clusters(
     Ok(elasticache_clusters)
 }
 
-async fn convert_to_resources(
+async fn write_resources(
     clusters: Vec<CacheCluster>,
+    config: &SdkConfig,
     region: &str,
-) -> Result<Vec<Resource>, CliError> {
+    sender: Sender<Resource>,
+    metrics_limiter: Arc<DefaultDirectRateLimiter>,
+) -> Result<(), CliError> {
+    let metrics_client = aws_sdk_cloudwatch::Client::new(config);
     let mut resources: Vec<Resource> = Vec::new();
 
     for cluster in clusters {
@@ -232,5 +241,19 @@ async fn convert_to_resources(
             }
         };
     }
-    Ok(resources)
+
+    for resource in resources {
+        match resource {
+            Resource::DynamoDb(_) => todo!(),
+            Resource::ElastiCache(mut er) => {
+                er.append_metrics(&metrics_client, Arc::clone(&metrics_limiter))
+                    .await?;
+                sender
+                    .send(Resource::ElastiCache(er))
+                    .await
+                    .expect("TODO: panic message");
+            }
+        }
+    }
+    Ok(())
 }

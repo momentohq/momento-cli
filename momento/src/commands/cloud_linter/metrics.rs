@@ -1,22 +1,19 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use aws_config::SdkConfig;
 use aws_sdk_cloudwatch::primitives::DateTime;
 use aws_sdk_cloudwatch::types::Metric as CloudwatchMetric;
 use aws_sdk_cloudwatch::types::{Dimension, MetricDataQuery, MetricStat};
 use aws_sdk_cloudwatch::Client;
 use chrono::{Duration, Utc};
 use governor::DefaultDirectRateLimiter;
-use indicatif::{ProgressBar, ProgressStyle};
 use phf::Map;
 use serde::{Deserialize, Serialize};
 
-use crate::commands::cloud_linter::resource::Resource;
 use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub(crate) struct Metric {
     pub name: String,
     pub values: Vec<f64>,
@@ -61,35 +58,6 @@ where
 
         Ok(())
     }
-}
-
-pub(crate) async fn append_metrics_to_resources(
-    config: &SdkConfig,
-    limiter: Arc<DefaultDirectRateLimiter>,
-    mut resources: Vec<Resource>,
-) -> Result<Vec<Resource>, CliError> {
-    let bar = ProgressBar::new(resources.len() as u64).with_message("Querying metrics");
-    bar.set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
-    let metrics_client = Client::new(config);
-
-    for resource in &mut resources {
-        match resource {
-            Resource::DynamoDb(dynamodb_resource) => {
-                dynamodb_resource
-                    .append_metrics(&metrics_client, Arc::clone(&limiter))
-                    .await?;
-            }
-            Resource::ElastiCache(elasticache_resource) => {
-                elasticache_resource
-                    .append_metrics(&metrics_client, Arc::clone(&limiter))
-                    .await?;
-            }
-        }
-        bar.inc(1);
-    }
-    bar.finish();
-
-    Ok(resources)
 }
 
 async fn query_metrics_for_target(

@@ -4,7 +4,7 @@ use crate::commands::cloud_linter::dynamodb::DynamoDbMetadata;
 use crate::commands::cloud_linter::elasticache::ElastiCacheMetadata;
 use crate::commands::cloud_linter::metrics::Metric;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(untagged)]
 pub(crate) enum Resource {
     DynamoDb(DynamoDbResource),
@@ -23,7 +23,7 @@ pub(crate) enum ResourceType {
     ElastiCacheMemcachedNode,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub(crate) struct DynamoDbResource {
     #[serde(rename = "type")]
     pub(crate) resource_type: ResourceType,
@@ -35,7 +35,7 @@ pub(crate) struct DynamoDbResource {
     pub(crate) metadata: DynamoDbMetadata,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub(crate) struct ElastiCacheResource {
     #[serde(rename = "type")]
     pub(crate) resource_type: ResourceType,
@@ -47,7 +47,7 @@ pub(crate) struct ElastiCacheResource {
     pub(crate) metadata: ElastiCacheMetadata,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 pub(crate) struct DataFormat {
     pub(crate) resources: Vec<Resource>,
 }

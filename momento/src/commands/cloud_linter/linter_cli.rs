@@ -1,34 +1,64 @@
-use std::io::Write;
+use std::io::{copy, BufReader};
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 
 use aws_config::{BehaviorVersion, Region};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use governor::{Quota, RateLimiter};
-use indicatif::ProgressBar;
+use struson::writer::{JsonStreamWriter, JsonWriter};
 use tokio::fs::{metadata, File};
-use tokio::io::AsyncWriteExt;
+use tokio::sync::mpsc::{self, Sender};
 
-use crate::commands::cloud_linter::dynamodb::get_ddb_resources;
-use crate::commands::cloud_linter::elasticache::get_elasticache_resources;
-use crate::commands::cloud_linter::metrics::append_metrics_to_resources;
-use crate::commands::cloud_linter::resource::DataFormat;
+use crate::commands::cloud_linter::dynamodb::process_ddb_resources;
 use crate::commands::cloud_linter::utils::check_aws_credentials;
 use crate::error::CliError;
 
-use super::dynamodb::append_ttl_to_appropriate_ddb_resources;
+use super::elasticache::process_elasticache_resources;
+use super::resource::Resource;
 
 pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
+    let (tx, mut rx) = mpsc::channel::<Resource>(32);
+    let file_path = "linter_results.json";
+    // first we check to make sure we have perms to write files to the current directory
+    check_output_is_writable(file_path).await?;
+
+    // here we right the unzipped json file, containing all the linter results
+    let unzipped_tokio_file = File::create(file_path).await?;
+    let mut unzipped_file = unzipped_tokio_file.into_std().await;
+    let mut json_writer = JsonStreamWriter::new(&mut unzipped_file);
+    json_writer.begin_object()?;
+    json_writer.name("resources")?;
+    json_writer.begin_array()?;
+    tokio::spawn(async move {
+        let _ = process_data(region, tx).await;
+    });
+    while let Some(message) = rx.recv().await {
+        let _ = json_writer.serialize_value(&message);
+    }
+    json_writer.end_array()?;
+    json_writer.end_object()?;
+    json_writer.finish_document()?;
+
+    // now we compress the json into a .gz file for the customer to upload
+    let opened_file_tokio = File::open(file_path).await?;
+    let opened_file = opened_file_tokio.into_std().await;
+    let mut unzipped_file = BufReader::new(opened_file);
+    let zipped_file_output_tokio = File::create("linter_results.json.gz").await?;
+    let zipped_file_output = zipped_file_output_tokio.into_std().await;
+    let mut gz = GzEncoder::new(zipped_file_output, Compression::default());
+    copy(&mut unzipped_file, &mut gz)?;
+    gz.finish()?;
+
+    Ok(())
+}
+
+async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), CliError> {
     let config = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(region))
         .load()
         .await;
     check_aws_credentials(&config).await?;
-
-    let output_file_path = "linter_results.json.gz";
-    check_output_is_writable(output_file_path).await?;
 
     let control_plane_quota = Quota::per_second(
         core::num::NonZeroU32::new(10).expect("should create non-zero control_plane_quota"),
@@ -36,7 +66,7 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     let control_plane_limiter = Arc::new(RateLimiter::direct(control_plane_quota));
 
     let describe_ttl_quota = Quota::per_second(
-        core::num::NonZeroU32::new(1).expect("should create non-zero describe_ttl_quota"),
+        core::num::NonZeroU32::new(3).expect("should create non-zero describe_ttl_quota"),
     );
     let describe_ttl_limiter = Arc::new(RateLimiter::direct(describe_ttl_quota));
 
@@ -44,44 +74,22 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
         Quota::per_second(core::num::NonZeroU32::new(20).expect("should create non-zero quota"));
     let metrics_limiter = Arc::new(RateLimiter::direct(metrics_quota));
 
-    let mut resources = get_ddb_resources(&config, Arc::clone(&control_plane_limiter)).await?;
-
-    let mut elasticache_resources =
-        get_elasticache_resources(&config, Arc::clone(&control_plane_limiter)).await?;
-    resources.append(&mut elasticache_resources);
-
-    let resources =
-        append_metrics_to_resources(&config, Arc::clone(&metrics_limiter), resources).await?;
-
-    let resources = append_ttl_to_appropriate_ddb_resources(
+    process_ddb_resources(
         &config,
-        resources,
+        Arc::clone(&control_plane_limiter),
+        Arc::clone(&metrics_limiter),
         Arc::clone(&describe_ttl_limiter),
+        sender.clone(),
     )
     .await?;
 
-    let data_format = DataFormat { resources };
-
-    write_data_to_file(data_format, output_file_path).await?;
-
-    Ok(())
-}
-
-async fn write_data_to_file(data_format: DataFormat, file_path: &str) -> Result<(), CliError> {
-    let bar = ProgressBar::new_spinner().with_message("Writing data to file");
-    bar.enable_steady_tick(Duration::from_millis(100));
-
-    let data_format_json = serde_json::to_string(&data_format)?;
-
-    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-    encoder.write_all(data_format_json.as_bytes())?;
-
-    let compressed_json = encoder.finish()?;
-
-    let mut file = File::create(file_path).await?;
-    file.write_all(&compressed_json).await?;
-
-    bar.finish();
+    process_elasticache_resources(
+        &config,
+        Arc::clone(&control_plane_limiter),
+        Arc::clone(&metrics_limiter),
+        sender.clone(),
+    )
+    .await?;
 
     Ok(())
 }
