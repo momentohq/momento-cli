@@ -54,7 +54,7 @@ jobs:
 
       - name: Output release
         id: release
-        run: echo "release=${{ steps.semrel.outputs.version }}" >> $ENV:GITHUB_OUTPUT
+        run: echo "release=${{ steps.semrel.outputs.version }}" >> $GITHUB_OUTPUT
 
   publish-linux-assets:
     runs-on: ubuntu-latest
