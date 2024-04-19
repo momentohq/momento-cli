@@ -150,7 +150,7 @@ jobs:
         run: |
           nfpm pkg --packager rpm
           VERSION=${{ needs.release.outputs.version }}
-          BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.rpm-arch-shortname }}.rpm"
+          BINARY_FILE="${{ env.APP_NAME }}-$VERSION-1.${{ matrix.architecture.rpm-arch-shortname }}.rpm"
           [ -e $BINARY_FILE ] || { echo "Expected rpm output file not found!: '${BINARY_FILE}'"; exit 1; }
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
