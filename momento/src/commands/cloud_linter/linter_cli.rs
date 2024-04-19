@@ -23,7 +23,7 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     // first we check to make sure we have perms to write files to the current directory
     check_output_is_writable(file_path).await?;
 
-    // here we right the unzipped json file, containing all the linter results
+    // here we write the unzipped json file, containing all the linter results
     let unzipped_tokio_file = File::create(file_path).await?;
     let mut unzipped_file = unzipped_tokio_file.into_std().await;
     let mut json_writer = JsonStreamWriter::new(&mut unzipped_file);
