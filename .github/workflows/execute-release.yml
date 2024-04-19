@@ -54,7 +54,7 @@ jobs:
 
       - name: Output release
         id: release
-        run: echo "release=${{ steps.semrel.outputs.version }}" >> $GITHUB_OUTPUT
+        run: echo "release=${{ steps.semrel.outputs.version }}" >> $ENV:GITHUB_OUTPUT
 
   publish-linux-assets:
     runs-on: ubuntu-latest
@@ -151,7 +151,7 @@ jobs:
           nfpm pkg --packager rpm
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.rpm-arch-shortname }}.rpm"
-          [ -e $BINARY_FILE ] || exit 1
+          [ -e $BINARY_FILE ] || { echo "Expected rpm output file not found!: '${BINARY_FILE}'"; exit 1; }
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
@@ -176,7 +176,7 @@ jobs:
           nfpm pkg --packager deb
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="${{ env.APP_NAME }}_${VERSION}_${{ matrix.architecture.deb-arch-shortname }}.deb"
-          [ -e $BINARY_FILE ] || exit 1
+          [ -e $BINARY_FILE ] || { echo "Expected deb output file not found!: '${BINARY_FILE}'"; exit 1; }
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
@@ -367,8 +367,8 @@ jobs:
           $zipPath = ".\$zipFilename"
           Compress-Archive -LiteralPath $env:MOMENTO_BINARY_PATH -DestinationPath $zipPath
 
-          echo "asset_path=$zipPath" >> $GITHUB_OUTPUT
-          echo "asset_name=$zipFilename" >> $GITHUB_OUTPUT
+          echo "asset_path=$zipPath" >> $ENV:GITHUB_OUTPUT
+          echo "asset_name=$zipFilename" >> $ENV:GITHUB_OUTPUT
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
@@ -386,8 +386,8 @@ jobs:
 
           $msiFilename = "$env:DISTRIBUTABLE_FILE_PREFIX.msi"
           $msiPath = ".\windows\installer\bin\Release\$msiFilename"
-          echo "asset_path=$msiPath" >> $GITHUB_OUTPUT
-          echo "asset_name=$msiFilename" >> $GITHUB_OUTPUT
+          echo "asset_path=$msiPath" >> $ENV:GITHUB_OUTPUT
+          echo "asset_name=$msiFilename" >> $ENV:GITHUB_OUTPUT
 
       - name: Sign installer
         env:
@@ -418,8 +418,8 @@ jobs:
           $ghAssetMsi = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:MSI_FILENAME"
           $ghAssetZip = "https://uploads.github.com/repos/momentohq/momento-cli/releases/$releaseId/assets?name=$env:ZIP_FILENAME"
 
-          echo "upload_url_msi=$ghAssetMsi" >> $GITHUB_OUTPUT
-          echo "upload_url_zip=$ghAssetZip" >> $GITHUB_OUTPUT
+          echo "upload_url_msi=$ghAssetMsi" >> $ENV:GITHUB_OUTPUT
+          echo "upload_url_zip=$ghAssetZip" >> $ENV:GITHUB_OUTPUT
 
       - name: Upload windows_x64 msi
         uses: actions/upload-release-asset@v1
@@ -495,7 +495,7 @@ jobs:
           MSI_FILENAME: ${{ needs.publish-windows-assets.outputs.msi_filename }}
         run: |
           $installerUrl = "https://github.com/momentohq/momento-cli/releases/download/v$env:VERSION/$env:MSI_FILENAME"
-          echo "installer_url=$installerUrl" >> $GITHUB_OUTPUT
+          echo "installer_url=$installerUrl" >> $ENV:GITHUB_OUTPUT
 
       - name: Open PR on WinGet
         env:
