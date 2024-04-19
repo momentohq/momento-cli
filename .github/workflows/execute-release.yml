@@ -151,6 +151,7 @@ jobs:
           nfpm pkg --packager rpm
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="${{ env.APP_NAME }}-$VERSION.${{ matrix.architecture.rpm-arch-shortname }}.rpm"
+          [ -e $BINARY_FILE ] || exit 1
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
@@ -175,6 +176,7 @@ jobs:
           nfpm pkg --packager deb
           VERSION=${{ needs.release.outputs.version }}
           BINARY_FILE="${{ env.APP_NAME }}_${VERSION}_${{ matrix.architecture.deb-arch-shortname }}.deb"
+          [ -e $BINARY_FILE ] || exit 1
           AUTH="Authorization: token ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}"
           LATEST_RELEASE=$(curl -sH "$AUTH" https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/v${VERSION})
           RELEASE_ID=$(echo $LATEST_RELEASE | jq -r .id)
