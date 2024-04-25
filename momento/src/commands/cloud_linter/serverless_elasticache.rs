@@ -75,8 +75,8 @@ pub(crate) const SERVERLESS_CACHE_METRICS: Map<&'static str, &'static [&'static 
 pub(crate) struct ServerlessElastiCacheMetadata {
     name: String,
     engine: String,
-    #[serde(rename = "maxDataStorage")]
-    max_data_storage: i32,
+    #[serde(rename = "maxDataStorageGB")]
+    max_data_storage_gb: i32,
     #[serde(rename = "dataStorageUnit")]
     data_storage_unit: String,
     #[serde(rename = "maxEcpuPerSecond")]
@@ -202,13 +202,13 @@ async fn write_resources(
                 .set_maximum(Some(15_000_000))
                 .build(),
         );
-        let max_data_storage = data_storage.maximum.unwrap_or(5_000);
+        let max_data_storage_gb = data_storage.maximum.unwrap_or(5_000);
         let data_storage_unit = data_storage.unit.unwrap_or(DataStorageUnit::Gb);
 
         let metadata = ServerlessElastiCacheMetadata {
             name: cache_name.clone(),
             engine,
-            max_data_storage,
+            max_data_storage_gb,
             max_ecpu_per_second: ecpu.maximum.unwrap_or_default(),
             snapshot_retention_limit,
             daily_snapshot_time,
