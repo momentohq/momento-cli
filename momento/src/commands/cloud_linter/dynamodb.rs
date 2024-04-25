@@ -84,6 +84,8 @@ pub(crate) struct DynamoDbMetadata {
     ttl_enabled: bool,
     #[serde(rename = "isGlobalTable")]
     is_global_table: bool,
+    #[serde(rename = "deleteProtectionEnabled")]
+    delete_protection_enabled: bool,
     #[serde(rename = "lsiCount")]
     lsi_count: i64,
     #[serde(rename = "tableClass")]
@@ -365,6 +367,7 @@ async fn process_table_resources(
         p_throughput_read_units,
         p_throughput_write_units,
         gsi: None,
+        delete_protection_enabled: table.deletion_protection_enabled.unwrap_or_default(),
     };
 
     let mut resources = table
