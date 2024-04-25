@@ -87,6 +87,8 @@ pub(crate) struct ServerlessElastiCacheMetadata {
     daily_snapshot_time: String,
     #[serde(rename = "userGroupId")]
     user_group_id: String,
+    #[serde(rename = "engineVersion")]
+    engine_version: String,
 }
 
 impl ResourceWithMetrics for ServerlessElastiCacheResource {
@@ -212,6 +214,7 @@ async fn write_resources(
             daily_snapshot_time,
             user_group_id,
             data_storage_unit: data_storage_unit.to_string(),
+            engine_version: cache.full_engine_version.unwrap_or_default(),
         };
 
         let mut serverless_ec_resource = ServerlessElastiCacheResource {
