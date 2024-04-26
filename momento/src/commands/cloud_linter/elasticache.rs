@@ -250,7 +250,9 @@ async fn write_resources(
                 sender
                     .send(Resource::ElastiCache(er))
                     .await
-                    .expect("TODO: panic message");
+                    .map_err(|err| CliError {
+                        msg: format!("Failed to send elasticache resource: {}", err),
+                    })?;
             }
             _ => {
                 return Err(CliError {
