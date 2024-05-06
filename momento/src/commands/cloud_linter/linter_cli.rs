@@ -11,6 +11,7 @@ use tokio::fs::{metadata, File};
 use tokio::sync::mpsc::{self, Sender};
 
 use crate::commands::cloud_linter::dynamodb::process_ddb_resources;
+use crate::commands::cloud_linter::serverless_elasticache::process_serverless_elasticache_resources;
 use crate::commands::cloud_linter::utils::check_aws_credentials;
 use crate::error::CliError;
 
@@ -84,6 +85,14 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
     .await?;
 
     process_elasticache_resources(
+        &config,
+        Arc::clone(&control_plane_limiter),
+        Arc::clone(&metrics_limiter),
+        sender.clone(),
+    )
+    .await?;
+
+    process_serverless_elasticache_resources(
         &config,
         Arc::clone(&control_plane_limiter),
         Arc::clone(&metrics_limiter),

@@ -174,7 +174,7 @@ async fn write_resources(
         })?;
 
         let engine = cluster.engine.ok_or(CliError {
-            msg: "ElastiCache cluster has no node type".to_string(),
+            msg: "ElastiCache cluster has no engine type".to_string(),
         })?;
         match engine.as_str() {
             "redis" => {
@@ -244,14 +244,20 @@ async fn write_resources(
 
     for resource in resources {
         match resource {
-            Resource::DynamoDb(_) => todo!(),
             Resource::ElastiCache(mut er) => {
                 er.append_metrics(&metrics_client, Arc::clone(&metrics_limiter))
                     .await?;
                 sender
                     .send(Resource::ElastiCache(er))
                     .await
-                    .expect("TODO: panic message");
+                    .map_err(|err| CliError {
+                        msg: format!("Failed to send elasticache resource: {}", err),
+                    })?;
+            }
+            _ => {
+                return Err(CliError {
+                    msg: "Invalid resource type".to_string(),
+                });
             }
         }
     }
