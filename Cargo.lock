@@ -1709,7 +1709,7 @@ dependencies = [
 
 [[package]]
 name = "momento-cli"
-version = "0.42.8"
+version = "0.43.0"
 dependencies = [
  "assert_cmd",
  "aws-config",
@@ -1750,7 +1750,7 @@ dependencies = [
 
 [[package]]
 name = "momento-cli-opts"
-version = "0.42.8"
+version = "0.43.0"
 dependencies = [
  "clap",
 ]
