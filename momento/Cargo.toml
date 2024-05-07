@@ -25,6 +25,7 @@ aws-sdk-dynamodb = "1.19.0"
 aws-sdk-elasticache = "1.18.0"
 indicatif = "0.17.8"
 flate2 = "1.0.28"
+struson = { version = "0.5.0", features = ["serde"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
@@ -63,7 +64,7 @@ version = "1"
 features = [ "full",]
 
 [dependencies.serde]
-version = "1.0"
+version = "1.0.198"
 features = [ "derive",]
 
 [dependencies.serde_json]
