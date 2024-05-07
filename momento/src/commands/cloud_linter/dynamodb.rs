@@ -455,7 +455,9 @@ async fn process_table_resources(
         sender
             .send(Resource::DynamoDb(resource))
             .await
-            .expect("TODO: panic message");
+            .map_err(|err| CliError {
+                msg: format!("Failed to stream dynamodb resource to file: {}", err),
+            })?;
     }
 
     Ok(())
