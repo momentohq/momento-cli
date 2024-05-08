@@ -8,6 +8,7 @@ Command-line tool for managing Momento Serverless Cache.  Supports the following
 * Create a Momento account
 * Create, list, and delete Momento caches
 * Get and set values in a Momento cache
+* [Inspect your cloud footprint for common inefficiencies](https://docs.momentohq.com/cloud-linter)
 
 ## Prerequisites
 
