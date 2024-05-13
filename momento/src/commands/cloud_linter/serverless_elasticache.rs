@@ -92,16 +92,16 @@ pub(crate) struct ServerlessElastiCacheMetadata {
 }
 
 impl ResourceWithMetrics for ServerlessElastiCacheResource {
-    fn create_metric_target(&self) -> Result<MetricTarget, CliError> {
+    fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
         match self.resource_type {
-            ResourceType::ServerlessElastiCache => Ok(MetricTarget {
+            ResourceType::ServerlessElastiCache => Ok(vec![MetricTarget {
                 namespace: "AWS/ElastiCache".to_string(),
                 dimensions: HashMap::from([
                     // the cache id for a serverless elasticache cluster is just the cache name
                     ("CacheClusterId".to_string(), self.id.clone()),
                 ]),
                 targets: SERVERLESS_CACHE_METRICS,
-            }),
+            }]),
             _ => Err(CliError {
                 msg: "Invalid resource type".to_string(),
             }),

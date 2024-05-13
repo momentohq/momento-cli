@@ -67,17 +67,17 @@ pub(crate) struct ElastiCacheMetadata {
 }
 
 impl ResourceWithMetrics for ElastiCacheResource {
-    fn create_metric_target(&self) -> Result<MetricTarget, CliError> {
+    fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
         match self.resource_type {
-            ResourceType::ElastiCacheRedisNode => Ok(MetricTarget {
+            ResourceType::ElastiCacheRedisNode => Ok(vec![MetricTarget {
                 namespace: "AWS/ElastiCache".to_string(),
                 dimensions: HashMap::from([
                     ("CacheClusterId".to_string(), self.id.clone()),
                     ("CacheNodeId".to_string(), "0001".to_string()),
                 ]),
                 targets: CACHE_METRICS,
-            }),
-            ResourceType::ElastiCacheMemcachedNode => Ok(MetricTarget {
+            }]),
+            ResourceType::ElastiCacheMemcachedNode => Ok(vec![MetricTarget {
                 namespace: "AWS/ElastiCache".to_string(),
                 dimensions: HashMap::from([
                     (
@@ -87,7 +87,7 @@ impl ResourceWithMetrics for ElastiCacheResource {
                     ("CacheNodeId".to_string(), self.id.clone()),
                 ]),
                 targets: CACHE_METRICS,
-            }),
+            }]),
             _ => Err(CliError {
                 msg: "Invalid resource type".to_string(),
             }),

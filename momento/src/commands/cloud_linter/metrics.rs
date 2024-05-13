@@ -26,7 +26,7 @@ pub(crate) struct MetricTarget {
 }
 
 pub(crate) trait ResourceWithMetrics {
-    fn create_metric_target(&self) -> Result<MetricTarget, CliError>;
+    fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError>;
 
     fn set_metrics(&mut self, metrics: Vec<Metric>);
 
@@ -50,10 +50,14 @@ where
         metrics_client: &Client,
         limiter: Arc<DefaultDirectRateLimiter>,
     ) -> Result<(), CliError> {
-        let metric_target = self.create_metric_target()?;
-        let metrics =
-            query_metrics_for_target(metrics_client, Arc::clone(&limiter), metric_target).await?;
-        self.set_metrics(metrics);
+        let metric_targets = self.create_metric_targets()?;
+        let mut metrics: Vec<Vec<Metric>> = Vec::new();
+        for target in metric_targets {
+            metrics.push(
+                query_metrics_for_target(metrics_client, Arc::clone(&limiter), target).await?
+            );
+        }
+        self.set_metrics(metrics.into_iter().flatten().collect());
         self.set_metric_period_seconds(60 * 60 * 24);
 
         Ok(())

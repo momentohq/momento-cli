@@ -5,3 +5,4 @@ mod metrics;
 mod resource;
 mod serverless_elasticache;
 mod utils;
+mod s3;

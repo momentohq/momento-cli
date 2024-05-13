@@ -129,13 +129,13 @@ pub(crate) struct GsiMetadata {
 }
 
 impl ResourceWithMetrics for DynamoDbResource {
-    fn create_metric_target(&self) -> Result<MetricTarget, CliError> {
+    fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
         match self.resource_type {
-            ResourceType::DynamoDbTable => Ok(MetricTarget {
+            ResourceType::DynamoDbTable => Ok(vec![MetricTarget {
                 namespace: "AWS/DynamoDB".to_string(),
                 dimensions: HashMap::from([("TableName".to_string(), self.id.clone())]),
                 targets: DDB_TABLE_METRICS,
-            }),
+            }]),
             ResourceType::DynamoDbGsi => {
                 let gsi_name = self
                     .metadata
@@ -145,14 +145,14 @@ impl ResourceWithMetrics for DynamoDbResource {
                     .ok_or(CliError {
                         msg: "Global secondary index name not found".to_string(),
                     })?;
-                Ok(MetricTarget {
+                Ok(vec![MetricTarget {
                     namespace: "AWS/DynamoDB".to_string(),
                     dimensions: HashMap::from([
                         ("TableName".to_string(), self.id.clone()),
                         ("GlobalSecondaryIndexName".to_string(), gsi_name),
                     ]),
                     targets: DDB_GSI_METRICS,
-                })
+                }])
             }
             _ => Err(CliError {
                 msg: "Invalid resource type".to_string(),
