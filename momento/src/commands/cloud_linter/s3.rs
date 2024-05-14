@@ -1,9 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use aws_config::SdkConfig;
-// use aws_sdk_s3::Client;
-// use aws_sdk_s3::operation::get_bucket_encryption::GetBucketEncryptionOutput;
-// use aws_sdk_s3::types::ServerSideEncryptionConfiguration;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
 use phf::{Map, phf_map};
@@ -11,7 +8,6 @@ use serde::Serialize;
 use tokio::sync::mpsc::Sender;
 use crate::commands::cloud_linter::metrics::{AppendMetrics, Metric, MetricTarget, ResourceWithMetrics};
 use crate::commands::cloud_linter::resource::{Resource, ResourceType, S3Resource};
-// use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
 
 const S3_METRICS_STANDARD_STORAGE_TYPES: Map<&'static str, &'static [&'static str]> = phf_map! {
@@ -224,7 +220,6 @@ pub(crate) async fn process_s3_resources(
     config: &SdkConfig,
     _control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
-    // bucket_encryption_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
 ) -> Result<(), CliError> {
     println!("Processing S3 resources");
@@ -240,14 +235,12 @@ pub(crate) async fn process_s3_resources(
     list_buckets_bar.finish();
 
     process_buckets(
-        // s3client.clone(),
         bucket_names,
         "general_purpose",
         region,
         sender.clone(),
         &metrics_client,
         &metrics_limiter,
-        // &bucket_encryption_limiter,
     ).await?;
 
     let list_buckets_bar = ProgressBar::new_spinner().with_message("Listing S3 Directory Buckets");
@@ -256,28 +249,24 @@ pub(crate) async fn process_s3_resources(
     list_buckets_bar.finish();
 
     process_buckets(
-        // s3client.clone(),
         bucket_names,
         "directory",
         region,
         sender,
         &metrics_client,
         &metrics_limiter,
-        // &bucket_encryption_limiter,
     ).await?;
 
     Ok(())
 }
 
 async fn process_buckets(
-    // s3client: Client,
     buckets: Vec<String>,
     bucket_type: &str,
     region: &str,
     sender: Sender<Resource>,
     metrics_client: &aws_sdk_cloudwatch::Client,
     metrics_limiter: &Arc<DefaultDirectRateLimiter>,
-    // encryption_limiter: &Arc<DefaultDirectRateLimiter>,
 ) -> Result<(), CliError> {
     let mut resources: Vec<Resource> = Vec::new();
 
@@ -309,10 +298,6 @@ async fn process_buckets(
                     &metrics_client,
                     Arc::clone(&metrics_limiter)
                 ).await?;
-                // if bucket_type != "directory" {
-                //     let bucket_encryption = get_bucket_encryption(s3client.clone(), &my_resource.id, encryption_limiter).await?;
-                //     // my_resource.metrics.bucket_encryption = bucket_encryption;
-                // }
                 sender
                     .send(Resource::S3(my_resource))
                     .await
@@ -331,31 +316,6 @@ async fn process_buckets(
     process_buckets_bar.finish();
     Ok(())
 }
-
-// async fn get_bucket_encryption(
-//     s3_client: Client,
-//     bucket_name: &str,
-//     limiter: &Arc<DefaultDirectRateLimiter>,
-// ) -> Result<(), CliError> {
-//     let encryption: GetBucketEncryptionOutput = rate_limit(Arc::clone(&limiter), || async {
-//         s3_client
-//             .get_bucket_encryption()
-//             .bucket(bucket_name)
-//             .send()
-//             .await
-//             .expect("Failed getting bucket encryption");
-//     })
-//     .await;
-//     let encryption_output = matches!(
-//         encryption.server_side_encryption_configuration,
-//         Some(GetBucketEncryptionOutput {
-//             server_side_encryption_configuration: Some(_),
-//             ..
-//         })
-//     );
-//     println!("Bucket Encryption: {:?}", encryption.server_side_encryption_configuration);
-//     Ok(())
-// }
 
 async fn list_buckets(
     s3_client: &aws_sdk_s3::Client
