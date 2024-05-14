@@ -1,28 +1,23 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use aws_config::SdkConfig;
-use aws_sdk_s3::types::Object;
 use governor::DefaultDirectRateLimiter;
 use phf::{Map, phf_map};
 use serde::Serialize;
 use tokio::sync::mpsc::Sender;
 use crate::commands::cloud_linter::metrics::{AppendMetrics, Metric, MetricTarget, ResourceWithMetrics};
 use crate::commands::cloud_linter::resource::{Resource, ResourceType, S3Resource};
-use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
 
 const S3_METRICS_STANDARD_STORAGE_TYPE: Map<&'static str, &'static [&'static str]> = phf_map! {
     "Sum" => &[
         "BucketSizeBytes",
-        // "BytesDownloaded",
     ],
     "Average" => &[
         "BucketSizeBytes",
-        // "BytesDownloaded",
     ],
     "Maximum" => &[
         "BucketSizeBytes",
-        // "BytesDownloaded",
     ],
 };
 
@@ -38,17 +33,71 @@ const S3_METRICS_ALL_STORAGE_TYPES: Map<&'static str, &'static [&'static str]> =
     ],
 };
 
+const S3_METRICS_REQUEST: Map<&'static str, &'static [&'static str]> = phf_map! {
+    "Sum" => &[
+        "AllRequests",
+        "GetRequests",
+        "PutRequests",
+        "DeleteRequests",
+        "HeadRequests",
+        "PostRequests",
+        "SelectRequests",
+        "SelectBytesScanned",
+        "SelectBytesReturned",
+        "ListRequests",
+        "BytesDownloaded",
+        "BytesUploaded",
+        "FirstByteLatency",
+        "TotalRequestLatency",
+        // These metrics cause the program to exit prematurely without error
+        // "4xxErrors",
+        // "5xxErrors",
+    ],
+    "Average" => &[
+        "AllRequests",
+        "GetRequests",
+        "PutRequests",
+        "DeleteRequests",
+        "HeadRequests",
+        "PostRequests",
+        "SelectRequests",
+        "SelectBytesScanned",
+        "SelectBytesReturned",
+        "ListRequests",
+        "BytesDownloaded",
+        "BytesUploaded",
+        "FirstByteLatency",
+        "TotalRequestLatency",
+        // These metrics cause the program to exit prematurely without error
+        // "4xxErrors",
+        // "5xxErrors",
+    ],
+    "Maximum" => &[
+        "AllRequests",
+        "GetRequests",
+        "PutRequests",
+        "DeleteRequests",
+        "HeadRequests",
+        "PostRequests",
+        "SelectRequests",
+        "SelectBytesScanned",
+        "SelectBytesReturned",
+        "ListRequests",
+        "BytesDownloaded",
+        "BytesUploaded",
+        "FirstByteLatency",
+        "TotalRequestLatency",
+        // These metrics cause the program to exit prematurely without error
+        // "4xxErrors",
+        // "5xxErrors",
+    ],
+};
+
 
 #[derive(Serialize, Clone, Debug)]
 pub(crate) struct S3Metadata {
     #[serde(rename = "fakeStat")]
     fake_stat: i64,
-    // #[serde(rename = "objectCount")]
-    // object_count: i64,
-    // #[serde(rename = "size")]
-    // size: Option<i64>,
-    // #[serde(rename = "storageClass")]
-    // storage_class: String
 }
 
 impl ResourceWithMetrics for S3Resource {
@@ -60,7 +109,6 @@ impl ResourceWithMetrics for S3Resource {
                         namespace: "AWS/S3".to_string(),
                         dimensions: HashMap::from([
                             ("BucketName".to_string(), self.id.clone()),
-                            // TODO: think about processing storage type in some way
                             ("StorageType".to_string(), "StandardStorage".to_string())
                         ]),
                         targets: S3_METRICS_STANDARD_STORAGE_TYPE,
@@ -72,6 +120,16 @@ impl ResourceWithMetrics for S3Resource {
                             ("StorageType".to_string(), "AllStorageTypes".to_string())
                         ]),
                         targets: S3_METRICS_ALL_STORAGE_TYPES,
+                    },
+                    MetricTarget {
+                        namespace: "AWS/S3".to_string(),
+                        dimensions: HashMap::from([
+                            ("BucketName".to_string(), self.id.clone()),
+                            // TODO: a filter is required to get these metrics. Can we either
+                            //  require a filter with a specific id or allow this to be passed in?
+                            ("FilterId".to_string(), "all-objects".to_string())
+                        ]),
+                        targets: S3_METRICS_REQUEST,
                     },
                 ])
             }
@@ -186,34 +244,4 @@ async fn list_directory_buckets(
         println!("Directory Bucket: {}", bucket.name().unwrap_or_default());
     }
     Ok(bucket_names)
-}
-
-
-async fn list_objects_in_bucket(
-    s3_client: &aws_sdk_s3::Client,
-    bucket_name: &str,
-    limiter: Arc<DefaultDirectRateLimiter>,
-) -> Result<Vec<Object>, CliError>{
-    let mut s3_objects = Vec::new();
-    let mut obj_stream =
-        s3_client
-            .list_objects_v2()
-            .bucket(bucket_name)
-            .into_paginator()
-            .send();
-    while let Some(result) = rate_limit(Arc::clone(&limiter), || obj_stream.next()).await {
-        match result {
-            Ok(result) => {
-                if let Some(objects) = result.contents {
-                    for obj in objects {
-                        s3_objects.push(obj);
-                    }
-                }
-            }
-            Err(err) => {
-                println!("Failed to list objects in bucket: {}", err);
-            }
-        }
-    }
-    Ok(s3_objects)
 }
