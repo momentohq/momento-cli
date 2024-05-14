@@ -20,6 +20,7 @@ pub(crate) struct Metric {
 }
 
 pub(crate) struct MetricTarget {
+    pub(crate) prefix: String,
     pub(crate) namespace: String,
     pub(crate) dimensions: HashMap<String, String>,
     pub(crate) targets: Map<&'static str, &'static [&'static str]>,
@@ -93,7 +94,8 @@ async fn query_metrics_for_target(
                         .build(),
                 )
                 .id(format!(
-                    "{}_{}",
+                    "{}{}_{}",
+                    metric_target.prefix,
                     metric.to_lowercase(),
                     stat_type.to_lowercase()
                 ))

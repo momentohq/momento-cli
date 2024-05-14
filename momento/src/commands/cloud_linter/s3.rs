@@ -38,6 +38,7 @@ const S3_METRICS_ALL_STORAGE_TYPES: Map<&'static str, &'static [&'static str]> =
     ],
 };
 
+// TODO: Do we need each calc type for each metric? Can we trim some of these?
 const S3_METRICS_REQUEST: Map<&'static str, &'static [&'static str]> = phf_map! {
     "Sum" => &[
         "AllRequests",
@@ -107,6 +108,7 @@ pub(crate) struct S3Metadata {
 
 fn get_metric_target_for_storage_type(name: &str, storage_type: &str) -> MetricTarget {
     MetricTarget {
+        prefix: format!("{}_", storage_type.to_lowercase().to_string()),
         namespace: "AWS/S3".to_string(),
         dimensions: HashMap::from([
             ("BucketName".to_string(), name.to_string()),
@@ -116,38 +118,71 @@ fn get_metric_target_for_storage_type(name: &str, storage_type: &str) -> MetricT
     }
 }
 
+fn get_storage_types() -> Vec<&'static str> {
+    vec![
+        "StandardStorage",
+        "IntelligentTieringAAStorage",
+        "IntelligentTieringAIAStorage",
+        "IntelligentTieringDAAStorage",
+        "IntelligentTieringFAStorage",
+        "IntelligentTieringIAStorage",
+        "StandardIAStorage",
+        "StandardIASizeOverhead",
+        "IntAAObjectOverhead",
+        "IntAAS3ObjectOverhead",
+        "IntDAAObjectOverhead",
+        "IntDAAS3ObjectOverhead",
+        "OneZoneIAStorage",
+        "OneZoneIASizeOverhead",
+        "ReducedRedundancyStorage",
+        "GlacierInstantRetrievalSizeOverhead",
+        "GlacierInstantRetrievalStorage",
+        "GlacierStorage",
+        "GlacierStagingStorage",
+        "GlacierObjectOverhead",
+        "GlacierS3ObjectOverhead",
+        "DeepArchiveStorage",
+        "DeepArchiveObjectOverhead",
+        "DeepArchiveS3ObjectOverhead",
+        "DeepArchiveStagingStorage",
+        "ExpressOneZone",
+    ]
+}
+
 impl ResourceWithMetrics for S3Resource {
     fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
+        let storage_types = get_storage_types();
         match self.resource_type {
             ResourceType::S3 => {
                 Ok(vec![
-                    get_metric_target_for_storage_type(&self.id, "StandardStorage"),
-                    get_metric_target_for_storage_type(&self.id, "IntelligentTieringAAStorage"),
-                    get_metric_target_for_storage_type(&self.id, "IntelligentTieringAIAStorage"),
-                    get_metric_target_for_storage_type(&self.id, "IntelligentTieringDAAStorage"),
-                    get_metric_target_for_storage_type(&self.id, "IntelligentTieringFAStorage"),
-                    get_metric_target_for_storage_type(&self.id, "IntelligentTieringIAStorage"),
-                    get_metric_target_for_storage_type(&self.id, "StandardIAStorage"),
-                    get_metric_target_for_storage_type(&self.id, "StandardIASizeOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "IntAAObjectOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "IntAAS3ObjectOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "IntDAAObjectOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "IntDAAS3ObjectOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "OneZoneIAStorage"),
-                    get_metric_target_for_storage_type(&self.id, "OneZoneIASizeOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "ReducedRedundancyStorage"),
-                    get_metric_target_for_storage_type(&self.id, "GlacierInstantRetrievalSizeOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "GlacierInstantRetrievalStorage"),
-                    get_metric_target_for_storage_type(&self.id, "GlacierStorage"),
-                    get_metric_target_for_storage_type(&self.id, "GlacierStagingStorage"),
-                    get_metric_target_for_storage_type(&self.id, "GlacierObjectOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "GlacierS3ObjectOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "DeepArchiveStorage"),
-                    get_metric_target_for_storage_type(&self.id, "DeepArchiveObjectOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "DeepArchiveS3ObjectOverhead"),
-                    get_metric_target_for_storage_type(&self.id, "DeepArchiveStagingStorage"),
-                    get_metric_target_for_storage_type(&self.id, "ExpressOneZone"),
+                    get_metric_target_for_storage_type(&self.id, storage_types[0]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[1]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[2]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[3]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[4]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[5]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[6]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[7]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[8]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[9]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[10]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[11]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[12]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[13]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[14]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[15]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[16]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[17]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[18]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[19]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[20]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[21]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[22]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[23]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[24]),
+                    get_metric_target_for_storage_type(&self.id, storage_types[25]),
                     MetricTarget {
+                        prefix: "".to_string(),
                         namespace: "AWS/S3".to_string(),
                         dimensions: HashMap::from([
                             ("BucketName".to_string(), self.id.clone()),
@@ -156,11 +191,14 @@ impl ResourceWithMetrics for S3Resource {
                         targets: S3_METRICS_ALL_STORAGE_TYPES,
                     },
                     MetricTarget {
+                        prefix: "".to_string(),
                         namespace: "AWS/S3".to_string(),
                         dimensions: HashMap::from([
                             ("BucketName".to_string(), self.id.clone()),
                             // TODO: a filter is required to get these metrics. Can we either
-                            //  require a filter with a specific id or allow this to be passed in?
+                            //  require a filter with a specific id or require elevated privs
+                            //  that allow us to create a filter on the buckets for them?
+                            //  OR, do we just want to skip these metrics.
                             ("FilterId".to_string(), "all-objects".to_string())
                         ]),
                         targets: S3_METRICS_REQUEST,
