@@ -72,6 +72,11 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
     );
     let describe_ttl_limiter = Arc::new(RateLimiter::direct(describe_ttl_quota));
 
+    // let bucket_encryption_quote = Quota::per_second(
+    //     core::num::NonZeroU32::new(3).expect("should create non-zero bucket_encryption_quota"),
+    // );
+    // let bucket_encryption_limiter = Arc::new(RateLimiter::direct(bucket_encryption_quote));
+
     let metrics_quota =
         Quota::per_second(core::num::NonZeroU32::new(20).expect("should create non-zero quota"));
     let metrics_limiter = Arc::new(RateLimiter::direct(metrics_quota));
@@ -80,6 +85,7 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
         &config,
         Arc::clone(&control_plane_limiter),
         Arc::clone(&metrics_limiter),
+        // Arc::clone(&bucket_encryption_limiter),
         sender.clone(),
     )
     .await?;
