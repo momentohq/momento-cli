@@ -115,6 +115,7 @@ fn get_metric_target_for_storage_type(name: &str, storage_type: &str) -> MetricT
 }
 
 fn get_storage_types() -> Vec<&'static str> {
+    // TODO: do we want/need all of these types or can we trim this down?
     vec![
         "StandardStorage",
         "IntelligentTieringAAStorage",
@@ -148,58 +149,39 @@ fn get_storage_types() -> Vec<&'static str> {
 impl ResourceWithMetrics for S3Resource {
     fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
         let storage_types = get_storage_types();
+        let mut s3_metrics_targets: Vec<MetricTarget> = Vec::new();
+        for storage_type in storage_types {
+            s3_metrics_targets.push(get_metric_target_for_storage_type(&self.id, storage_type));
+        }
+        s3_metrics_targets.push(
+            MetricTarget {
+                prefix: "".to_string(),
+                namespace: "AWS/S3".to_string(),
+                dimensions: HashMap::from([
+                    ("BucketName".to_string(), self.id.clone()),
+                    ("StorageType".to_string(), "AllStorageTypes".to_string())
+                ]),
+                targets: S3_METRICS_ALL_STORAGE_TYPES,
+            });
+        s3_metrics_targets.push(
+            MetricTarget {
+                prefix: "".to_string(),
+                namespace: "AWS/S3".to_string(),
+                dimensions: HashMap::from([
+                    ("BucketName".to_string(), self.id.clone()),
+                    // TODO: a filter is required to get these metrics. Can we either
+                    //  require a filter with a specific id or require elevated privs
+                    //  that allow us to create a filter on the buckets for them?
+                    //  OR, do we just want to skip these metrics.
+                    ("FilterId".to_string(), "all-objects".to_string())
+                ]),
+                targets: S3_METRICS_REQUEST,
+            },
+        );
+
         match self.resource_type {
             ResourceType::S3 => {
-                Ok(vec![
-                    get_metric_target_for_storage_type(&self.id, storage_types[0]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[1]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[2]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[3]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[4]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[5]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[6]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[7]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[8]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[9]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[10]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[11]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[12]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[13]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[14]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[15]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[16]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[17]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[18]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[19]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[20]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[21]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[22]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[23]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[24]),
-                    get_metric_target_for_storage_type(&self.id, storage_types[25]),
-                    MetricTarget {
-                        prefix: "".to_string(),
-                        namespace: "AWS/S3".to_string(),
-                        dimensions: HashMap::from([
-                            ("BucketName".to_string(), self.id.clone()),
-                            ("StorageType".to_string(), "AllStorageTypes".to_string())
-                        ]),
-                        targets: S3_METRICS_ALL_STORAGE_TYPES,
-                    },
-                    MetricTarget {
-                        prefix: "".to_string(),
-                        namespace: "AWS/S3".to_string(),
-                        dimensions: HashMap::from([
-                            ("BucketName".to_string(), self.id.clone()),
-                            // TODO: a filter is required to get these metrics. Can we either
-                            //  require a filter with a specific id or require elevated privs
-                            //  that allow us to create a filter on the buckets for them?
-                            //  OR, do we just want to skip these metrics.
-                            ("FilterId".to_string(), "all-objects".to_string())
-                        ]),
-                        targets: S3_METRICS_REQUEST,
-                    },
-                ])
+                Ok(s3_metrics_targets)
             }
             _ => Err(CliError {
                 msg: "Invalid resource type".to_string()
