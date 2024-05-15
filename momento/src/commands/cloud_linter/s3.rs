@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use aws_config::SdkConfig;
+use aws_sdk_s3::types::MetricsConfiguration;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
 use phf::{Map, phf_map};
@@ -34,7 +35,6 @@ const S3_METRICS_ALL_STORAGE_TYPES: Map<&'static str, &'static [&'static str]> =
     ],
 };
 
-// TODO: Do we need each calc type for each metric? Can we trim some of these?
 const S3_METRICS_REQUEST: Map<&'static str, &'static [&'static str]> = phf_map! {
     "Sum" => &[
         "AllRequests",
@@ -49,57 +49,23 @@ const S3_METRICS_REQUEST: Map<&'static str, &'static [&'static str]> = phf_map! 
         "ListRequests",
         "BytesDownloaded",
         "BytesUploaded",
-        "FirstByteLatency",
-        "TotalRequestLatency",
-        // These metrics cause the program to exit prematurely without error
-        // "4xxErrors",
-        // "5xxErrors",
     ],
     "Average" => &[
-        "AllRequests",
-        "GetRequests",
-        "PutRequests",
-        "DeleteRequests",
-        "HeadRequests",
-        "PostRequests",
-        "SelectRequests",
-        "SelectBytesScanned",
-        "SelectBytesReturned",
-        "ListRequests",
-        "BytesDownloaded",
-        "BytesUploaded",
         "FirstByteLatency",
         "TotalRequestLatency",
-        // These metrics cause the program to exit prematurely without error
-        // "4xxErrors",
-        // "5xxErrors",
     ],
     "Maximum" => &[
-        "AllRequests",
-        "GetRequests",
-        "PutRequests",
-        "DeleteRequests",
-        "HeadRequests",
-        "PostRequests",
-        "SelectRequests",
-        "SelectBytesScanned",
-        "SelectBytesReturned",
-        "ListRequests",
-        "BytesDownloaded",
-        "BytesUploaded",
         "FirstByteLatency",
         "TotalRequestLatency",
-        // These metrics cause the program to exit prematurely without error
-        // "4xxErrors",
-        // "5xxErrors",
     ],
 };
-
 
 #[derive(Serialize, Clone, Debug)]
 pub(crate) struct S3Metadata {
     #[serde(rename = "bucketType")]
     bucket_type: String,
+    #[serde(rename = "requestMetricsFilter")]
+    request_metrics_filter: Option<String>,
 }
 
 fn get_metric_target_for_storage_type(name: &str, storage_type: &str) -> MetricTarget {
@@ -115,34 +81,8 @@ fn get_metric_target_for_storage_type(name: &str, storage_type: &str) -> MetricT
 }
 
 fn get_storage_types() -> Vec<&'static str> {
-    // TODO: do we want/need all of these types or can we trim this down?
     vec![
         "StandardStorage",
-        "IntelligentTieringAAStorage",
-        "IntelligentTieringAIAStorage",
-        "IntelligentTieringDAAStorage",
-        "IntelligentTieringFAStorage",
-        "IntelligentTieringIAStorage",
-        "StandardIAStorage",
-        "StandardIASizeOverhead",
-        "IntAAObjectOverhead",
-        "IntAAS3ObjectOverhead",
-        "IntDAAObjectOverhead",
-        "IntDAAS3ObjectOverhead",
-        "OneZoneIAStorage",
-        "OneZoneIASizeOverhead",
-        "ReducedRedundancyStorage",
-        "GlacierInstantRetrievalSizeOverhead",
-        "GlacierInstantRetrievalStorage",
-        "GlacierStorage",
-        "GlacierStagingStorage",
-        "GlacierObjectOverhead",
-        "GlacierS3ObjectOverhead",
-        "DeepArchiveStorage",
-        "DeepArchiveObjectOverhead",
-        "DeepArchiveS3ObjectOverhead",
-        "DeepArchiveStagingStorage",
-        "ExpressOneZone",
     ]
 }
 
@@ -151,7 +91,9 @@ impl ResourceWithMetrics for S3Resource {
         let storage_types = get_storage_types();
         let mut s3_metrics_targets: Vec<MetricTarget> = Vec::new();
         for storage_type in storage_types {
-            s3_metrics_targets.push(get_metric_target_for_storage_type(&self.id, storage_type));
+            s3_metrics_targets.push(
+                get_metric_target_for_storage_type(&self.id, storage_type)
+            );
         }
         s3_metrics_targets.push(
             MetricTarget {
@@ -163,21 +105,25 @@ impl ResourceWithMetrics for S3Resource {
                 ]),
                 targets: S3_METRICS_ALL_STORAGE_TYPES,
             });
-        s3_metrics_targets.push(
-            MetricTarget {
-                prefix: "".to_string(),
-                namespace: "AWS/S3".to_string(),
-                dimensions: HashMap::from([
-                    ("BucketName".to_string(), self.id.clone()),
-                    // TODO: a filter is required to get these metrics. Can we either
-                    //  require a filter with a specific id or require elevated privs
-                    //  that allow us to create a filter on the buckets for them?
-                    //  OR, do we just want to skip these metrics.
-                    ("FilterId".to_string(), "all-objects".to_string())
-                ]),
-                targets: S3_METRICS_REQUEST,
-            },
-        );
+        // If and only if the bucket has an appropriate metrics filter including all
+        // objects, add the request metrics to the list of metrics to be collected.
+        if self.metadata.request_metrics_filter.is_some() {
+            let request_metrics_dimensions = HashMap::from([
+                ("BucketName".to_string(), self.id.clone()),
+                (
+                    "FilterId".to_string(),
+                    self.metadata.request_metrics_filter.as_ref().unwrap().to_string()
+                ),
+            ]);
+            s3_metrics_targets.push(
+                MetricTarget {
+                    prefix: "".to_string(),
+                    namespace: "AWS/S3".to_string(),
+                    dimensions: request_metrics_dimensions,
+                    targets: S3_METRICS_REQUEST,
+                },
+            );
+        }
 
         match self.resource_type {
             ResourceType::S3 => {
@@ -217,6 +163,7 @@ pub(crate) async fn process_s3_resources(
     list_buckets_bar.finish();
 
     process_buckets(
+        s3client.clone(),
         bucket_names,
         "general_purpose",
         region,
@@ -231,6 +178,7 @@ pub(crate) async fn process_s3_resources(
     list_buckets_bar.finish();
 
     process_buckets(
+        s3client.clone(),
         bucket_names,
         "directory",
         region,
@@ -242,7 +190,70 @@ pub(crate) async fn process_s3_resources(
     Ok(())
 }
 
+async fn list_bucket_metrics_configs(
+    s3client: aws_sdk_s3::Client,
+    bucket: String
+) -> Result<Vec<MetricsConfiguration>, CliError> {
+    let mut all_configs: Vec<MetricsConfiguration> = Vec::new();
+    let mut continuation_token: Option<String> = None;
+    loop {
+        let configs = s3client
+            .list_bucket_metrics_configurations()
+            .bucket(&bucket)
+            .continuation_token(continuation_token.unwrap_or_default())
+            .send()
+            .await;
+        match configs {
+            Ok(configs) => {
+                if ! configs.metrics_configuration_list.is_some() {
+                    break;
+                }
+                let metrics_configs: Vec<MetricsConfiguration> = configs.metrics_configuration_list.unwrap();
+                all_configs.extend(metrics_configs);
+                if configs.is_truncated.unwrap() {
+                    continuation_token = configs.next_continuation_token;
+                } else {
+                    break;
+                }
+            }
+            Err(err) => {
+                return Err(CliError {
+                    msg: format!("Failed to get bucket metrics configuration: {}", err),
+                });
+            }
+        }
+    }
+    Ok(all_configs)
+}
+
+async fn try_get_bucket_metrics_filter(
+    s3client: aws_sdk_s3::Client,
+    bucket: String
+) -> Result<Option<String>, CliError> {
+    let bucket_metrics = list_bucket_metrics_configs(
+        s3client.clone(),
+        bucket.clone()
+    ).await;
+    match bucket_metrics {
+        Ok(bucket_metrics) => {
+            for config in bucket_metrics {
+                // A filter value of None means all objects are included in the metrics.
+                if config.filter.is_none() {
+                    return Ok(Option::from(config.id));
+                }
+            }
+        }
+        Err(err) => {
+            return Err(CliError {
+                msg: format!("Failed to get bucket metrics configuration: {}", err),
+            });
+        }
+    }
+    Ok(None)
+}
+
 async fn process_buckets(
+    s3client: aws_sdk_s3::Client,
     buckets: Vec<String>,
     bucket_type: &str,
     region: &str,
@@ -256,8 +267,18 @@ async fn process_buckets(
         .with_message("Processing S3 Buckets");
     process_buckets_bar.set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
     for bucket in buckets {
+        let mut all_objects_filter: Option<String> = None;
+        if bucket_type == "general_purpose" {
+            let filter_id = try_get_bucket_metrics_filter(
+                s3client.clone(),
+                bucket.clone()
+            ).await?;
+            all_objects_filter = filter_id;
+        }
+
         let metadata = S3Metadata {
             bucket_type: bucket_type.to_string(),
+            request_metrics_filter: all_objects_filter,
         };
 
         let s3_resource = S3Resource {
