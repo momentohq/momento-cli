@@ -95,9 +95,7 @@ impl ResourceWithMetrics for S3Resource {
                 ("BucketName".to_string(), self.id.clone()),
                 (
                     "FilterId".to_string(),
-                    self.metadata
-                        .request_metrics_filter
-                        .to_string(),
+                    self.metadata.request_metrics_filter.to_string(),
                 ),
             ]);
             s3_metrics_targets.push(MetricTarget {
