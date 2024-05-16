@@ -78,7 +78,6 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
 
     process_s3_resources(
         &config,
-        Arc::clone(&control_plane_limiter),
         Arc::clone(&metrics_limiter),
         sender.clone(),
     )

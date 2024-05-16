@@ -129,7 +129,6 @@ impl ResourceWithMetrics for S3Resource {
 
 pub(crate) async fn process_s3_resources(
     config: &SdkConfig,
-    _control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
 ) -> Result<(), CliError> {
