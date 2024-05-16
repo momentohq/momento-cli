@@ -68,37 +68,24 @@ pub(crate) struct S3Metadata {
     request_metrics_filter: Option<String>,
 }
 
-fn get_metric_target_for_bucket_size(name: &str) -> MetricTarget {
-    MetricTarget {
-        namespace: "AWS/S3".to_string(),
-        // expression: format!("SEARCH(\' {{AWS/S3,BucketName,StorageType}} MetricName=\"BucketSizeBytes\" BucketName=\"{}\" \', \'Sum\')", name),
-        expression: format!("{{AWS/S3,BucketName,StorageType}} MetricName=\"BucketSizeBytes\" BucketName=\"{}\"", name),
-        dimensions: HashMap::from([]),
-        // dimensions: HashMap::from([
-        //     ("BucketName".to_string(), name.to_string()),
-        //     ("StorageType".to_string(), storage_type.to_string())
-        // ]),
-        targets: S3_METRICS_STANDARD_STORAGE_TYPES,
-    }
-}
-
 impl ResourceWithMetrics for S3Resource {
     fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
         let mut s3_metrics_targets: Vec<MetricTarget> = Vec::new();
-        // TODO: go ahead and inline this
-        s3_metrics_targets.push(
-            get_metric_target_for_bucket_size(&self.id)
-        );
-        s3_metrics_targets.push(
-            MetricTarget {
-                namespace: "AWS/S3".to_string(),
-                expression: "".to_string(),
-                dimensions: HashMap::from([
-                    ("BucketName".to_string(), self.id.clone()),
-                    ("StorageType".to_string(), "AllStorageTypes".to_string())
-                ]),
-                targets: S3_METRICS_ALL_STORAGE_TYPES,
-            });
+        s3_metrics_targets.push(MetricTarget {
+            namespace: "AWS/S3".to_string(),
+            expression: format!("{{AWS/S3,BucketName,StorageType}} MetricName=\"BucketSizeBytes\" BucketName=\"{}\"", self.id),
+            dimensions: HashMap::from([]),
+            targets: S3_METRICS_STANDARD_STORAGE_TYPES,
+        });
+        s3_metrics_targets.push(MetricTarget {
+            namespace: "AWS/S3".to_string(),
+            expression: "".to_string(),
+            dimensions: HashMap::from([
+                ("BucketName".to_string(), self.id.clone()),
+                ("StorageType".to_string(), "AllStorageTypes".to_string()),
+            ]),
+            targets: S3_METRICS_ALL_STORAGE_TYPES,
+        });
         // If and only if the bucket has an appropriate metrics filter including all
         // objects, add the request metrics to the list of metrics to be collected.
         if self.metadata.request_metrics_filter.is_some() {
