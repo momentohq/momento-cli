@@ -82,21 +82,13 @@ fn get_metric_target_for_bucket_size(name: &str) -> MetricTarget {
     }
 }
 
-fn get_storage_types() -> Vec<&'static str> {
-    vec![
-        "StandardStorage",
-    ]
-}
-
 impl ResourceWithMetrics for S3Resource {
     fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
-        let storage_types = get_storage_types();
         let mut s3_metrics_targets: Vec<MetricTarget> = Vec::new();
-        for storage_type in storage_types {
-            s3_metrics_targets.push(
-                get_metric_target_for_bucket_size(&self.id)
-            );
-        }
+        // TODO: go ahead and inline this
+        s3_metrics_targets.push(
+            get_metric_target_for_bucket_size(&self.id)
+        );
         s3_metrics_targets.push(
             MetricTarget {
                 namespace: "AWS/S3".to_string(),
