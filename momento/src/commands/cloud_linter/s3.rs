@@ -67,7 +67,7 @@ pub(crate) struct S3Metadata {
     #[serde(rename = "bucketType")]
     bucket_type: String,
     #[serde(rename = "requestMetricsFilter")]
-    request_metrics_filter: Option<String>,
+    request_metrics_filter: String,
 }
 
 impl ResourceWithMetrics for S3Resource {
@@ -90,15 +90,13 @@ impl ResourceWithMetrics for S3Resource {
         });
         // If and only if the bucket has an appropriate metrics filter including all
         // objects, add the request metrics to the list of metrics to be collected.
-        if self.metadata.request_metrics_filter.is_some() {
+        if !self.metadata.request_metrics_filter.is_empty() {
             let request_metrics_dimensions = HashMap::from([
                 ("BucketName".to_string(), self.id.clone()),
                 (
                     "FilterId".to_string(),
                     self.metadata
                         .request_metrics_filter
-                        .as_ref()
-                        .unwrap()
                         .to_string(),
                 ),
             ]);
@@ -190,13 +188,13 @@ async fn list_bucket_metrics_configs(
             .await;
         match configs {
             Ok(configs) => {
-                if !configs.metrics_configuration_list.is_some() {
+                if configs.metrics_configuration_list.is_none() {
                     break;
                 }
                 let metrics_configs: Vec<MetricsConfiguration> =
-                    configs.metrics_configuration_list.unwrap();
+                    configs.metrics_configuration_list.unwrap_or_default();
                 all_configs.extend(metrics_configs);
-                if configs.is_truncated.unwrap() {
+                if configs.is_truncated.unwrap_or_default() {
                     continuation_token = configs.next_continuation_token;
                 } else {
                     break;
@@ -215,14 +213,14 @@ async fn list_bucket_metrics_configs(
 async fn try_get_bucket_metrics_filter(
     s3client: aws_sdk_s3::Client,
     bucket: String,
-) -> Result<Option<String>, CliError> {
+) -> Result<String, CliError> {
     let bucket_metrics = list_bucket_metrics_configs(s3client.clone(), bucket.clone()).await;
     match bucket_metrics {
         Ok(bucket_metrics) => {
             for config in bucket_metrics {
                 // A filter value of None means all objects are included in the metrics.
                 if config.filter.is_none() {
-                    return Ok(Option::from(config.id));
+                    return Ok(config.id);
                 }
             }
         }
@@ -232,7 +230,7 @@ async fn try_get_bucket_metrics_filter(
             });
         }
     }
-    Ok(None)
+    Ok("".to_string())
 }
 
 async fn process_buckets(
@@ -251,7 +249,7 @@ async fn process_buckets(
     process_buckets_bar
         .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
     for bucket in buckets {
-        let mut all_objects_filter: Option<String> = None;
+        let mut all_objects_filter: String = "".to_string();
         if bucket_type == "general_purpose" {
             let filter_id = try_get_bucket_metrics_filter(s3client.clone(), bucket.clone()).await?;
             all_objects_filter = filter_id;
@@ -278,7 +276,7 @@ async fn process_buckets(
         match resource {
             Resource::S3(mut my_resource) => {
                 my_resource
-                    .append_metrics(&metrics_client, Arc::clone(&metrics_limiter))
+                    .append_metrics(metrics_client, Arc::clone(metrics_limiter))
                     .await?;
                 sender
                     .send(Resource::S3(my_resource))
