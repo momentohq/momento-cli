@@ -95,7 +95,6 @@ impl ResourceWithMetrics for ServerlessElastiCacheResource {
     fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
         match self.resource_type {
             ResourceType::ServerlessElastiCache => Ok(vec![MetricTarget {
-                prefix: "".to_string(),
                 namespace: "AWS/ElastiCache".to_string(),
                 expression: "".to_string(),
                 dimensions: HashMap::from([

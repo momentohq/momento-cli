@@ -17,10 +17,10 @@ use crate::error::CliError;
 pub(crate) struct Metric {
     pub name: String,
     pub values: Vec<f64>,
+    // TODO: add `timestamps` field for bucket size bytes?
 }
 
 pub(crate) struct MetricTarget {
-    pub(crate) prefix: String,
     pub(crate) namespace: String,
     pub(crate) expression: String,
     pub(crate) dimensions: HashMap<String, String>,
@@ -88,6 +88,7 @@ async fn query_metrics_for_target(
         for metric in *metrics {
             println!("Querying metric: {}", metric);
             println!("expression is {}", metric_target.expression);
+            // TODO: support max/avg
             let search_expression = format!("SEARCH(\' {} \', \'{}\')", metric_target.expression, "Sum");
             println!("search expression is {}", search_expression);
             println!("stat type is {}", stat_type);
@@ -109,8 +110,7 @@ async fn query_metrics_for_target(
                 .period(60 * 60 * 24)
                 .return_data(true)
                 .id(format!(
-                    "{}{}_{}",
-                    metric_target.prefix,
+                    "{}_{}",
                     metric.to_lowercase(),
                     stat_type.to_lowercase()
                 ))

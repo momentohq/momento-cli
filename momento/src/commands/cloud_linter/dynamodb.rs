@@ -132,7 +132,6 @@ impl ResourceWithMetrics for DynamoDbResource {
     fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
         match self.resource_type {
             ResourceType::DynamoDbTable => Ok(vec![MetricTarget {
-                prefix: "".to_string(),
                 namespace: "AWS/DynamoDB".to_string(),
                 expression: "".to_string(),
                 dimensions: HashMap::from([("TableName".to_string(), self.id.clone())]),
@@ -148,7 +147,6 @@ impl ResourceWithMetrics for DynamoDbResource {
                         msg: "Global secondary index name not found".to_string(),
                     })?;
                 Ok(vec![MetricTarget {
-                    prefix: "".to_string(),
                     namespace: "AWS/DynamoDB".to_string(),
                     expression: "".to_string(),
                     dimensions: HashMap::from([

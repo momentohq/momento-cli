@@ -68,9 +68,8 @@ pub(crate) struct S3Metadata {
     request_metrics_filter: Option<String>,
 }
 
-fn get_metric_target_for_storage_type(name: &str, storage_type: &str) -> MetricTarget {
+fn get_metric_target_for_bucket_size(name: &str) -> MetricTarget {
     MetricTarget {
-        prefix: format!("{}_", storage_type.to_lowercase().to_string()),
         namespace: "AWS/S3".to_string(),
         // expression: format!("SEARCH(\' {{AWS/S3,BucketName,StorageType}} MetricName=\"BucketSizeBytes\" BucketName=\"{}\" \', \'Sum\')", name),
         expression: format!("{{AWS/S3,BucketName,StorageType}} MetricName=\"BucketSizeBytes\" BucketName=\"{}\"", name),
@@ -95,12 +94,11 @@ impl ResourceWithMetrics for S3Resource {
         let mut s3_metrics_targets: Vec<MetricTarget> = Vec::new();
         for storage_type in storage_types {
             s3_metrics_targets.push(
-                get_metric_target_for_storage_type(&self.id, storage_type)
+                get_metric_target_for_bucket_size(&self.id)
             );
         }
         s3_metrics_targets.push(
             MetricTarget {
-                prefix: "".to_string(),
                 namespace: "AWS/S3".to_string(),
                 expression: "".to_string(),
                 dimensions: HashMap::from([
@@ -121,7 +119,6 @@ impl ResourceWithMetrics for S3Resource {
             ]);
             s3_metrics_targets.push(
                 MetricTarget {
-                    prefix: "".to_string(),
                     namespace: "AWS/S3".to_string(),
                     expression: "".to_string(),
                     dimensions: request_metrics_dimensions,
