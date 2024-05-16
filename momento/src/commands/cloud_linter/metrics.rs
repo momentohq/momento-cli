@@ -56,7 +56,7 @@ where
         let mut metrics: Vec<Vec<Metric>> = Vec::new();
         for target in metric_targets {
             metrics.push(
-                query_metrics_for_target(metrics_client, Arc::clone(&limiter), target).await?
+                query_metrics_for_target(metrics_client, Arc::clone(&limiter), target).await?,
             );
         }
         self.set_metrics(metrics.into_iter().flatten().collect());
@@ -103,7 +103,10 @@ async fn query_metrics_for_target(
                     ))
                     .build();
             } else {
-                let search_expression = format!("SEARCH(\' {} \', \'{}\')", metric_target.expression, stat_type);
+                let search_expression = format!(
+                    "SEARCH(\' {} \', \'{}\')",
+                    metric_target.expression, stat_type
+                );
                 metric_data_query = MetricDataQuery::builder()
                     .expression(search_expression)
                     .period(60 * 60 * 24)

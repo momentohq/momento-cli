@@ -3,8 +3,8 @@ use serde::Serialize;
 use crate::commands::cloud_linter::dynamodb::DynamoDbMetadata;
 use crate::commands::cloud_linter::elasticache::ElastiCacheMetadata;
 use crate::commands::cloud_linter::metrics::Metric;
-use crate::commands::cloud_linter::serverless_elasticache::ServerlessElastiCacheMetadata;
 use crate::commands::cloud_linter::s3::S3Metadata;
+use crate::commands::cloud_linter::serverless_elasticache::ServerlessElastiCacheMetadata;
 
 #[derive(Serialize, Debug)]
 #[serde(untagged)]

@@ -1,15 +1,17 @@
-use std::collections::HashMap;
-use std::sync::Arc;
+use crate::commands::cloud_linter::metrics::{
+    AppendMetrics, Metric, MetricTarget, ResourceWithMetrics,
+};
+use crate::commands::cloud_linter::resource::{Resource, ResourceType, S3Resource};
+use crate::error::CliError;
 use aws_config::SdkConfig;
 use aws_sdk_s3::types::MetricsConfiguration;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
-use phf::{Map, phf_map};
+use phf::{phf_map, Map};
 use serde::Serialize;
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
-use crate::commands::cloud_linter::metrics::{AppendMetrics, Metric, MetricTarget, ResourceWithMetrics};
-use crate::commands::cloud_linter::resource::{Resource, ResourceType, S3Resource};
-use crate::error::CliError;
 
 const S3_METRICS_STANDARD_STORAGE_TYPES: Map<&'static str, &'static [&'static str]> = phf_map! {
     "Sum" => &[
@@ -93,26 +95,26 @@ impl ResourceWithMetrics for S3Resource {
                 ("BucketName".to_string(), self.id.clone()),
                 (
                     "FilterId".to_string(),
-                    self.metadata.request_metrics_filter.as_ref().unwrap().to_string()
+                    self.metadata
+                        .request_metrics_filter
+                        .as_ref()
+                        .unwrap()
+                        .to_string(),
                 ),
             ]);
-            s3_metrics_targets.push(
-                MetricTarget {
-                    namespace: "AWS/S3".to_string(),
-                    expression: "".to_string(),
-                    dimensions: request_metrics_dimensions,
-                    targets: S3_METRICS_REQUEST,
-                },
-            );
+            s3_metrics_targets.push(MetricTarget {
+                namespace: "AWS/S3".to_string(),
+                expression: "".to_string(),
+                dimensions: request_metrics_dimensions,
+                targets: S3_METRICS_REQUEST,
+            });
         }
 
         match self.resource_type {
-            ResourceType::S3 => {
-                Ok(s3_metrics_targets)
-            }
+            ResourceType::S3 => Ok(s3_metrics_targets),
             _ => Err(CliError {
-                msg: "Invalid resource type".to_string()
-            })
+                msg: "Invalid resource type".to_string(),
+            }),
         }
     }
 
@@ -138,7 +140,8 @@ pub(crate) async fn process_s3_resources(
     let s3client = aws_sdk_s3::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
 
-    let list_buckets_bar = ProgressBar::new_spinner().with_message("Listing S3 General Purpose Buckets");
+    let list_buckets_bar =
+        ProgressBar::new_spinner().with_message("Listing S3 General Purpose Buckets");
     list_buckets_bar.enable_steady_tick(std::time::Duration::from_millis(100));
     let bucket_names = list_buckets(&s3client).await?;
     list_buckets_bar.finish();
@@ -151,7 +154,8 @@ pub(crate) async fn process_s3_resources(
         sender.clone(),
         &metrics_client,
         &metrics_limiter,
-    ).await?;
+    )
+    .await?;
 
     let list_buckets_bar = ProgressBar::new_spinner().with_message("Listing S3 Directory Buckets");
     list_buckets_bar.enable_steady_tick(std::time::Duration::from_millis(100));
@@ -166,14 +170,15 @@ pub(crate) async fn process_s3_resources(
         sender,
         &metrics_client,
         &metrics_limiter,
-    ).await?;
+    )
+    .await?;
 
     Ok(())
 }
 
 async fn list_bucket_metrics_configs(
     s3client: aws_sdk_s3::Client,
-    bucket: String
+    bucket: String,
 ) -> Result<Vec<MetricsConfiguration>, CliError> {
     let mut all_configs: Vec<MetricsConfiguration> = Vec::new();
     let mut continuation_token: Option<String> = None;
@@ -186,10 +191,11 @@ async fn list_bucket_metrics_configs(
             .await;
         match configs {
             Ok(configs) => {
-                if ! configs.metrics_configuration_list.is_some() {
+                if !configs.metrics_configuration_list.is_some() {
                     break;
                 }
-                let metrics_configs: Vec<MetricsConfiguration> = configs.metrics_configuration_list.unwrap();
+                let metrics_configs: Vec<MetricsConfiguration> =
+                    configs.metrics_configuration_list.unwrap();
                 all_configs.extend(metrics_configs);
                 if configs.is_truncated.unwrap() {
                     continuation_token = configs.next_continuation_token;
@@ -209,12 +215,9 @@ async fn list_bucket_metrics_configs(
 
 async fn try_get_bucket_metrics_filter(
     s3client: aws_sdk_s3::Client,
-    bucket: String
+    bucket: String,
 ) -> Result<Option<String>, CliError> {
-    let bucket_metrics = list_bucket_metrics_configs(
-        s3client.clone(),
-        bucket.clone()
-    ).await;
+    let bucket_metrics = list_bucket_metrics_configs(s3client.clone(), bucket.clone()).await;
     match bucket_metrics {
         Ok(bucket_metrics) => {
             for config in bucket_metrics {
@@ -244,16 +247,14 @@ async fn process_buckets(
 ) -> Result<(), CliError> {
     let mut resources: Vec<Resource> = Vec::new();
 
-    let process_buckets_bar = ProgressBar::new((buckets.len() * 2) as u64)
-        .with_message("Processing S3 Buckets");
-    process_buckets_bar.set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
+    let process_buckets_bar =
+        ProgressBar::new((buckets.len() * 2) as u64).with_message("Processing S3 Buckets");
+    process_buckets_bar
+        .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
     for bucket in buckets {
         let mut all_objects_filter: Option<String> = None;
         if bucket_type == "general_purpose" {
-            let filter_id = try_get_bucket_metrics_filter(
-                s3client.clone(),
-                bucket.clone()
-            ).await?;
+            let filter_id = try_get_bucket_metrics_filter(s3client.clone(), bucket.clone()).await?;
             all_objects_filter = filter_id;
         }
 
@@ -274,14 +275,12 @@ async fn process_buckets(
         process_buckets_bar.inc(1);
     }
 
-
     for resource in resources {
         match resource {
             Resource::S3(mut my_resource) => {
-                my_resource.append_metrics(
-                    &metrics_client,
-                    Arc::clone(&metrics_limiter)
-                ).await?;
+                my_resource
+                    .append_metrics(&metrics_client, Arc::clone(&metrics_limiter))
+                    .await?;
                 sender
                     .send(Resource::S3(my_resource))
                     .await
@@ -292,7 +291,7 @@ async fn process_buckets(
             }
             _ => {
                 return Err(CliError {
-                    msg: "Invalid resource type".to_string()
+                    msg: "Invalid resource type".to_string(),
                 });
             }
         }
@@ -301,9 +300,7 @@ async fn process_buckets(
     Ok(())
 }
 
-async fn list_buckets(
-    s3_client: &aws_sdk_s3::Client
-) -> Result<Vec<String>, CliError> {
+async fn list_buckets(s3_client: &aws_sdk_s3::Client) -> Result<Vec<String>, CliError> {
     let mut bucket_names = Vec::new();
     let resp = s3_client.list_buckets().send().await?;
     let buckets = resp.buckets();
@@ -313,9 +310,7 @@ async fn list_buckets(
     Ok(bucket_names)
 }
 
-async fn list_directory_buckets(
-    s3_client: &aws_sdk_s3::Client,
-) -> Result<Vec<String>, CliError> {
+async fn list_directory_buckets(s3_client: &aws_sdk_s3::Client) -> Result<Vec<String>, CliError> {
     let mut bucket_names = Vec::new();
     let resp = s3_client.list_directory_buckets().send().await?;
     let buckets = resp.buckets();
