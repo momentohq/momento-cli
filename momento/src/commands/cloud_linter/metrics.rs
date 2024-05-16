@@ -17,11 +17,11 @@ use crate::error::CliError;
 pub(crate) struct Metric {
     pub name: String,
     pub values: Vec<f64>,
-    // TODO: add `timestamps` field for bucket size bytes?
 }
 
 pub(crate) struct MetricTarget {
     pub(crate) namespace: String,
+    // a metric target should have either an expression or dimensions but not both
     pub(crate) expression: String,
     pub(crate) dimensions: HashMap<String, String>,
     pub(crate) targets: Map<&'static str, &'static [&'static str]>,
@@ -72,7 +72,6 @@ async fn query_metrics_for_target(
     metric_target: MetricTarget,
 ) -> Result<Vec<Metric>, CliError> {
     let mut metric_results: Vec<Metric> = Vec::new();
-    let mut metric_data_queries: Vec<MetricDataQuery> = Vec::new();
     let dimensions: Vec<Dimension> = metric_target
         .dimensions
         .into_iter()
@@ -80,6 +79,7 @@ async fn query_metrics_for_target(
         .collect();
     let mut metric_data_query: MetricDataQuery;
     for (stat_type, metrics) in metric_target.targets.entries() {
+        let mut metric_data_queries: Vec<MetricDataQuery> = Vec::with_capacity(metrics.len());
         for metric in *metrics {
             if metric_target.expression.is_empty() {
                 metric_data_query = MetricDataQuery::builder()
@@ -120,30 +120,29 @@ async fn query_metrics_for_target(
             }
             metric_data_queries.push(metric_data_query);
         }
-    }
 
-    let mut metric_stream = client
-        .get_metric_data()
-        .start_time(DateTime::from_millis(
-            (Utc::now() - Duration::days(30)).timestamp_millis(),
-        ))
-        .end_time(DateTime::from_millis(Utc::now().timestamp_millis()))
-        .set_metric_data_queries(Some(metric_data_queries))
-        .into_paginator()
-        .send();
+        let mut metric_stream = client
+            .get_metric_data()
+            .start_time(DateTime::from_millis(
+                (Utc::now() - Duration::days(30)).timestamp_millis(),
+            ))
+            .end_time(DateTime::from_millis(Utc::now().timestamp_millis()))
+            .set_metric_data_queries(Some(metric_data_queries))
+            .into_paginator()
+            .send();
 
-    while let Some(result) = rate_limit(Arc::clone(&limiter), || metric_stream.next()).await {
-        // println!("Got page of metrics {:?}", result);
-        let result = result?;
-        if let Some(mdr_vec) = result.metric_data_results {
-            for mdr in mdr_vec {
-                let name = mdr.id.ok_or_else(|| CliError {
-                    msg: "Metric has no id".to_string(),
-                })?;
-                let values = mdr.values.ok_or_else(|| CliError {
-                    msg: "Metric has no values".to_string(),
-                })?;
-                metric_results.push(Metric { name, values });
+        while let Some(result) = rate_limit(Arc::clone(&limiter), || metric_stream.next()).await {
+            let result = result?;
+            if let Some(mdr_vec) = result.metric_data_results {
+                for mdr in mdr_vec {
+                    let name = mdr.id.ok_or_else(|| CliError {
+                        msg: "Metric has no id".to_string(),
+                    })?;
+                    let values = mdr.values.ok_or_else(|| CliError {
+                        msg: "Metric has no values".to_string(),
+                    })?;
+                    metric_results.push(Metric { name, values });
+                }
             }
         }
     }

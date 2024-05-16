@@ -128,7 +128,6 @@ pub(crate) async fn process_s3_resources(
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
 ) -> Result<(), CliError> {
-    println!("Processing S3 resources");
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
     })?;
