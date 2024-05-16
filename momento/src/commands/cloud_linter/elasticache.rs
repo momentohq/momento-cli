@@ -72,6 +72,7 @@ impl ResourceWithMetrics for ElastiCacheResource {
             ResourceType::ElastiCacheRedisNode => Ok(vec![MetricTarget {
                 prefix: "".to_string(),
                 namespace: "AWS/ElastiCache".to_string(),
+                expression: "".to_string(),
                 dimensions: HashMap::from([
                     ("CacheClusterId".to_string(), self.id.clone()),
                     ("CacheNodeId".to_string(), "0001".to_string()),
@@ -81,6 +82,7 @@ impl ResourceWithMetrics for ElastiCacheResource {
             ResourceType::ElastiCacheMemcachedNode => Ok(vec![MetricTarget {
                 prefix: "".to_string(),
                 namespace: "AWS/ElastiCache".to_string(),
+                expression: "".to_string(),
                 dimensions: HashMap::from([
                     (
                         "CacheClusterId".to_string(),

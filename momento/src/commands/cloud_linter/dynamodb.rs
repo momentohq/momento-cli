@@ -134,6 +134,7 @@ impl ResourceWithMetrics for DynamoDbResource {
             ResourceType::DynamoDbTable => Ok(vec![MetricTarget {
                 prefix: "".to_string(),
                 namespace: "AWS/DynamoDB".to_string(),
+                expression: "".to_string(),
                 dimensions: HashMap::from([("TableName".to_string(), self.id.clone())]),
                 targets: DDB_TABLE_METRICS,
             }]),
@@ -149,6 +150,7 @@ impl ResourceWithMetrics for DynamoDbResource {
                 Ok(vec![MetricTarget {
                     prefix: "".to_string(),
                     namespace: "AWS/DynamoDB".to_string(),
+                    expression: "".to_string(),
                     dimensions: HashMap::from([
                         ("TableName".to_string(), self.id.clone()),
                         ("GlobalSecondaryIndexName".to_string(), gsi_name),

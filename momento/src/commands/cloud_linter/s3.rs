@@ -72,10 +72,13 @@ fn get_metric_target_for_storage_type(name: &str, storage_type: &str) -> MetricT
     MetricTarget {
         prefix: format!("{}_", storage_type.to_lowercase().to_string()),
         namespace: "AWS/S3".to_string(),
-        dimensions: HashMap::from([
-            ("BucketName".to_string(), name.to_string()),
-            ("StorageType".to_string(), storage_type.to_string())
-        ]),
+        // expression: format!("SEARCH(\' {{AWS/S3,BucketName,StorageType}} MetricName=\"BucketSizeBytes\" BucketName=\"{}\" \', \'Sum\')", name),
+        expression: format!("{{AWS/S3,BucketName,StorageType}} MetricName=\"BucketSizeBytes\" BucketName=\"{}\"", name),
+        dimensions: HashMap::from([]),
+        // dimensions: HashMap::from([
+        //     ("BucketName".to_string(), name.to_string()),
+        //     ("StorageType".to_string(), storage_type.to_string())
+        // ]),
         targets: S3_METRICS_STANDARD_STORAGE_TYPES,
     }
 }
@@ -99,6 +102,7 @@ impl ResourceWithMetrics for S3Resource {
             MetricTarget {
                 prefix: "".to_string(),
                 namespace: "AWS/S3".to_string(),
+                expression: "".to_string(),
                 dimensions: HashMap::from([
                     ("BucketName".to_string(), self.id.clone()),
                     ("StorageType".to_string(), "AllStorageTypes".to_string())
@@ -119,6 +123,7 @@ impl ResourceWithMetrics for S3Resource {
                 MetricTarget {
                     prefix: "".to_string(),
                     namespace: "AWS/S3".to_string(),
+                    expression: "".to_string(),
                     dimensions: request_metrics_dimensions,
                     targets: S3_METRICS_REQUEST,
                 },

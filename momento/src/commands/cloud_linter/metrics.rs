@@ -22,6 +22,7 @@ pub(crate) struct Metric {
 pub(crate) struct MetricTarget {
     pub(crate) prefix: String,
     pub(crate) namespace: String,
+    pub(crate) expression: String,
     pub(crate) dimensions: HashMap<String, String>,
     pub(crate) targets: Map<&'static str, &'static [&'static str]>,
 }
@@ -71,28 +72,42 @@ async fn query_metrics_for_target(
     metric_target: MetricTarget,
 ) -> Result<Vec<Metric>, CliError> {
     let mut metric_results: Vec<Metric> = Vec::new();
-    let dimensions: Vec<Dimension> = metric_target
-        .dimensions
-        .into_iter()
-        .map(|(name, value)| Dimension::builder().name(name).value(value).build())
-        .collect();
+    if metric_target.expression.is_empty() {
+        println!("No expression for metric target");
+        return Ok(metric_results);
+    } else {
+        println!("Will query metric expression: {}", metric_target.expression);
+    }
+    // let dimensions: Vec<Dimension> = metric_target
+    //     .dimensions
+    //     .into_iter()
+    //     .map(|(name, value)| Dimension::builder().name(name).value(value).build())
+    //     .collect();
     for (stat_type, metrics) in metric_target.targets.entries() {
         let mut metric_data_queries: Vec<MetricDataQuery> = Vec::with_capacity(metrics.len());
         for metric in *metrics {
+            println!("Querying metric: {}", metric);
+            println!("expression is {}", metric_target.expression);
+            let search_expression = format!("SEARCH(\' {} \', \'{}\')", metric_target.expression, "Sum");
+            println!("search expression is {}", search_expression);
+            println!("stat type is {}", stat_type);
             let metric_data_query = MetricDataQuery::builder()
-                .metric_stat(
-                    MetricStat::builder()
-                        .metric(
-                            CloudwatchMetric::builder()
-                                .metric_name(metric.to_string())
-                                .namespace(metric_target.namespace.clone())
-                                .set_dimensions(Some(dimensions.clone()))
-                                .build(),
-                        )
-                        .period(60 * 60 * 24)
-                        .stat(stat_type.to_string())
-                        .build(),
-                )
+                // .metric_stat(
+                //     MetricStat::builder()
+                //         .metric(
+                //             CloudwatchMetric::builder()
+                //                 .metric_name(metric.to_string())
+                //                 .namespace(metric_target.namespace.clone())
+                //                 .set_dimensions(Some(dimensions.clone()))
+                //                 .build(),
+                //         )
+                //         .period(60 * 60 * 24)
+                //         .stat(stat_type.to_string())
+                //         .build(),
+                // )
+                .expression(search_expression)
+                .period(60 * 60 * 24)
+                .return_data(true)
                 .id(format!(
                     "{}{}_{}",
                     metric_target.prefix,
@@ -103,6 +118,7 @@ async fn query_metrics_for_target(
             metric_data_queries.push(metric_data_query);
         }
 
+        println!("Querying metrics");
         let mut metric_stream = client
             .get_metric_data()
             .start_time(DateTime::from_millis(
@@ -114,8 +130,12 @@ async fn query_metrics_for_target(
             .send();
 
         while let Some(result) = rate_limit(Arc::clone(&limiter), || metric_stream.next()).await {
+            println!("Got page of metrics {:?}", result);
             let result = result?;
+            println!("assigned result");
+            println!("Got {} metric data results", result.clone().metric_data_results.expect("hi!").len());
             if let Some(mdr_vec) = result.metric_data_results {
+                println!("Got {} metric data results", mdr_vec.len());
                 for mdr in mdr_vec {
                     let name = mdr.id.ok_or_else(|| CliError {
                         msg: "Metric has no id".to_string(),

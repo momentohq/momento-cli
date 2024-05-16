@@ -97,6 +97,7 @@ impl ResourceWithMetrics for ServerlessElastiCacheResource {
             ResourceType::ServerlessElastiCache => Ok(vec![MetricTarget {
                 prefix: "".to_string(),
                 namespace: "AWS/ElastiCache".to_string(),
+                expression: "".to_string(),
                 dimensions: HashMap::from([
                     // the cache id for a serverless elasticache cluster is just the cache name
                     ("CacheClusterId".to_string(), self.id.clone()),
