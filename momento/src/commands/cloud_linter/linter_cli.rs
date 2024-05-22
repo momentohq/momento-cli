@@ -76,7 +76,13 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
         Quota::per_second(core::num::NonZeroU32::new(20).expect("should create non-zero quota"));
     let metrics_limiter = Arc::new(RateLimiter::direct(metrics_quota));
 
-    process_s3_resources(&config, Arc::clone(&metrics_limiter), sender.clone()).await?;
+    process_s3_resources(
+        &config,
+        Arc::clone(&metrics_limiter),
+        Arc::clone(&control_plane_limiter),
+        sender.clone(),
+    )
+    .await?;
 
     process_ddb_resources(
         &config,
