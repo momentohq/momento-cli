@@ -1,15 +1,17 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
+use crate::commands::cloud_linter::metrics::{
+    AppendMetrics, Metric, MetricTarget, ResourceWithMetrics,
+};
+use crate::commands::cloud_linter::resource::{ApiGatewayResource, Resource, ResourceType};
+use crate::error::CliError;
 use aws_config::SdkConfig;
 use aws_sdk_apigateway::types::RestApi;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
 use phf::{phf_map, Map};
 use serde::Serialize;
-use crate::commands::cloud_linter::metrics::{AppendMetrics, Metric, MetricTarget, ResourceWithMetrics};
-use crate::commands::cloud_linter::resource::{ApiGatewayResource, Resource, ResourceType};
-use crate::error::CliError;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
 
 const API_GATEWAY_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
     "Sum" => &[
@@ -43,15 +45,12 @@ pub(crate) struct ApiGatewayMetadata {
 
 impl ResourceWithMetrics for ApiGatewayResource {
     fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
-        let mut targets = Vec::new();
-        targets.push(MetricTarget {
+        let targets = vec![MetricTarget {
             namespace: "AWS/ApiGateway".to_string(),
             expression: "".to_string(),
-            dimensions: HashMap::from([
-                ("ApiName".to_string(), self.metadata.name.clone())
-            ]),
+            dimensions: HashMap::from([("ApiName".to_string(), self.metadata.name.clone())]),
             targets: API_GATEWAY_METRICS,
-        });
+        }];
         match self.resource_type {
             ResourceType::ApiGateway => Ok(targets),
             _ => Err(CliError {
@@ -67,9 +66,7 @@ impl ResourceWithMetrics for ApiGatewayResource {
     fn set_metric_period_seconds(&mut self, period: i32) {
         self.metric_period_seconds = period;
     }
-
 }
-
 
 pub(crate) async fn process_api_gateway_resources(
     config: &SdkConfig,
@@ -79,7 +76,7 @@ pub(crate) async fn process_api_gateway_resources(
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
     })?;
-    let apig_client = aws_sdk_apigateway::Client::new(&config);
+    let apig_client = aws_sdk_apigateway::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
 
     let list_apis_bar = ProgressBar::new_spinner().with_message("Listing API Gateway resources");
@@ -110,7 +107,8 @@ async fn process_apis(
     metrics_limiter: &Arc<DefaultDirectRateLimiter>,
 ) -> Result<(), CliError> {
     let mut resources: Vec<Resource> = Vec::with_capacity(apis.len());
-    let get_apis_bar = ProgressBar::new((apis.len() * 2) as u64).with_message("Processing API Gateway resources");
+    let get_apis_bar =
+        ProgressBar::new((apis.len() * 2) as u64).with_message("Processing API Gateway resources");
     get_apis_bar
         .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
     for api in apis {
@@ -130,7 +128,7 @@ async fn process_apis(
             id: the_api.id.clone().unwrap_or_default(),
             metrics: vec![],
             metric_period_seconds: 0,
-            metadata
+            metadata,
         };
         resources.push(Resource::ApiGateway(apig_resource));
         get_apis_bar.inc(1);
@@ -140,7 +138,8 @@ async fn process_apis(
         match resource {
             Resource::ApiGateway(mut apig_resource) => {
                 apig_resource
-                    .append_metrics(&metrics_client, Arc::clone(&metrics_limiter)).await?;
+                    .append_metrics(metrics_client, Arc::clone(metrics_limiter))
+                    .await?;
                 sender
                     .send(Resource::ApiGateway(apig_resource))
                     .await

@@ -1,5 +1,5 @@
-use serde::Serialize;
 use crate::commands::cloud_linter::api_gateway::ApiGatewayMetadata;
+use serde::Serialize;
 
 use crate::commands::cloud_linter::dynamodb::DynamoDbMetadata;
 use crate::commands::cloud_linter::elasticache::ElastiCacheMetadata;

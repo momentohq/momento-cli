@@ -2,6 +2,7 @@ use std::io::{copy, BufReader};
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::commands::cloud_linter::api_gateway::process_api_gateway_resources;
 use aws_config::{BehaviorVersion, Region};
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -9,7 +10,6 @@ use governor::{Quota, RateLimiter};
 use struson::writer::{JsonStreamWriter, JsonWriter};
 use tokio::fs::{metadata, File};
 use tokio::sync::mpsc::{self, Sender};
-use crate::commands::cloud_linter::api_gateway::process_api_gateway_resources;
 
 use crate::commands::cloud_linter::dynamodb::process_ddb_resources;
 use crate::commands::cloud_linter::s3::process_s3_resources;
