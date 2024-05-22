@@ -234,7 +234,6 @@ async fn try_get_bucket_metrics_filter(
     Ok("".to_string())
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn process_buckets(
     s3client: aws_sdk_s3::Client,
     buckets: Vec<String>,
