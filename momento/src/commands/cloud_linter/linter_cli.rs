@@ -9,6 +9,7 @@ use governor::{Quota, RateLimiter};
 use struson::writer::{JsonStreamWriter, JsonWriter};
 use tokio::fs::{metadata, File};
 use tokio::sync::mpsc::{self, Sender};
+use crate::commands::cloud_linter::api_gateway::process_api_gateway_resources;
 
 use crate::commands::cloud_linter::dynamodb::process_ddb_resources;
 use crate::commands::cloud_linter::s3::process_s3_resources;
@@ -83,6 +84,8 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
         sender.clone(),
     )
     .await?;
+
+    process_api_gateway_resources(&config, Arc::clone(&metrics_limiter), sender.clone()).await?;
 
     process_ddb_resources(
         &config,

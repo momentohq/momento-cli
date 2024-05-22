@@ -228,6 +228,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-apigateway"
+version = "1.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "441fa98de0c85f5cb944d96afe256189a0718754eeb72ba7c379611a922d8990"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "http 0.2.12",
+ "once_cell",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-cloudwatch"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1968,6 +1990,7 @@ version = "0.43.0"
 dependencies = [
  "assert_cmd",
  "aws-config",
+ "aws-sdk-apigateway",
  "aws-sdk-cloudwatch",
  "aws-sdk-dynamodb",
  "aws-sdk-elasticache",
