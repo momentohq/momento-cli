@@ -5,6 +5,7 @@ use crate::commands::cloud_linter::resource::{Resource, ResourceType, S3Resource
 use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
 use aws_config::SdkConfig;
+use aws_sdk_s3::error::ProvideErrorMetadata;
 use aws_sdk_s3::types::MetricsConfiguration;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -12,7 +13,6 @@ use phf::{phf_map, Map};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
-use aws_sdk_s3::error::ProvideErrorMetadata;
 use tokio::sync::mpsc::Sender;
 
 const S3_METRICS_STANDARD_STORAGE_TYPES: Map<&'static str, &'static [&'static str]> = phf_map! {
@@ -135,8 +135,7 @@ pub(crate) async fn process_s3_resources(
     let s3client = aws_sdk_s3::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
 
-    let list_buckets_bar =
-        ProgressBar::new_spinner().with_message("Listing S3 Buckets");
+    let list_buckets_bar = ProgressBar::new_spinner().with_message("Listing S3 Buckets");
     list_buckets_bar.enable_steady_tick(std::time::Duration::from_millis(100));
     let bucket_names = list_buckets(&s3client).await.unwrap_or_else(|err| {
         eprint!("{}", err);
