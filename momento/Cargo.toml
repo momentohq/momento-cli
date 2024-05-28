@@ -25,6 +25,7 @@ aws-sdk-cloudwatch = "1.19.0"
 aws-sdk-dynamodb = "1.19.0"
 aws-sdk-elasticache = "1.18.0"
 aws-sdk-s3 = "1.28.0"
+aws-sdk-lambda = "1.26.0"
 indicatif = "0.17.8"
 flate2 = "1.0.28"
 
