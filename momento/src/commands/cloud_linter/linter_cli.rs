@@ -2,6 +2,7 @@ use std::io::{copy, BufReader};
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::commands::cloud_linter::api_gateway::process_api_gateway_resources;
 use aws_config::{BehaviorVersion, Region};
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -78,8 +79,16 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
 
     process_s3_resources(
         &config,
-        Arc::clone(&metrics_limiter),
         Arc::clone(&control_plane_limiter),
+        Arc::clone(&metrics_limiter),
+        sender.clone(),
+    )
+    .await?;
+
+    process_api_gateway_resources(
+        &config,
+        Arc::clone(&control_plane_limiter),
+        Arc::clone(&metrics_limiter),
         sender.clone(),
     )
     .await?;

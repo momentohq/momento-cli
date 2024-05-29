@@ -125,8 +125,8 @@ impl ResourceWithMetrics for S3Resource {
 
 pub(crate) async fn process_s3_resources(
     config: &SdkConfig,
-    metrics_limiter: Arc<DefaultDirectRateLimiter>,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
+    metrics_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
 ) -> Result<(), CliError> {
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
