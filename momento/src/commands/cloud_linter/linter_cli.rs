@@ -11,6 +11,7 @@ use tokio::fs::{metadata, File};
 use tokio::sync::mpsc::{self, Sender};
 
 use crate::commands::cloud_linter::dynamodb::process_ddb_resources;
+use crate::commands::cloud_linter::s3::process_s3_resources;
 use crate::commands::cloud_linter::serverless_elasticache::process_serverless_elasticache_resources;
 use crate::commands::cloud_linter::utils::check_aws_credentials;
 use crate::error::CliError;
@@ -74,6 +75,14 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
     let metrics_quota =
         Quota::per_second(core::num::NonZeroU32::new(20).expect("should create non-zero quota"));
     let metrics_limiter = Arc::new(RateLimiter::direct(metrics_quota));
+
+    process_s3_resources(
+        &config,
+        Arc::clone(&metrics_limiter),
+        Arc::clone(&control_plane_limiter),
+        sender.clone(),
+    )
+    .await?;
 
     process_ddb_resources(
         &config,

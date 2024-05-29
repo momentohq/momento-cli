@@ -21,12 +21,14 @@ pub(crate) struct Metric {
 
 pub(crate) struct MetricTarget {
     pub(crate) namespace: String,
+    // a metric target should have either an expression or dimensions but not both
+    pub(crate) expression: String,
     pub(crate) dimensions: HashMap<String, String>,
     pub(crate) targets: Map<&'static str, &'static [&'static str]>,
 }
 
 pub(crate) trait ResourceWithMetrics {
-    fn create_metric_target(&self) -> Result<MetricTarget, CliError>;
+    fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError>;
 
     fn set_metrics(&mut self, metrics: Vec<Metric>);
 
@@ -50,10 +52,14 @@ where
         metrics_client: &Client,
         limiter: Arc<DefaultDirectRateLimiter>,
     ) -> Result<(), CliError> {
-        let metric_target = self.create_metric_target()?;
-        let metrics =
-            query_metrics_for_target(metrics_client, Arc::clone(&limiter), metric_target).await?;
-        self.set_metrics(metrics);
+        let metric_targets = self.create_metric_targets()?;
+        let mut metrics: Vec<Vec<Metric>> = Vec::new();
+        for target in metric_targets {
+            metrics.push(
+                query_metrics_for_target(metrics_client, Arc::clone(&limiter), target).await?,
+            );
+        }
+        self.set_metrics(metrics.into_iter().flatten().collect());
         self.set_metric_period_seconds(60 * 60 * 24);
 
         Ok(())
@@ -71,29 +77,47 @@ async fn query_metrics_for_target(
         .into_iter()
         .map(|(name, value)| Dimension::builder().name(name).value(value).build())
         .collect();
+    let mut metric_data_query: MetricDataQuery;
     for (stat_type, metrics) in metric_target.targets.entries() {
         let mut metric_data_queries: Vec<MetricDataQuery> = Vec::with_capacity(metrics.len());
         for metric in *metrics {
-            let metric_data_query = MetricDataQuery::builder()
-                .metric_stat(
-                    MetricStat::builder()
-                        .metric(
-                            CloudwatchMetric::builder()
-                                .metric_name(metric.to_string())
-                                .namespace(metric_target.namespace.clone())
-                                .set_dimensions(Some(dimensions.clone()))
-                                .build(),
-                        )
-                        .period(60 * 60 * 24)
-                        .stat(stat_type.to_string())
-                        .build(),
-                )
-                .id(format!(
-                    "{}_{}",
-                    metric.to_lowercase(),
-                    stat_type.to_lowercase()
-                ))
-                .build();
+            if metric_target.expression.is_empty() {
+                metric_data_query = MetricDataQuery::builder()
+                    .metric_stat(
+                        MetricStat::builder()
+                            .metric(
+                                CloudwatchMetric::builder()
+                                    .metric_name(metric.to_string())
+                                    .namespace(metric_target.namespace.clone())
+                                    .set_dimensions(Some(dimensions.clone()))
+                                    .build(),
+                            )
+                            .period(60 * 60 * 24)
+                            .stat(stat_type.to_string())
+                            .build(),
+                    )
+                    .id(format!(
+                        "{}_{}",
+                        metric.to_lowercase(),
+                        stat_type.to_lowercase()
+                    ))
+                    .build();
+            } else {
+                let search_expression = format!(
+                    "SEARCH(\' {} \', \'{}\')",
+                    metric_target.expression, stat_type
+                );
+                metric_data_query = MetricDataQuery::builder()
+                    .expression(search_expression)
+                    .period(60 * 60 * 24)
+                    .return_data(true)
+                    .id(format!(
+                        "{}_{}",
+                        metric.to_lowercase(),
+                        stat_type.to_lowercase()
+                    ))
+                    .build();
+            }
             metric_data_queries.push(metric_data_query);
         }
 
