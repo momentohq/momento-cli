@@ -193,7 +193,7 @@ async fn list_bucket_metrics_configs(
                     // https://github.com/awslabs/aws-sdk-rust/issues/183
                     // There may be some extra processing we can do to follow the redirect we're getting
                     // here, but for now we'll just print an error.
-                    eprintln!("Skipping redirected bucket {}", bucket);
+                    log::debug!("skipping redirected bucket {}", bucket);
                     break;
                 }
                 return Err(CliError {
