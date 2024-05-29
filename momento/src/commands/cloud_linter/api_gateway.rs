@@ -2,6 +2,7 @@ use crate::commands::cloud_linter::metrics::{
     AppendMetrics, Metric, MetricTarget, ResourceWithMetrics,
 };
 use crate::commands::cloud_linter::resource::{ApiGatewayResource, Resource, ResourceType};
+use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
 use aws_config::SdkConfig;
 use aws_sdk_apigateway::types::RestApi;
@@ -70,6 +71,7 @@ impl ResourceWithMetrics for ApiGatewayResource {
 
 pub(crate) async fn process_api_gateway_resources(
     config: &SdkConfig,
+    control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
 ) -> Result<(), CliError> {
@@ -82,12 +84,26 @@ pub(crate) async fn process_api_gateway_resources(
     let list_apis_bar = ProgressBar::new_spinner().with_message("Listing API Gateway resources");
     list_apis_bar.enable_steady_tick(std::time::Duration::from_millis(100));
 
-    let resp = apig_client.get_rest_apis().send().await?;
-    let apis = resp.items();
+    let mut apis = Vec::new();
+    let mut resp_stream = apig_client.get_rest_apis().into_paginator().send();
+    while let Some(result) =
+        rate_limit(Arc::clone(&control_plane_limiter), || resp_stream.next()).await
+    {
+        match result {
+            Ok(result) => {
+                apis.extend(result.items.unwrap_or_default());
+            }
+            Err(e) => {
+                return Err(CliError {
+                    msg: format!("Failed to list API Gateway resources: {}", e),
+                });
+            }
+        }
+    }
     list_apis_bar.finish();
     process_apis(
         apig_client.clone(),
-        apis,
+        &apis,
         region,
         sender,
         &metrics_client,

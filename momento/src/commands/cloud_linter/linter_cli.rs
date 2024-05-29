@@ -79,13 +79,19 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
 
     process_s3_resources(
         &config,
-        Arc::clone(&metrics_limiter),
         Arc::clone(&control_plane_limiter),
+        Arc::clone(&metrics_limiter),
         sender.clone(),
     )
     .await?;
 
-    process_api_gateway_resources(&config, Arc::clone(&metrics_limiter), sender.clone()).await?;
+    process_api_gateway_resources(
+        &config,
+        Arc::clone(&control_plane_limiter),
+        Arc::clone(&metrics_limiter),
+        sender.clone(),
+    )
+    .await?;
 
     process_ddb_resources(
         &config,
