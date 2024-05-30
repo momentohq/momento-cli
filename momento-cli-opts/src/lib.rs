@@ -224,7 +224,32 @@ to help find opportunities for optimizations with Momento.
     CloudLinter {
         #[arg(long, short, help = "The AWS region to examine")]
         region: String,
+        #[arg(
+            long = "enable-ddb-ttl-check",
+            help = "Opt in to check whether ddb tables have ttl enabled. If there are lots of tables, could slow down data collection"
+        )]
+        enable_ddb_ttl_check: bool,
+        #[arg(
+            value_enum,
+            long = "resource",
+            help = "Pass in a specific resource type to only collect data on that resource. Example: --resource dynamo"
+        )]
+        resource: Option<CloudLinterResources>,
+        #[arg(
+            long = "metric-collection-rate",
+            help = "tps at which to invoke the aws `get-metric-data` api",
+            default_value = "20"
+        )]
+        metric_collection_rate: u32,
     },
+}
+
+#[derive(clap::ValueEnum, PartialEq, Eq, Debug, Clone, Copy)]
+pub enum CloudLinterResources {
+    ApiGateway,
+    S3,
+    Dynamo,
+    ElastiCache,
 }
 
 #[derive(Debug, Parser)]

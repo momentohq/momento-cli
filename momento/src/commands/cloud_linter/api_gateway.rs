@@ -38,7 +38,7 @@ const API_GATEWAY_METRICS: Map<&'static str, &'static [&'static str]> = phf_map!
     ],
 };
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ApiGatewayMetadata {
     #[serde(rename = "name")]
     name: String,

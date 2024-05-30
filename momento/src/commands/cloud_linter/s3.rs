@@ -7,6 +7,7 @@ use crate::error::CliError;
 use aws_config::SdkConfig;
 use aws_sdk_s3::error::ProvideErrorMetadata;
 use aws_sdk_s3::types::MetricsConfiguration;
+use futures::stream::FuturesUnordered;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
 use phf::{phf_map, Map};
@@ -64,7 +65,7 @@ const S3_METRICS_REQUEST: Map<&'static str, &'static [&'static str]> = phf_map! 
     ],
 };
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct S3Metadata {
     #[serde(rename = "requestMetricsFilter")]
     request_metrics_filter: String,
@@ -226,9 +227,7 @@ async fn try_get_bucket_metrics_filter(
             }
         }
         Err(err) => {
-            return Err(CliError {
-                msg: format!("{}", err),
-            });
+            return Err(err);
         }
     }
     Ok("".to_string())
@@ -243,65 +242,93 @@ async fn process_buckets(
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<(), CliError> {
-    let mut resources: Vec<Resource> = Vec::new();
-
     let process_buckets_bar =
         ProgressBar::new((buckets.len() * 2) as u64).with_message("Processing S3 Buckets");
     process_buckets_bar
         .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
+    let futures = FuturesUnordered::new();
     for bucket in buckets {
-        let filter_id = try_get_bucket_metrics_filter(
-            s3client.clone(),
-            bucket.clone(),
-            Arc::clone(&control_plane_limiter),
-        )
-        .await;
-        let filter_id = match filter_id {
-            Ok(filter_id) => filter_id,
-            Err(err) => {
-                eprint!("{}", err);
-                continue;
-            }
-        };
+        let s3_client_clone = s3client.clone();
+        let metrics_client_clone = metrics_client.clone();
+        let sender_clone = sender.clone();
+        let metrics_limiter_clone = metrics_limiter.clone();
+        let control_plane_limiter_clone = control_plane_limiter.clone();
+        let region_clone = region.to_string().clone();
+        let progress_bar_clone = process_buckets_bar.clone();
+        let spawn = tokio::spawn(async move {
+            progress_bar_clone.inc(1);
+            let res = process_bucket(
+                s3_client_clone,
+                bucket,
+                region_clone.as_str(),
+                sender_clone,
+                &metrics_client_clone,
+                metrics_limiter_clone,
+                control_plane_limiter_clone,
+            )
+            .await;
+            progress_bar_clone.inc(1);
+            res
+        });
 
-        let metadata = S3Metadata {
-            request_metrics_filter: filter_id,
-        };
-
-        let s3_resource = S3Resource {
-            resource_type: ResourceType::S3,
-            region: region.to_string(),
-            id: bucket.clone(),
-            metrics: vec![],
-            metric_period_seconds: 0,
-            metadata,
-        };
-        resources.push(Resource::S3(s3_resource));
-        process_buckets_bar.inc(1);
+        futures.push(spawn);
     }
 
-    for resource in resources {
-        match resource {
-            Resource::S3(mut my_resource) => {
-                my_resource
-                    .append_metrics(metrics_client, Arc::clone(&metrics_limiter))
-                    .await?;
-                sender
-                    .send(Resource::S3(my_resource))
-                    .await
-                    .map_err(|_| CliError {
-                        msg: "Failed to send S3 resource".to_string(),
-                    })?;
-                process_buckets_bar.inc(1);
-            }
-            _ => {
+    let all_results = futures::future::join_all(futures).await;
+    for result in all_results {
+        match result {
+            // bubble up any cli errors that we came across
+            Ok(res) => res?,
+            Err(_) => {
                 return Err(CliError {
-                    msg: "Invalid resource type".to_string(),
-                });
+                    msg: "failed to wait for all s3 resources to collect data".to_string(),
+                })
             }
         }
     }
+
     process_buckets_bar.finish();
+    Ok(())
+}
+
+async fn process_bucket(
+    s3client: aws_sdk_s3::Client,
+    bucket: String,
+    region: &str,
+    sender: Sender<Resource>,
+    metrics_client: &aws_sdk_cloudwatch::Client,
+    metrics_limiter: Arc<DefaultDirectRateLimiter>,
+    control_plane_limiter: Arc<DefaultDirectRateLimiter>,
+) -> Result<(), CliError> {
+    let filter_id = try_get_bucket_metrics_filter(
+        s3client.clone(),
+        bucket.clone(),
+        Arc::clone(&control_plane_limiter),
+    )
+    .await?;
+
+    let metadata = S3Metadata {
+        request_metrics_filter: filter_id,
+    };
+
+    let mut s3_resource = S3Resource {
+        resource_type: ResourceType::S3,
+        region: region.to_string(),
+        id: bucket.clone(),
+        metrics: vec![],
+        metric_period_seconds: 0,
+        metadata,
+    };
+    s3_resource
+        .append_metrics(metrics_client, Arc::clone(&metrics_limiter))
+        .await?;
+    sender
+        .send(Resource::S3(s3_resource))
+        .await
+        .map_err(|_| CliError {
+            msg: "Failed to send S3 resource".to_string(),
+        })?;
+
     Ok(())
 }
 
