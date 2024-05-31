@@ -71,7 +71,7 @@ pub(crate) const SERVERLESS_CACHE_METRICS: Map<&'static str, &'static [&'static 
         ],
 };
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ServerlessElastiCacheMetadata {
     name: String,
     engine: String,

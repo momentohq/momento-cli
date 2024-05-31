@@ -7,7 +7,7 @@ use crate::commands::cloud_linter::metrics::Metric;
 use crate::commands::cloud_linter::s3::S3Metadata;
 use crate::commands::cloud_linter::serverless_elasticache::ServerlessElastiCacheMetadata;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub(crate) enum Resource {
     ApiGateway(ApiGatewayResource),
@@ -17,7 +17,7 @@ pub(crate) enum Resource {
     S3(S3Resource),
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub(crate) enum ResourceType {
     #[serde(rename = "AWS::ApiGateway::API")]
     ApiGateway,
@@ -35,7 +35,7 @@ pub(crate) enum ResourceType {
     S3,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub(crate) struct DynamoDbResource {
     #[serde(rename = "type")]
     pub(crate) resource_type: ResourceType,
@@ -47,7 +47,7 @@ pub(crate) struct DynamoDbResource {
     pub(crate) metadata: DynamoDbMetadata,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub(crate) struct ElastiCacheResource {
     #[serde(rename = "type")]
     pub(crate) resource_type: ResourceType,
@@ -59,7 +59,7 @@ pub(crate) struct ElastiCacheResource {
     pub(crate) metadata: ElastiCacheMetadata,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub(crate) struct ServerlessElastiCacheResource {
     #[serde(rename = "type")]
     pub(crate) resource_type: ResourceType,
@@ -71,7 +71,7 @@ pub(crate) struct ServerlessElastiCacheResource {
     pub(crate) metadata: ServerlessElastiCacheMetadata,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub(crate) struct S3Resource {
     #[serde(rename = "type")]
     pub(crate) resource_type: ResourceType,
@@ -83,7 +83,7 @@ pub(crate) struct S3Resource {
     pub(crate) metadata: S3Metadata,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub(crate) struct ApiGatewayResource {
     #[serde(rename = "type")]
     pub(crate) resource_type: ResourceType,

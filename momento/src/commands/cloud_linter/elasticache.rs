@@ -53,7 +53,7 @@ pub(crate) const CACHE_METRICS: Map<&'static str, &'static [&'static str]> = phf
         ],
 };
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ElastiCacheMetadata {
     #[serde(rename = "clusterId")]
     cluster_id: String,

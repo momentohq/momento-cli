@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use aws_config::SdkConfig;
 use aws_sdk_dynamodb::types::{TimeToLiveDescription, TimeToLiveStatus};
+use futures::stream::FuturesUnordered;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
 use phf::{phf_map, Map};
@@ -70,7 +71,7 @@ const DDB_GSI_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
         ],
 };
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct DynamoDbMetadata {
     #[serde(rename = "avgItemSizeBytes")]
     avg_item_size_bytes: i64,
@@ -110,7 +111,7 @@ impl DynamoDbMetadata {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct GsiMetadata {
     #[serde(rename = "gsiName")]
     gsi_name: String,
@@ -177,6 +178,7 @@ pub(crate) async fn process_ddb_resources(
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     describe_ttl_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
+    enable_ddb_ttl_check: bool,
 ) -> Result<(), CliError> {
     let ddb_client = aws_sdk_dynamodb::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
@@ -190,18 +192,47 @@ pub(crate) async fn process_ddb_resources(
         ProgressBar::new(table_names.len() as u64).with_message("Processing Dynamo DB tables");
     describe_ddb_tables_bar
         .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
+
+    let futures = FuturesUnordered::new();
+
     for table_name in table_names {
-        process_table_resources(
-            &ddb_client,
-            &metrics_client,
-            &table_name,
-            Arc::clone(&control_plane_limiter),
-            Arc::clone(&metrics_limiter),
-            Arc::clone(&describe_ttl_limiter),
-            sender.clone(),
-        )
-        .await?;
-        describe_ddb_tables_bar.inc(1);
+        let sender_clone = sender.clone();
+        let ddb_client_clone = ddb_client.clone();
+        let metrics_client_clone = metrics_client.clone();
+        let table_name_clone = table_name.clone();
+        let control_plane_limiter_clone = control_plane_limiter.clone();
+        let metrics_limiter_clone = metrics_limiter.clone();
+        let describe_ttl_limiter_clone = describe_ttl_limiter.clone();
+        let progress_bar_clone = describe_ddb_tables_bar.clone();
+        let spawn = tokio::spawn(async move {
+            let res = process_table_resources(
+                &ddb_client_clone,
+                &metrics_client_clone,
+                &table_name_clone,
+                control_plane_limiter_clone,
+                metrics_limiter_clone,
+                describe_ttl_limiter_clone,
+                sender_clone,
+                enable_ddb_ttl_check,
+            )
+            .await;
+            progress_bar_clone.inc(1);
+            res
+        });
+        futures.push(spawn);
+    }
+
+    let all_results = futures::future::join_all(futures).await;
+    for result in all_results {
+        match result {
+            // bubble up any cli errors that we came across
+            Ok(res) => res?,
+            Err(_) => {
+                return Err(CliError {
+                    msg: "failed to wait for all dynamo resources to collect data".to_string(),
+                })
+            }
+        }
     }
 
     describe_ddb_tables_bar.finish();
@@ -282,6 +313,7 @@ async fn is_ddb_ttl_enabled(
     Ok(ttl_enabled)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_table_resources(
     ddb_client: &aws_sdk_dynamodb::Client,
     metrics_client: &aws_sdk_cloudwatch::Client,
@@ -290,6 +322,7 @@ async fn process_table_resources(
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     describe_ttl_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
+    enable_ddb_ttl_check: bool,
 ) -> Result<(), CliError> {
     let region = ddb_client
         .config()
@@ -451,8 +484,13 @@ async fn process_table_resources(
         resource
             .append_metrics(metrics_client, Arc::clone(&metrics_limiter))
             .await?;
-        let ttl_enabled =
-            is_ddb_ttl_enabled(ddb_client, &resource, Arc::clone(&describe_ttl_limiter)).await?;
+        let ttl_enabled = match enable_ddb_ttl_check {
+            true => {
+                is_ddb_ttl_enabled(ddb_client, &resource, Arc::clone(&describe_ttl_limiter)).await?
+            }
+            false => false,
+        };
+
         resource.metadata.ttl_enabled = ttl_enabled;
         sender
             .send(Resource::DynamoDb(resource))

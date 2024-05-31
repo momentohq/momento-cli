@@ -7,3 +7,7 @@ client-cli.iml
 bin/
 momento.exe
 obj/
+
+linter_results.json
+linter_results.json.gz
+

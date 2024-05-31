@@ -7,6 +7,7 @@ use aws_config::{BehaviorVersion, Region};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use governor::{Quota, RateLimiter};
+use momento_cli_opts::CloudLinterResources;
 use struson::writer::{JsonStreamWriter, JsonWriter};
 use tokio::fs::{metadata, File};
 use tokio::sync::mpsc::{self, Sender};
@@ -20,7 +21,12 @@ use crate::error::CliError;
 use super::elasticache::process_elasticache_resources;
 use super::resource::Resource;
 
-pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
+pub async fn run_cloud_linter(
+    region: String,
+    enable_ddb_ttl_check: bool,
+    only_collect_for_resource: Option<CloudLinterResources>,
+    metric_collection_rate: u32,
+) -> Result<(), CliError> {
     let (tx, mut rx) = mpsc::channel::<Resource>(32);
     let file_path = "linter_results.json";
     // first we check to make sure we have perms to write files to the current directory
@@ -34,7 +40,14 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     json_writer.name("resources")?;
     json_writer.begin_array()?;
     tokio::spawn(async move {
-        let _ = process_data(region, tx).await;
+        let _ = process_data(
+            region,
+            tx,
+            enable_ddb_ttl_check,
+            only_collect_for_resource,
+            metric_collection_rate,
+        )
+        .await;
     });
     while let Some(message) = rx.recv().await {
         let _ = json_writer.serialize_value(&message);
@@ -56,7 +69,13 @@ pub async fn run_cloud_linter(region: String) -> Result<(), CliError> {
     Ok(())
 }
 
-async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), CliError> {
+async fn process_data(
+    region: String,
+    sender: Sender<Resource>,
+    enable_ddb_ttl_check: bool,
+    only_collect_for_resource: Option<CloudLinterResources>,
+    metric_collection_rate: u32,
+) -> Result<(), CliError> {
     let config = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(region))
         .load()
@@ -73,9 +92,65 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
     );
     let describe_ttl_limiter = Arc::new(RateLimiter::direct(describe_ttl_quota));
 
-    let metrics_quota =
-        Quota::per_second(core::num::NonZeroU32::new(20).expect("should create non-zero quota"));
+    let metrics_quota = Quota::per_second(
+        core::num::NonZeroU32::new(metric_collection_rate).expect("should create non-zero quota"),
+    );
     let metrics_limiter = Arc::new(RateLimiter::direct(metrics_quota));
+
+    if let Some(resource) = only_collect_for_resource {
+        match resource {
+            CloudLinterResources::ApiGateway => {
+                process_api_gateway_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    sender.clone(),
+                )
+                .await?;
+                return Ok(());
+            }
+            CloudLinterResources::S3 => {
+                process_s3_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    sender.clone(),
+                )
+                .await?;
+                return Ok(());
+            }
+            CloudLinterResources::Dynamo => {
+                process_ddb_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    Arc::clone(&describe_ttl_limiter),
+                    sender.clone(),
+                    enable_ddb_ttl_check,
+                )
+                .await?;
+                return Ok(());
+            }
+            CloudLinterResources::ElastiCache => {
+                process_elasticache_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    sender.clone(),
+                )
+                .await?;
+
+                process_serverless_elasticache_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    sender.clone(),
+                )
+                .await?;
+                return Ok(());
+            }
+        }
+    };
 
     process_s3_resources(
         &config,
@@ -99,6 +174,7 @@ async fn process_data(region: String, sender: Sender<Resource>) -> Result<(), Cl
         Arc::clone(&metrics_limiter),
         Arc::clone(&describe_ttl_limiter),
         sender.clone(),
+        enable_ddb_ttl_check,
     )
     .await?;
 

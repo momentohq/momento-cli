@@ -6,6 +6,8 @@ use aws_sdk_cloudwatch::types::Metric as CloudwatchMetric;
 use aws_sdk_cloudwatch::types::{Dimension, MetricDataQuery, MetricStat};
 use aws_sdk_cloudwatch::Client;
 use chrono::{Duration, Utc};
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 use governor::DefaultDirectRateLimiter;
 use phf::Map;
 use serde::{Deserialize, Serialize};
@@ -13,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub(crate) struct Metric {
     pub name: String,
     pub values: Vec<f64>,
@@ -54,11 +56,30 @@ where
     ) -> Result<(), CliError> {
         let metric_targets = self.create_metric_targets()?;
         let mut metrics: Vec<Vec<Metric>> = Vec::new();
+        let mut futures = FuturesUnordered::new();
+
         for target in metric_targets {
-            metrics.push(
-                query_metrics_for_target(metrics_client, Arc::clone(&limiter), target).await?,
-            );
+            let client = metrics_client.clone();
+            let moved_limiter = Arc::clone(&limiter);
+            let spawn = tokio::spawn(async move {
+                query_metrics_for_target(&client, moved_limiter, target).await
+            });
+            futures.push(spawn);
         }
+        while let Some(finished_future) = futures.next().await {
+            match finished_future {
+                Err(_e) => {
+                    return Err(CliError {
+                        msg: "failed to retrieve metrics from cloudwatch".to_string(),
+                    })
+                }
+                Ok(result) => {
+                    let resource_metrics = result?;
+                    metrics.push(resource_metrics);
+                }
+            }
+        }
+
         self.set_metrics(metrics.into_iter().flatten().collect());
         self.set_metric_period_seconds(60 * 60 * 24);
 

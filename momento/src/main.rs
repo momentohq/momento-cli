@@ -263,8 +263,19 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 )
                 .await?;
             }
-            PreviewCommand::CloudLinter { region } => {
-                commands::cloud_linter::linter_cli::run_cloud_linter(region).await?;
+            PreviewCommand::CloudLinter {
+                region,
+                enable_ddb_ttl_check,
+                resource,
+                metric_collection_rate,
+            } => {
+                commands::cloud_linter::linter_cli::run_cloud_linter(
+                    region,
+                    enable_ddb_ttl_check,
+                    resource,
+                    metric_collection_rate,
+                )
+                .await?;
             }
         },
     }
