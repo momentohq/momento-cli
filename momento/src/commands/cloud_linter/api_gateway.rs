@@ -125,8 +125,9 @@ async fn process_apis(
     let mut resources: Vec<Resource> = Vec::with_capacity(apis.len());
     let get_apis_bar =
         ProgressBar::new((apis.len() * 2) as u64).with_message("Processing API Gateway resources");
-    get_apis_bar
-        .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
+    get_apis_bar.set_style(
+        ProgressStyle::with_template(" {pos:>7}/{len:7} {msg}").expect("invalid template"),
+    );
     for api in apis {
         let the_api = apig_client
             .get_rest_api()

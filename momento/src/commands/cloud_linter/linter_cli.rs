@@ -1,8 +1,10 @@
 use std::io::{copy, BufReader};
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 
 use crate::commands::cloud_linter::api_gateway::process_api_gateway_resources;
+use aws_config::retry::RetryConfig;
 use aws_config::{BehaviorVersion, Region};
 use flate2::write::GzEncoder;
 use flate2::Compression;
@@ -24,6 +26,7 @@ use super::resource::Resource;
 pub async fn run_cloud_linter(
     region: String,
     enable_ddb_ttl_check: bool,
+    enable_gsi: bool,
     only_collect_for_resource: Option<CloudLinterResources>,
     metric_collection_rate: u32,
 ) -> Result<(), CliError> {
@@ -44,6 +47,7 @@ pub async fn run_cloud_linter(
             region,
             tx,
             enable_ddb_ttl_check,
+            enable_gsi,
             only_collect_for_resource,
             metric_collection_rate,
         )
@@ -73,11 +77,17 @@ async fn process_data(
     region: String,
     sender: Sender<Resource>,
     enable_ddb_ttl_check: bool,
+    enable_gsi: bool,
     only_collect_for_resource: Option<CloudLinterResources>,
     metric_collection_rate: u32,
 ) -> Result<(), CliError> {
+    let retry_config = RetryConfig::adaptive()
+        .with_initial_backoff(Duration::from_secs(1))
+        .with_max_attempts(20)
+        .with_max_backoff(Duration::from_secs(15));
     let config = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(region))
+        .retry_config(retry_config)
         .load()
         .await;
     check_aws_credentials(&config).await?;
@@ -88,7 +98,7 @@ async fn process_data(
     let control_plane_limiter = Arc::new(RateLimiter::direct(control_plane_quota));
 
     let describe_ttl_quota = Quota::per_second(
-        core::num::NonZeroU32::new(3).expect("should create non-zero describe_ttl_quota"),
+        core::num::NonZeroU32::new(1).expect("should create non-zero describe_ttl_quota"),
     );
     let describe_ttl_limiter = Arc::new(RateLimiter::direct(describe_ttl_quota));
 
@@ -127,6 +137,7 @@ async fn process_data(
                     Arc::clone(&describe_ttl_limiter),
                     sender.clone(),
                     enable_ddb_ttl_check,
+                    enable_gsi,
                 )
                 .await?;
                 return Ok(());
@@ -175,6 +186,7 @@ async fn process_data(
         Arc::clone(&describe_ttl_limiter),
         sender.clone(),
         enable_ddb_ttl_check,
+        enable_gsi,
     )
     .await?;
 

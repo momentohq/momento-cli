@@ -230,6 +230,11 @@ to help find opportunities for optimizations with Momento.
         )]
         enable_ddb_ttl_check: bool,
         #[arg(
+            long = "enable-gsi",
+            help = "Opt in to check metrics on dynamodb gsi's. If there are lots of tables with gsi's, could slow down data collection"
+        )]
+        enable_gsi: bool,
+        #[arg(
             value_enum,
             long = "resource",
             help = "Pass in a specific resource type to only collect data on that resource. Example: --resource dynamo"
@@ -238,7 +243,7 @@ to help find opportunities for optimizations with Momento.
         #[arg(
             long = "metric-collection-rate",
             help = "tps at which to invoke the aws `get-metric-data` api",
-            default_value = "20"
+            default_value = "10"
         )]
         metric_collection_rate: u32,
     },

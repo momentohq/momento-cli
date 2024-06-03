@@ -18,7 +18,7 @@ use crate::commands::cloud_linter::resource::{DynamoDbResource, Resource, Resour
 use crate::commands::cloud_linter::utils::rate_limit;
 use crate::error::CliError;
 
-const DDB_TABLE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
+const DDB_TABLE_PROVISIONED_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
         "Sum" => &[
             "ConsumedReadCapacityUnits",
             "ConsumedWriteCapacityUnits",
@@ -27,8 +27,6 @@ const DDB_TABLE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
             "ReadThrottleEvents",
             "WriteThrottleEvents",
             "TimeToLiveDeletedItemCount",
-            "TransactionConflict",
-            "ConditionalCheckFailedRequests",
         ],
         "Average" => &[
             "ConsumedReadCapacityUnits",
@@ -41,6 +39,26 @@ const DDB_TABLE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
             "ConsumedWriteCapacityUnits",
             "ProvisionedReadCapacityUnits",
             "ProvisionedWriteCapacityUnits",
+            "ReadThrottleEvents",
+            "WriteThrottleEvents",
+        ],
+};
+
+const DDB_TABLE_PAY_PER_USE_METRICS: Map<&'static str, &'static [&'static str]> = phf_map! {
+        "Sum" => &[
+            "ConsumedReadCapacityUnits",
+            "ConsumedWriteCapacityUnits",
+            "ReadThrottleEvents",
+            "WriteThrottleEvents",
+            "TimeToLiveDeletedItemCount",
+        ],
+        "Average" => &[
+            "ConsumedReadCapacityUnits",
+            "ConsumedWriteCapacityUnits",
+        ],
+        "Maximum" => &[
+            "ConsumedReadCapacityUnits",
+            "ConsumedWriteCapacityUnits",
             "ReadThrottleEvents",
             "WriteThrottleEvents",
         ],
@@ -132,12 +150,28 @@ pub(crate) struct GsiMetadata {
 impl ResourceWithMetrics for DynamoDbResource {
     fn create_metric_targets(&self) -> Result<Vec<MetricTarget>, CliError> {
         match self.resource_type {
-            ResourceType::DynamoDbTable => Ok(vec![MetricTarget {
-                namespace: "AWS/DynamoDB".to_string(),
-                expression: "".to_string(),
-                dimensions: HashMap::from([("TableName".to_string(), self.id.clone())]),
-                targets: DDB_TABLE_METRICS,
-            }]),
+            ResourceType::DynamoDbTable => {
+                if self
+                    .metadata
+                    .billing_mode
+                    .clone()
+                    .unwrap_or_default()
+                    .eq("PAY_PER_REQUEST")
+                {
+                    return Ok(vec![MetricTarget {
+                        namespace: "AWS/DynamoDB".to_string(),
+                        expression: "".to_string(),
+                        dimensions: HashMap::from([("TableName".to_string(), self.id.clone())]),
+                        targets: DDB_TABLE_PAY_PER_USE_METRICS,
+                    }]);
+                }
+                Ok(vec![MetricTarget {
+                    namespace: "AWS/DynamoDB".to_string(),
+                    expression: "".to_string(),
+                    dimensions: HashMap::from([("TableName".to_string(), self.id.clone())]),
+                    targets: DDB_TABLE_PROVISIONED_METRICS,
+                }])
+            }
             ResourceType::DynamoDbGsi => {
                 let gsi_name = self
                     .metadata
@@ -179,6 +213,7 @@ pub(crate) async fn process_ddb_resources(
     describe_ttl_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
     enable_ddb_ttl_check: bool,
+    enable_gsi: bool,
 ) -> Result<(), CliError> {
     let ddb_client = aws_sdk_dynamodb::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
@@ -190,47 +225,56 @@ pub(crate) async fn process_ddb_resources(
 
     let describe_ddb_tables_bar =
         ProgressBar::new(table_names.len() as u64).with_message("Processing Dynamo DB tables");
-    describe_ddb_tables_bar
-        .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
+    describe_ddb_tables_bar.set_style(
+        ProgressStyle::with_template(" {pos:>7}/{len:7} {msg}").expect("invalid template"),
+    );
 
-    let futures = FuturesUnordered::new();
+    // we don't want to spawn 1 million processes at the same time. We chunk the tables into chunks of 10, complete 10
+    // at a time, describing tables as well as getting all table metrics, and then move on to the next 10
+    let table_chunks = table_names.chunks(10);
+    let vec_tables: Vec<&[String]> = table_chunks.into_iter().collect();
 
-    for table_name in table_names {
-        let sender_clone = sender.clone();
-        let ddb_client_clone = ddb_client.clone();
-        let metrics_client_clone = metrics_client.clone();
-        let table_name_clone = table_name.clone();
-        let control_plane_limiter_clone = control_plane_limiter.clone();
-        let metrics_limiter_clone = metrics_limiter.clone();
-        let describe_ttl_limiter_clone = describe_ttl_limiter.clone();
-        let progress_bar_clone = describe_ddb_tables_bar.clone();
-        let spawn = tokio::spawn(async move {
-            let res = process_table_resources(
-                &ddb_client_clone,
-                &metrics_client_clone,
-                &table_name_clone,
-                control_plane_limiter_clone,
-                metrics_limiter_clone,
-                describe_ttl_limiter_clone,
-                sender_clone,
-                enable_ddb_ttl_check,
-            )
-            .await;
-            progress_bar_clone.inc(1);
-            res
-        });
-        futures.push(spawn);
-    }
+    for table_batch in vec_tables {
+        let futures = FuturesUnordered::new();
+        for table_name in table_batch {
+            let sender_clone = sender.clone();
+            let ddb_client_clone = ddb_client.clone();
+            let metrics_client_clone = metrics_client.clone();
+            let table_name_clone = table_name.clone();
+            let control_plane_limiter_clone = Arc::clone(&control_plane_limiter);
+            let metrics_limiter_clone = Arc::clone(&metrics_limiter);
+            let describe_ttl_limiter_clone = Arc::clone(&describe_ttl_limiter);
+            let progress_bar_clone = describe_ddb_tables_bar.clone();
+            let spawn = tokio::spawn(async move {
+                let res = process_table_resources(
+                    &ddb_client_clone,
+                    &metrics_client_clone,
+                    &table_name_clone,
+                    control_plane_limiter_clone,
+                    metrics_limiter_clone,
+                    describe_ttl_limiter_clone,
+                    sender_clone,
+                    enable_ddb_ttl_check,
+                    enable_gsi,
+                )
+                .await;
+                progress_bar_clone.inc(1);
+                res
+            });
+            futures.push(spawn);
+        }
 
-    let all_results = futures::future::join_all(futures).await;
-    for result in all_results {
-        match result {
-            // bubble up any cli errors that we came across
-            Ok(res) => res?,
-            Err(_) => {
-                return Err(CliError {
-                    msg: "failed to wait for all dynamo resources to collect data".to_string(),
-                })
+        let all_results = futures::future::join_all(futures).await;
+        for result in all_results {
+            match result {
+                // bubble up any cli errors that we came across
+                Ok(res) => res?,
+                Err(_) => {
+                    println!("failed to wait for all dynamodb tables");
+                    return Err(CliError {
+                        msg: "failed to wait for all dynamo resources to collect data".to_string(),
+                    });
+                }
             }
         }
     }
@@ -323,6 +367,7 @@ async fn process_table_resources(
     describe_ttl_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
     enable_ddb_ttl_check: bool,
+    enable_gsi: bool,
 ) -> Result<(), CliError> {
     let region = ddb_client
         .config()
@@ -481,6 +526,16 @@ async fn process_table_resources(
     });
 
     for mut resource in resources {
+        // if we have disabled collecting gsi metrics, then forward the gsi to the sender and continue
+        if resource.resource_type == ResourceType::DynamoDbGsi && !enable_gsi {
+            sender
+                .send(Resource::DynamoDb(resource))
+                .await
+                .map_err(|err| CliError {
+                    msg: format!("Failed to stream dynamodb resource to file: {}", err),
+                })?;
+            continue;
+        }
         resource
             .append_metrics(metrics_client, Arc::clone(&metrics_limiter))
             .await?;

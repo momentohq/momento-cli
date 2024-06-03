@@ -244,8 +244,10 @@ async fn process_buckets(
 ) -> Result<(), CliError> {
     let process_buckets_bar =
         ProgressBar::new((buckets.len() * 2) as u64).with_message("Processing S3 Buckets");
-    process_buckets_bar
-        .set_style(ProgressStyle::with_template("  {msg} {bar} {eta}").expect("invalid template"));
+    process_buckets_bar.set_style(
+        ProgressStyle::with_template(" {pos:>7}/{len:7} {msg}").expect("invalid template"),
+    );
+
     let futures = FuturesUnordered::new();
     for bucket in buckets {
         let s3_client_clone = s3client.clone();
