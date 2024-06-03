@@ -82,9 +82,9 @@ async fn process_data(
     metric_collection_rate: u32,
 ) -> Result<(), CliError> {
     let retry_config = RetryConfig::adaptive()
-        .with_initial_backoff(Duration::from_secs(1))
+        .with_initial_backoff(Duration::from_millis(250))
         .with_max_attempts(20)
-        .with_max_backoff(Duration::from_secs(15));
+        .with_max_backoff(Duration::from_secs(5));
     let config = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(region))
         .retry_config(retry_config)

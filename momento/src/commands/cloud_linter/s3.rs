@@ -243,7 +243,7 @@ async fn process_buckets(
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<(), CliError> {
     let process_buckets_bar =
-        ProgressBar::new((buckets.len() * 2) as u64).with_message("Processing S3 Buckets");
+        ProgressBar::new((buckets.len()) as u64).with_message("Processing S3 Buckets");
     process_buckets_bar.set_style(
         ProgressStyle::with_template(" {pos:>7}/{len:7} {msg}").expect("invalid template"),
     );
