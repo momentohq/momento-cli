@@ -220,7 +220,7 @@ pub(crate) async fn process_ddb_resources(
 
     let list_ddb_tables_bar = ProgressBar::new_spinner().with_message("Listing Dynamo DB tables");
     list_ddb_tables_bar.enable_steady_tick(Duration::from_millis(100));
-    let table_names = list_table_names(&ddb_client, Arc::clone(&metrics_limiter)).await?;
+    let table_names = list_table_names(&ddb_client, Arc::clone(&control_plane_limiter)).await?;
     list_ddb_tables_bar.finish();
 
     let describe_ddb_tables_bar =
