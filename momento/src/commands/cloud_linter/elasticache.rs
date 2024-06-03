@@ -128,7 +128,6 @@ pub(crate) async fn process_elasticache_resources(
     )
     .await?;
 
-    // write_resources(clusters, config, region, sender, metrics_limiter).await?;
     Ok(())
 }
 
