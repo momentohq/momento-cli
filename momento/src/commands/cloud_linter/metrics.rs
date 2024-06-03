@@ -185,7 +185,6 @@ async fn query_metrics_for_target(
                     });
                 }
             };
-            // let result = result?;
             if let Some(mdr_vec) = result.metric_data_results {
                 for mdr in mdr_vec {
                     let name = mdr.id.ok_or_else(|| CliError {
