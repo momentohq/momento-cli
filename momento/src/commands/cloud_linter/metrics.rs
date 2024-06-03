@@ -45,6 +45,29 @@ pub(crate) trait AppendMetrics {
     ) -> Result<(), CliError>;
 }
 
+// impl<T> AppendMetrics for T
+// where
+//     T: ResourceWithMetrics,
+// {
+//     async fn append_metrics(
+//         &mut self,
+//         metrics_client: &Client,
+//         limiter: Arc<DefaultDirectRateLimiter>,
+//     ) -> Result<(), CliError> {
+//         let metric_targets = self.create_metric_targets()?;
+//         let mut metrics: Vec<Vec<Metric>> = Vec::new();
+//         for target in metric_targets {
+//             metrics.push(
+//                 query_metrics_for_target(metrics_client, Arc::clone(&limiter), target).await?,
+//             );
+//         }
+//         self.set_metrics(metrics.into_iter().flatten().collect());
+//         self.set_metric_period_seconds(60 * 60 * 24);
+
+//         Ok(())
+//     }
+// }
+
 impl<T> AppendMetrics for T
 where
     T: ResourceWithMetrics,
@@ -153,7 +176,16 @@ async fn query_metrics_for_target(
             .send();
 
         while let Some(result) = rate_limit(Arc::clone(&limiter), || metric_stream.next()).await {
-            let result = result?;
+            let result = match result {
+                Ok(res) => res,
+                Err(e) => {
+                    println!("get_metric_data_error: {:?}", e);
+                    return Err(CliError {
+                        msg: "error from aws api while querying metrics".to_string(),
+                    });
+                }
+            };
+            // let result = result?;
             if let Some(mdr_vec) = result.metric_data_results {
                 for mdr in mdr_vec {
                     let name = mdr.id.ok_or_else(|| CliError {
