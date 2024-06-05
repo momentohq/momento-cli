@@ -9,6 +9,7 @@ use aws_config::{BehaviorVersion, Region};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use governor::{Quota, RateLimiter};
+use indicatif::ProgressBar;
 use momento_cli_opts::CloudLinterResources;
 use struson::writer::{JsonStreamWriter, JsonWriter};
 use tokio::fs::{metadata, File};
@@ -61,15 +62,21 @@ pub async fn run_cloud_linter(
     json_writer.finish_document()?;
 
     // now we compress the json into a .gz file for the customer to upload
+    let compression_bar = ProgressBar::new_spinner().with_message(format!(
+        "Compressing and writing to {} and {}.gz",
+        file_path, file_path
+    ));
+    compression_bar.enable_steady_tick(Duration::from_millis(100));
     let opened_file_tokio = File::open(file_path).await?;
     let opened_file = opened_file_tokio.into_std().await;
     let mut unzipped_file = BufReader::new(opened_file);
-    let zipped_file_output_tokio = File::create("linter_results.json.gz").await?;
+    let zipped_file_output_tokio = File::create(format!("{}.gz", file_path)).await?;
     let zipped_file_output = zipped_file_output_tokio.into_std().await;
     let mut gz = GzEncoder::new(zipped_file_output, Compression::default());
     copy(&mut unzipped_file, &mut gz)?;
     gz.finish()?;
 
+    compression_bar.finish();
     Ok(())
 }
 
@@ -108,7 +115,7 @@ async fn process_data(
     let metrics_limiter = Arc::new(RateLimiter::direct(metrics_quota));
 
     if let Some(resource) = only_collect_for_resource {
-        match resource {
+        return match resource {
             CloudLinterResources::ApiGateway => {
                 process_api_gateway_resources(
                     &config,
@@ -117,7 +124,7 @@ async fn process_data(
                     sender.clone(),
                 )
                 .await?;
-                return Ok(());
+                Ok(())
             }
             CloudLinterResources::S3 => {
                 process_s3_resources(
@@ -127,7 +134,7 @@ async fn process_data(
                     sender.clone(),
                 )
                 .await?;
-                return Ok(());
+                Ok(())
             }
             CloudLinterResources::Dynamo => {
                 process_ddb_resources(
@@ -140,7 +147,7 @@ async fn process_data(
                     enable_gsi,
                 )
                 .await?;
-                return Ok(());
+                Ok(())
             }
             CloudLinterResources::ElastiCache => {
                 process_elasticache_resources(
@@ -158,9 +165,9 @@ async fn process_data(
                     sender.clone(),
                 )
                 .await?;
-                return Ok(());
+                Ok(())
             }
-        }
+        };
     };
 
     process_s3_resources(

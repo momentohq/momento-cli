@@ -6,7 +6,6 @@ use aws_config::SdkConfig;
 use aws_sdk_elasticache::types::{
     CacheUsageLimits, DataStorage, DataStorageUnit, EcpuPerSecond, ServerlessCache,
 };
-use futures::stream::FuturesUnordered;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
 use phf::{phf_map, Map};
@@ -152,24 +151,43 @@ async fn process_resources(
     region: &str,
     sender: Sender<Resource>,
 ) -> Result<(), CliError> {
-    let bar =
-        ProgressBar::new_spinner().with_message("Describing Serverless ElastiCache resources");
-    bar.enable_steady_tick(Duration::from_millis(100));
-    bar.set_style(
-        ProgressStyle::with_template("{spinner:.green} {pos:>7} {msg}")
-            .expect("template should be valid")
-            // For more spinners check out the cli-spinners project:
-            // https://github.com/sindresorhus/cli-spinners/blob/master/spinners.json
-            .tick_strings(&[
-                "▹▹▹▹▹",
-                "▸▹▹▹▹",
-                "▹▸▹▹▹",
-                "▹▹▸▹▹",
-                "▹▹▹▸▹",
-                "▹▹▹▹▸",
-                "▪▪▪▪▪",
-            ]),
+    let describe_bar =
+        ProgressBar::new_spinner().with_message("Listing Serverless ElastiCache resources");
+    describe_bar.enable_steady_tick(Duration::from_millis(100));
+    let resources = describe_caches(elasticache_client, control_plane_limiter, region).await?;
+    describe_bar.finish();
+
+    let process_bar = ProgressBar::new(resources.len() as u64)
+        .with_message("Processing Serverless ElastiCache resources");
+    process_bar.set_style(
+        ProgressStyle::with_template(" {pos:>7}/{len:7} {msg}").expect("invalid template"),
     );
+
+    for mut resource in resources {
+        resource
+            .append_metrics(metrics_client, Arc::clone(&metrics_limiter))
+            .await?;
+
+        let wrapped_resource = Resource::ServerlessElastiCache(resource);
+        sender
+            .send(wrapped_resource)
+            .await
+            .map_err(|err| CliError {
+                msg: format!("Failed to send serverless elasticache resource: {}", err),
+            })?;
+        process_bar.inc(1);
+    }
+
+    process_bar.finish();
+    Ok(())
+}
+
+async fn describe_caches(
+    elasticache_client: &aws_sdk_elasticache::Client,
+    control_plane_limiter: Arc<DefaultDirectRateLimiter>,
+    region: &str,
+) -> Result<Vec<ServerlessElastiCacheResource>, CliError> {
+    let mut resources = Vec::new();
     let mut elasticache_stream = elasticache_client
         .describe_serverless_caches()
         .into_paginator()
@@ -188,38 +206,8 @@ async fn process_resources(
                         chunks.push(chunk.to_owned());
                     }
                     for clusters in chunks {
-                        let futures = FuturesUnordered::new();
                         for cluster in clusters {
-                            let metrics_client_clone = metrics_client.clone();
-                            let region_clone = region.to_string().clone();
-                            let sender_clone = sender.clone();
-                            let metrics_limiter_clone = Arc::clone(&metrics_limiter);
-                            let bar_clone = bar.clone();
-                            let spawn = tokio::spawn(async move {
-                                write_resource(
-                                    cluster,
-                                    metrics_client_clone,
-                                    region_clone.as_str(),
-                                    sender_clone,
-                                    metrics_limiter_clone,
-                                    bar_clone,
-                                )
-                                .await
-                            });
-                            futures.push(spawn);
-                        }
-                        let all_results = futures::future::join_all(futures).await;
-                        for result in all_results {
-                            match result {
-                                // bubble up any cli errors that we came across
-                                Ok(res) => res?,
-                                Err(_) => {
-                                    println!("failed to process serverless elasticache resources");
-                                    return Err(CliError {
-                                    msg: "failed to wait for all serverless elasticache resources to collect data".to_string(),
-                                });
-                                }
-                            }
+                            resources.push(convert_to_resource(cluster, region).await?);
                         }
                     }
                 }
@@ -231,19 +219,13 @@ async fn process_resources(
             }
         }
     }
-    bar.finish();
-
-    Ok(())
+    Ok(resources)
 }
 
-async fn write_resource(
+async fn convert_to_resource(
     cache: ServerlessCache,
-    metrics_client: aws_sdk_cloudwatch::Client,
     region: &str,
-    sender: Sender<Resource>,
-    metrics_limiter: Arc<DefaultDirectRateLimiter>,
-    bar: ProgressBar,
-) -> Result<(), CliError> {
+) -> Result<ServerlessElastiCacheResource, CliError> {
     let cache_name = cache.serverless_cache_name.unwrap_or_default();
     let engine = cache.engine.unwrap_or_default();
     let user_group_id = cache.user_group_id.unwrap_or_default();
@@ -285,23 +267,12 @@ async fn write_resource(
         engine_version: cache.full_engine_version.unwrap_or_default(),
     };
 
-    let mut serverless_ec_resource = ServerlessElastiCacheResource {
+    Ok(ServerlessElastiCacheResource {
         resource_type: ResourceType::ServerlessElastiCache,
         region: region.to_string(),
         id: cache_name,
         metrics: vec![],
         metric_period_seconds: 0,
         metadata,
-    };
-    serverless_ec_resource
-        .append_metrics(&metrics_client, Arc::clone(&metrics_limiter))
-        .await?;
-
-    let resource = Resource::ServerlessElastiCache(serverless_ec_resource);
-    sender.send(resource).await.map_err(|err| CliError {
-        msg: format!("Failed to send serverless elasticache resource: {}", err),
-    })?;
-    bar.inc(1);
-
-    Ok(())
+    })
 }
