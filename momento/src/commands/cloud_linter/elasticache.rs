@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use aws_config::SdkConfig;
 use aws_sdk_elasticache::types::CacheCluster;
+use futures::stream::FuturesUnordered;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
 use phf::{phf_map, Map};
@@ -140,7 +141,8 @@ async fn process_resources(
 ) -> Result<(), CliError> {
     let describe_bar = ProgressBar::new_spinner().with_message("Listing ElastiCache resources");
     describe_bar.enable_steady_tick(Duration::from_millis(100));
-    let resources = describe_clusters(elasticache_client, control_plane_limiter, region).await?;
+    let mut resources =
+        describe_clusters(elasticache_client, control_plane_limiter, region).await?;
     describe_bar.finish();
 
     let process_bar =
@@ -149,23 +151,47 @@ async fn process_resources(
         ProgressStyle::with_template(" {pos:>7}/{len:7} {msg}").expect("invalid template"),
     );
 
-    for resource in resources {
-        match resource {
-            Resource::ElastiCache(mut er) => {
-                er.append_metrics(metrics_client, Arc::clone(&metrics_limiter))
+    while !resources.is_empty() {
+        let chunk: Vec<ElastiCacheResource> = resources
+            .drain(..std::cmp::min(10, resources.len()))
+            .collect();
+
+        let futures = FuturesUnordered::new();
+        for mut resource in chunk {
+            let metrics_limiter_clone = Arc::clone(&metrics_limiter);
+            let sender_clone = sender.clone();
+            let process_bar_clone = process_bar.clone();
+            let metrics_client_clone = metrics_client.clone();
+
+            futures.push(tokio::spawn(async move {
+                resource
+                    .append_metrics(&metrics_client_clone, metrics_limiter_clone)
                     .await?;
-                sender
-                    .send(Resource::ElastiCache(er))
+
+                let wrapped_resource = Resource::ElastiCache(resource);
+                sender_clone
+                    .send(wrapped_resource)
                     .await
                     .map_err(|err| CliError {
                         msg: format!("Failed to send elasticache resource: {}", err),
                     })?;
-                process_bar.inc(1);
-            }
-            _ => {
-                return Err(CliError {
-                    msg: "Invalid resource type".to_string(),
-                });
+                process_bar_clone.inc(1);
+                Ok::<(), CliError>(())
+            }));
+        }
+
+        let all_results = futures::future::join_all(futures).await;
+        for result in all_results {
+            match result {
+                // bubble up any cli errors that we came across
+                Ok(res) => res?,
+                Err(_) => {
+                    println!("failed to process elasticache resources");
+                    return Err(CliError {
+                        msg: "failed to wait for all elasticache resources to collect data"
+                            .to_string(),
+                    });
+                }
             }
         }
     }
@@ -178,7 +204,7 @@ async fn describe_clusters(
     elasticache_client: &aws_sdk_elasticache::Client,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     region: &str,
-) -> Result<Vec<Resource>, CliError> {
+) -> Result<Vec<ElastiCacheResource>, CliError> {
     let mut resources = Vec::new();
     let mut elasticache_stream = elasticache_client
         .describe_cache_clusters()
@@ -220,7 +246,7 @@ async fn describe_clusters(
 async fn convert_to_resources(
     cluster: CacheCluster,
     region: &str,
-) -> Result<Vec<Resource>, CliError> {
+) -> Result<Vec<ElastiCacheResource>, CliError> {
     let mut resources = Vec::new();
 
     let cache_cluster_id = cluster.cache_cluster_id.ok_or(CliError {
@@ -257,14 +283,14 @@ async fn convert_to_resources(
                 cluster_mode_enabled,
             };
 
-            let resource = Resource::ElastiCache(ElastiCacheResource {
+            let resource = ElastiCacheResource {
                 resource_type: ResourceType::ElastiCacheRedisNode,
                 region: region.to_string(),
                 id: cache_cluster_id.clone(),
                 metrics: vec![],
                 metric_period_seconds: 0,
                 metadata,
-            });
+            };
 
             resources.push(resource);
         }
@@ -282,14 +308,14 @@ async fn convert_to_resources(
                     let cache_node_id = node.cache_node_id.ok_or(CliError {
                         msg: "Cache node has no ID".to_string(),
                     })?;
-                    let resource = Resource::ElastiCache(ElastiCacheResource {
+                    let resource = ElastiCacheResource {
                         resource_type: ResourceType::ElastiCacheMemcachedNode,
                         region: region.to_string(),
                         id: cache_node_id,
                         metrics: vec![],
                         metric_period_seconds: 0,
                         metadata: metadata.clone(),
-                    });
+                    };
                     resources.push(resource)
                 }
             }
