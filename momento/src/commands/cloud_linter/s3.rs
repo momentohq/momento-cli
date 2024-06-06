@@ -243,7 +243,7 @@ async fn process_buckets(
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
 ) -> Result<(), CliError> {
     let process_buckets_bar =
-        ProgressBar::new((buckets.len()) as u64).with_message("Processing S3 Buckets");
+        ProgressBar::new(buckets.len() as u64).with_message("Processing S3 Buckets");
     process_buckets_bar.set_style(
         ProgressStyle::with_template(" {pos:>7}/{len:7} {msg}").expect("invalid template"),
     );
@@ -258,7 +258,6 @@ async fn process_buckets(
         let region_clone = region.to_string().clone();
         let progress_bar_clone = process_buckets_bar.clone();
         let spawn = tokio::spawn(async move {
-            progress_bar_clone.inc(1);
             let res = process_bucket(
                 s3_client_clone,
                 bucket,
