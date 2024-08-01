@@ -212,6 +212,8 @@ pub(crate) async fn process_ddb_resources(
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     describe_ttl_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
     enable_ddb_ttl_check: bool,
     enable_gsi: bool,
 ) -> Result<(), CliError> {
@@ -249,13 +251,15 @@ pub(crate) async fn process_ddb_resources(
                 let res = process_table_resources(
                     &ddb_client_clone,
                     &metrics_client_clone,
-                    &table_name_clone,
                     control_plane_limiter_clone,
                     metrics_limiter_clone,
                     describe_ttl_limiter_clone,
                     sender_clone,
+                    metrics_start_millis,
+                    metrics_end_millis,
                     enable_ddb_ttl_check,
                     enable_gsi,
+                    &table_name_clone,
                 )
                 .await;
                 progress_bar_clone.inc(1);
@@ -361,13 +365,15 @@ async fn is_ddb_ttl_enabled(
 async fn process_table_resources(
     ddb_client: &aws_sdk_dynamodb::Client,
     metrics_client: &aws_sdk_cloudwatch::Client,
-    table_name: &str,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     describe_ttl_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
     enable_ddb_ttl_check: bool,
     enable_gsi: bool,
+    table_name: &str,
 ) -> Result<(), CliError> {
     let region = ddb_client
         .config()
@@ -537,7 +543,12 @@ async fn process_table_resources(
             continue;
         }
         resource
-            .append_metrics(metrics_client, Arc::clone(&metrics_limiter))
+            .append_metrics(
+                metrics_client,
+                Arc::clone(&metrics_limiter),
+                metrics_start_millis,
+                metrics_end_millis,
+            )
             .await?;
         let ttl_enabled = match enable_ddb_ttl_check {
             true => {

@@ -74,6 +74,8 @@ pub(crate) async fn process_api_gateway_resources(
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
 ) -> Result<(), CliError> {
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
@@ -103,11 +105,13 @@ pub(crate) async fn process_api_gateway_resources(
     list_apis_bar.finish();
     process_apis(
         apig_client.clone(),
-        &apis,
-        region,
-        sender,
         &metrics_client,
         &metrics_limiter,
+        region,
+        metrics_start_millis,
+        metrics_end_millis,
+        &apis,
+        sender,
     )
     .await?;
 
@@ -116,11 +120,13 @@ pub(crate) async fn process_api_gateway_resources(
 
 async fn process_apis(
     apig_client: aws_sdk_apigateway::Client,
-    apis: &[RestApi],
-    region: &str,
-    sender: Sender<Resource>,
     metrics_client: &aws_sdk_cloudwatch::Client,
     metrics_limiter: &Arc<DefaultDirectRateLimiter>,
+    region: &str,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
+    apis: &[RestApi],
+    sender: Sender<Resource>,
 ) -> Result<(), CliError> {
     let mut resources: Vec<Resource> = Vec::with_capacity(apis.len());
     let get_apis_bar =
@@ -155,7 +161,12 @@ async fn process_apis(
         match resource {
             Resource::ApiGateway(mut apig_resource) => {
                 apig_resource
-                    .append_metrics(metrics_client, Arc::clone(metrics_limiter))
+                    .append_metrics(
+                        metrics_client,
+                        Arc::clone(metrics_limiter),
+                        metrics_start_millis,
+                        metrics_end_millis,
+                    )
                     .await?;
                 sender
                     .send(Resource::ApiGateway(apig_resource))

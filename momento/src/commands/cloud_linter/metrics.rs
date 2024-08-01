@@ -5,7 +5,6 @@ use aws_sdk_cloudwatch::primitives::DateTime;
 use aws_sdk_cloudwatch::types::Metric as CloudwatchMetric;
 use aws_sdk_cloudwatch::types::{Dimension, MetricDataQuery, MetricStat};
 use aws_sdk_cloudwatch::Client;
-use chrono::{Duration, Utc};
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use governor::DefaultDirectRateLimiter;
@@ -42,31 +41,10 @@ pub(crate) trait AppendMetrics {
         &mut self,
         config: &Client,
         limiter: Arc<DefaultDirectRateLimiter>,
+        start_millis: i64,
+        end_millis: i64,
     ) -> Result<(), CliError>;
 }
-
-// impl<T> AppendMetrics for T
-// where
-//     T: ResourceWithMetrics,
-// {
-//     async fn append_metrics(
-//         &mut self,
-//         metrics_client: &Client,
-//         limiter: Arc<DefaultDirectRateLimiter>,
-//     ) -> Result<(), CliError> {
-//         let metric_targets = self.create_metric_targets()?;
-//         let mut metrics: Vec<Vec<Metric>> = Vec::new();
-//         for target in metric_targets {
-//             metrics.push(
-//                 query_metrics_for_target(metrics_client, Arc::clone(&limiter), target).await?,
-//             );
-//         }
-//         self.set_metrics(metrics.into_iter().flatten().collect());
-//         self.set_metric_period_seconds(60 * 60 * 24);
-
-//         Ok(())
-//     }
-// }
 
 impl<T> AppendMetrics for T
 where
@@ -76,6 +54,8 @@ where
         &mut self,
         metrics_client: &Client,
         limiter: Arc<DefaultDirectRateLimiter>,
+        start_millis: i64,
+        end_millis: i64,
     ) -> Result<(), CliError> {
         let metric_targets = self.create_metric_targets()?;
         let mut metrics: Vec<Vec<Metric>> = Vec::new();
@@ -85,7 +65,8 @@ where
             let client = metrics_client.clone();
             let moved_limiter = Arc::clone(&limiter);
             let spawn = tokio::spawn(async move {
-                query_metrics_for_target(&client, moved_limiter, target).await
+                query_metrics_for_target(&client, moved_limiter, start_millis, end_millis, target)
+                    .await
             });
             futures.push(spawn);
         }
@@ -113,6 +94,8 @@ where
 async fn query_metrics_for_target(
     client: &Client,
     limiter: Arc<DefaultDirectRateLimiter>,
+    start_millis: i64,
+    end_millis: i64,
     metric_target: MetricTarget,
 ) -> Result<Vec<Metric>, CliError> {
     let mut metric_results: Vec<Metric> = Vec::new();
@@ -167,10 +150,8 @@ async fn query_metrics_for_target(
 
         let mut metric_stream = client
             .get_metric_data()
-            .start_time(DateTime::from_millis(
-                (Utc::now() - Duration::days(30)).timestamp_millis(),
-            ))
-            .end_time(DateTime::from_millis(Utc::now().timestamp_millis()))
+            .start_time(DateTime::from_millis(start_millis))
+            .end_time(DateTime::from_millis(end_millis))
             .set_metric_data_queries(Some(metric_data_queries))
             .into_paginator()
             .send();
