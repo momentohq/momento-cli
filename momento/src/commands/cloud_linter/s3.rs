@@ -129,6 +129,8 @@ pub(crate) async fn process_s3_resources(
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
 ) -> Result<(), CliError> {
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
@@ -146,12 +148,14 @@ pub(crate) async fn process_s3_resources(
 
     process_buckets(
         s3client.clone(),
-        bucket_names,
-        region,
-        sender.clone(),
         &metrics_client,
         metrics_limiter.clone(),
         control_plane_limiter.clone(),
+        sender.clone(),
+        region,
+        metrics_start_millis,
+        metrics_end_millis,
+        bucket_names,
     )
     .await?;
 
@@ -235,12 +239,14 @@ async fn try_get_bucket_metrics_filter(
 
 async fn process_buckets(
     s3client: aws_sdk_s3::Client,
-    buckets: Vec<String>,
-    region: &str,
-    sender: Sender<Resource>,
     metrics_client: &aws_sdk_cloudwatch::Client,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
+    sender: Sender<Resource>,
+    region: &str,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
+    buckets: Vec<String>,
 ) -> Result<(), CliError> {
     let process_buckets_bar =
         ProgressBar::new(buckets.len() as u64).with_message("Processing S3 Buckets");
@@ -260,12 +266,14 @@ async fn process_buckets(
         let spawn = tokio::spawn(async move {
             let res = process_bucket(
                 s3_client_clone,
-                bucket,
-                region_clone.as_str(),
-                sender_clone,
                 &metrics_client_clone,
                 metrics_limiter_clone,
                 control_plane_limiter_clone,
+                sender_clone,
+                region_clone.as_str(),
+                metrics_start_millis,
+                metrics_end_millis,
+                bucket,
             )
             .await;
             progress_bar_clone.inc(1);
@@ -294,12 +302,14 @@ async fn process_buckets(
 
 async fn process_bucket(
     s3client: aws_sdk_s3::Client,
-    bucket: String,
-    region: &str,
-    sender: Sender<Resource>,
     metrics_client: &aws_sdk_cloudwatch::Client,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
+    sender: Sender<Resource>,
+    region: &str,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
+    bucket: String,
 ) -> Result<(), CliError> {
     let filter_id = try_get_bucket_metrics_filter(
         s3client.clone(),
@@ -321,7 +331,12 @@ async fn process_bucket(
         metadata,
     };
     s3_resource
-        .append_metrics(metrics_client, Arc::clone(&metrics_limiter))
+        .append_metrics(
+            metrics_client,
+            Arc::clone(&metrics_limiter),
+            metrics_start_millis,
+            metrics_end_millis,
+        )
         .await?;
     sender
         .send(Resource::S3(s3_resource))
