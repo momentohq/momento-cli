@@ -269,11 +269,15 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 resource,
                 metric_collection_rate,
                 enable_gsi,
+                enable_s3,
+                enable_api_gateway,
             } => {
                 commands::cloud_linter::linter_cli::run_cloud_linter(
                     region,
                     enable_ddb_ttl_check,
                     enable_gsi,
+                    enable_s3,
+                    enable_api_gateway,
                     resource,
                     metric_collection_rate,
                 )

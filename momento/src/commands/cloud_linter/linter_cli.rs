@@ -28,6 +28,8 @@ pub async fn run_cloud_linter(
     region: String,
     enable_ddb_ttl_check: bool,
     enable_gsi: bool,
+    enable_s3: bool,
+    enable_api_gateway: bool,
     only_collect_for_resource: Option<CloudLinterResources>,
     metric_collection_rate: u32,
 ) -> Result<(), CliError> {
@@ -49,6 +51,8 @@ pub async fn run_cloud_linter(
             tx,
             enable_ddb_ttl_check,
             enable_gsi,
+            enable_s3,
+            enable_api_gateway,
             only_collect_for_resource,
             metric_collection_rate,
         )
@@ -80,11 +84,14 @@ pub async fn run_cloud_linter(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_data(
     region: String,
     sender: Sender<Resource>,
     enable_ddb_ttl_check: bool,
     enable_gsi: bool,
+    enable_s3: bool,
+    enable_api_gateway: bool,
     only_collect_for_resource: Option<CloudLinterResources>,
     metric_collection_rate: u32,
 ) -> Result<(), CliError> {
@@ -170,21 +177,25 @@ async fn process_data(
         };
     };
 
-    process_s3_resources(
-        &config,
-        Arc::clone(&control_plane_limiter),
-        Arc::clone(&metrics_limiter),
-        sender.clone(),
-    )
-    .await?;
+    if enable_s3 {
+        process_s3_resources(
+            &config,
+            Arc::clone(&control_plane_limiter),
+            Arc::clone(&metrics_limiter),
+            sender.clone(),
+        )
+        .await?;
+    }
 
-    process_api_gateway_resources(
-        &config,
-        Arc::clone(&control_plane_limiter),
-        Arc::clone(&metrics_limiter),
-        sender.clone(),
-    )
-    .await?;
+    if enable_api_gateway {
+        process_api_gateway_resources(
+            &config,
+            Arc::clone(&control_plane_limiter),
+            Arc::clone(&metrics_limiter),
+            sender.clone(),
+        )
+        .await?;
+    }
 
     process_ddb_resources(
         &config,

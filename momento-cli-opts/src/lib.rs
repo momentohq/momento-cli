@@ -226,14 +226,24 @@ to help find opportunities for optimizations with Momento.
         region: String,
         #[arg(
             long = "enable-ddb-ttl-check",
-            help = "Opt in to check whether ddb tables have ttl enabled. If there are lots of tables, could slow down data collection"
+            help = "Opt in to check whether ddb tables have ttl enabled. If there are lots of tables, this could slow down data collection"
         )]
         enable_ddb_ttl_check: bool,
         #[arg(
             long = "enable-gsi",
-            help = "Opt in to check metrics on dynamodb gsi's. If there are lots of tables with gsi's, could slow down data collection"
+            help = "Opt in to check metrics on dynamodb gsi's. If there are lots of tables with gsi's, this could slow down data collection"
         )]
         enable_gsi: bool,
+        #[arg(
+            long = "enable-s3",
+            help = "Opt in to check metrics on s3. If there are lots of s3 buckets, this could slow down data collection"
+        )]
+        enable_s3: bool,
+        #[arg(
+            long = "enable-apt-gateway",
+            help = "Opt in to check metrics on API Gateway"
+        )]
+        enable_api_gateway: bool,
         #[arg(
             value_enum,
             long = "resource",
