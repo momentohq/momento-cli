@@ -124,6 +124,7 @@ impl ResourceWithMetrics for S3Resource {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn process_s3_resources(
     config: &SdkConfig,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
@@ -237,6 +238,7 @@ async fn try_get_bucket_metrics_filter(
     Ok("".to_string())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_buckets(
     s3client: aws_sdk_s3::Client,
     metrics_client: &aws_sdk_cloudwatch::Client,
@@ -300,6 +302,7 @@ async fn process_buckets(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_bucket(
     s3client: aws_sdk_s3::Client,
     metrics_client: &aws_sdk_cloudwatch::Client,

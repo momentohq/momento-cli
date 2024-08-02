@@ -25,6 +25,7 @@ use crate::error::CliError;
 use super::elasticache::process_elasticache_resources;
 use super::resource::Resource;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run_cloud_linter(
     region: String,
     enable_ddb_ttl_check: bool,
@@ -273,38 +274,28 @@ fn get_metric_time_range(
     start_date: Option<String>,
     end_date: Option<String>,
 ) -> Result<(i64, i64), CliError> {
-    let now = Utc::now();
-    let thirty_days = chrono::Duration::days(30);
+    let now = Utc::now().naive_utc();
+    let thirty_days = chrono::Duration::days(30).num_milliseconds();
 
-    let parse_date = |date_str: &str| -> Result<NaiveDateTime, CliError> {
-        let date = NaiveDate::parse_from_str(date_str, "%Y-%m-%d")?;
-        date.and_hms_opt(0, 0, 0).ok_or_else(|| CliError {
-            msg: "invalid time".to_string(),
-        })
-    };
+    let processed_end_date = end_date
+        .map(|date| parse_date_string(&date))
+        .transpose()?
+        .unwrap_or(now)
+        .timestamp_millis();
+    let processed_start_date = start_date
+        .map(|date| parse_date_string(&date))
+        .transpose()?
+        .map(|date| date.timestamp_millis())
+        .unwrap_or_else(|| processed_end_date - thirty_days);
 
-    match (start_date.as_deref(), end_date.as_deref()) {
-        (Some(s), Some(e)) => {
-            let start = parse_date(s)?;
-            let end = parse_date(e)?;
-            Ok((start.timestamp_millis(), end.timestamp_millis()))
-        }
-        (Some(s), None) => {
-            let start = parse_date(s)?;
-            Ok((start.timestamp_millis(), now.timestamp_millis()))
-        }
-        (None, Some(e)) => {
-            let end = parse_date(e)?;
-            Ok((
-                (end - thirty_days).timestamp_millis(),
-                end.timestamp_millis(),
-            ))
-        }
-        (None, None) => Ok((
-            (now - thirty_days).timestamp_millis(),
-            now.timestamp_millis(),
-        )),
-    }
+    Ok((processed_start_date, processed_end_date))
+}
+
+fn parse_date_string(date: &str) -> Result<NaiveDateTime, CliError> {
+    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
+    naive_date.and_hms_opt(0, 0, 0).ok_or_else(|| CliError {
+        msg: "invalid time".to_string(),
+    })
 }
 
 async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {
