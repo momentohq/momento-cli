@@ -119,6 +119,7 @@ impl ResourceWithMetrics for ServerlessElastiCacheResource {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn process_serverless_elasticache_resources(
     config: &SdkConfig,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
@@ -148,6 +149,7 @@ pub(crate) async fn process_serverless_elasticache_resources(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_resources(
     elasticache_client: &aws_sdk_elasticache::Client,
     metrics_client: &aws_sdk_cloudwatch::Client,

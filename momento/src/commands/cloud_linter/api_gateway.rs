@@ -69,6 +69,7 @@ impl ResourceWithMetrics for ApiGatewayResource {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn process_api_gateway_resources(
     config: &SdkConfig,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
@@ -118,6 +119,7 @@ pub(crate) async fn process_api_gateway_resources(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_apis(
     apig_client: aws_sdk_apigateway::Client,
     metrics_client: &aws_sdk_cloudwatch::Client,

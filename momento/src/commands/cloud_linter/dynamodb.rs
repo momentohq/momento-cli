@@ -206,6 +206,7 @@ impl ResourceWithMetrics for DynamoDbResource {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn process_ddb_resources(
     config: &SdkConfig,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,

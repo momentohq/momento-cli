@@ -135,6 +135,7 @@ pub(crate) async fn process_elasticache_resources(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_resources(
     elasticache_client: &aws_sdk_elasticache::Client,
     metrics_client: &aws_sdk_cloudwatch::Client,
