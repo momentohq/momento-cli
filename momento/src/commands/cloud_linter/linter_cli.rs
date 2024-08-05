@@ -292,7 +292,9 @@ fn get_metric_time_range(
 }
 
 fn parse_date_string(date: &str) -> Result<NaiveDateTime, CliError> {
-    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d")?;
+    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| CliError {
+        msg: "Date must be in ISO 8601 (YYYY-MM-DD) format".to_string(),
+    })?;
     naive_date.and_hms_opt(0, 0, 0).ok_or_else(|| CliError {
         msg: "invalid time".to_string(),
     })
