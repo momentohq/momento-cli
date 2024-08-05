@@ -182,27 +182,6 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     }
 }
 
-#[cfg(target_os = "ubuntu")]
-async fn set_file_read_write(path: &str) -> Result<(), CliError> {
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = match fs::metadata(path).await {
-        Ok(p) => p,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to get file permissions {e}"),
-            })
-        }
-    }
-    .permissions();
-    perms.set_mode(0o600);
-    match fs::set_permissions(path, perms).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {e}"),
-        }),
-    }
-}
-
 #[cfg(target_os = "windows")]
 async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     let mut perms = match fs::metadata(path).await {
