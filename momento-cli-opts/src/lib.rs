@@ -258,12 +258,12 @@ to help find opportunities for optimizations with Momento.
         metric_collection_rate: u32,
         #[arg(
             long = "start-date",
-            help = "The UTC start date of the metric collection period. Will use (end-date - 30 days) if not provided. (YYYY-MM-DD)"
+            help = "The inclusive UTC start date of the metric collection period. Will use (end-date - 30 days) if not provided. (YYYY-MM-DD)"
         )]
         metric_start_date: Option<String>,
         #[arg(
             long = "end-date",
-            help = "The UTC end date of the metric collection period. Will use the current date if not provided. (YYYY-MM-DD)"
+            help = "The inclusive UTC end date of the metric collection period. Will use the current date if not provided. (YYYY-MM-DD)"
         )]
         metric_end_date: Option<String>,
     },
