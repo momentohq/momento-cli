@@ -6,6 +6,7 @@ use std::time::Duration;
 use crate::commands::cloud_linter::api_gateway::process_api_gateway_resources;
 use aws_config::retry::RetryConfig;
 use aws_config::{BehaviorVersion, Region};
+use chrono::{NaiveDate, NaiveDateTime, Utc};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use governor::{Quota, RateLimiter};
@@ -24,6 +25,7 @@ use crate::error::CliError;
 use super::elasticache::process_elasticache_resources;
 use super::resource::Resource;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn run_cloud_linter(
     region: String,
     enable_ddb_ttl_check: bool,
@@ -32,11 +34,15 @@ pub async fn run_cloud_linter(
     enable_api_gateway: bool,
     only_collect_for_resource: Option<CloudLinterResources>,
     metric_collection_rate: u32,
+    start_date: Option<String>,
+    end_date: Option<String>,
 ) -> Result<(), CliError> {
     let (tx, mut rx) = mpsc::channel::<Resource>(32);
     let file_path = "linter_results.json";
     // first we check to make sure we have perms to write files to the current directory
     check_output_is_writable(file_path).await?;
+
+    let (metric_start_time, metric_end_time) = get_metric_time_range(start_date, end_date)?;
 
     // here we write the unzipped json file, containing all the linter results
     let unzipped_tokio_file = File::create(file_path).await?;
@@ -55,6 +61,8 @@ pub async fn run_cloud_linter(
             enable_api_gateway,
             only_collect_for_resource,
             metric_collection_rate,
+            metric_start_time,
+            metric_end_time,
         )
         .await;
     });
@@ -94,6 +102,8 @@ async fn process_data(
     enable_api_gateway: bool,
     only_collect_for_resource: Option<CloudLinterResources>,
     metric_collection_rate: u32,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
 ) -> Result<(), CliError> {
     let retry_config = RetryConfig::adaptive()
         .with_initial_backoff(Duration::from_millis(250))
@@ -129,6 +139,8 @@ async fn process_data(
                     Arc::clone(&control_plane_limiter),
                     Arc::clone(&metrics_limiter),
                     sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
                 )
                 .await?;
                 Ok(())
@@ -139,6 +151,8 @@ async fn process_data(
                     Arc::clone(&control_plane_limiter),
                     Arc::clone(&metrics_limiter),
                     sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
                 )
                 .await?;
                 Ok(())
@@ -150,6 +164,8 @@ async fn process_data(
                     Arc::clone(&metrics_limiter),
                     Arc::clone(&describe_ttl_limiter),
                     sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
                     enable_ddb_ttl_check,
                     enable_gsi,
                 )
@@ -162,6 +178,8 @@ async fn process_data(
                     Arc::clone(&control_plane_limiter),
                     Arc::clone(&metrics_limiter),
                     sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
                 )
                 .await?;
 
@@ -170,6 +188,8 @@ async fn process_data(
                     Arc::clone(&control_plane_limiter),
                     Arc::clone(&metrics_limiter),
                     sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
                 )
                 .await?;
                 Ok(())
@@ -183,6 +203,8 @@ async fn process_data(
             Arc::clone(&control_plane_limiter),
             Arc::clone(&metrics_limiter),
             sender.clone(),
+            metrics_start_millis,
+            metrics_end_millis,
         )
         .await?;
     }
@@ -193,6 +215,8 @@ async fn process_data(
             Arc::clone(&control_plane_limiter),
             Arc::clone(&metrics_limiter),
             sender.clone(),
+            metrics_start_millis,
+            metrics_end_millis,
         )
         .await?;
     }
@@ -203,6 +227,8 @@ async fn process_data(
         Arc::clone(&metrics_limiter),
         Arc::clone(&describe_ttl_limiter),
         sender.clone(),
+        metrics_start_millis,
+        metrics_end_millis,
         enable_ddb_ttl_check,
         enable_gsi,
     )
@@ -213,6 +239,8 @@ async fn process_data(
         Arc::clone(&control_plane_limiter),
         Arc::clone(&metrics_limiter),
         sender.clone(),
+        metrics_start_millis,
+        metrics_end_millis,
     )
     .await?;
 
@@ -221,10 +249,55 @@ async fn process_data(
         Arc::clone(&control_plane_limiter),
         Arc::clone(&metrics_limiter),
         sender.clone(),
+        metrics_start_millis,
+        metrics_end_millis,
     )
     .await?;
 
     Ok(())
+}
+
+/// Calculates a metric time range based on optional start and end dates.
+/// If start_date is not provided, it defaults to end_date - 30 days.
+/// If end_date is not provided, it defaults to now.
+///
+/// # Arguments
+///
+/// * `start_date` - An optional String representing the start date in "YYYY-MM-DD" format.
+/// * `end_date` - An optional String representing the end date in "YYYY-MM-DD" format.
+///
+/// # Returns
+///
+/// A Result containing a tuple of the start and end timestamps in millis, or a CliError
+/// if date parsing fails.
+fn get_metric_time_range(
+    start_date: Option<String>,
+    end_date: Option<String>,
+) -> Result<(i64, i64), CliError> {
+    let now = Utc::now().naive_utc();
+    let thirty_days = chrono::Duration::days(30).num_milliseconds();
+
+    let processed_end_date = end_date
+        .map(|date| parse_date_string(&date))
+        .transpose()?
+        .unwrap_or(now)
+        .timestamp_millis();
+    let processed_start_date = start_date
+        .map(|date| parse_date_string(&date))
+        .transpose()?
+        .map(|date| date.timestamp_millis())
+        .unwrap_or_else(|| processed_end_date - thirty_days);
+
+    Ok((processed_start_date, processed_end_date))
+}
+
+fn parse_date_string(date: &str) -> Result<NaiveDateTime, CliError> {
+    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| CliError {
+        msg: "Date must be in YYYY-MM-DD format".to_string(),
+    })?;
+    naive_date.and_hms_opt(0, 0, 0).ok_or_else(|| CliError {
+        msg: "invalid time".to_string(),
+    })
 }
 
 async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {

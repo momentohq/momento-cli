@@ -271,6 +271,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 enable_gsi,
                 enable_s3,
                 enable_api_gateway,
+                metric_start_date,
+                metric_end_date,
             } => {
                 commands::cloud_linter::linter_cli::run_cloud_linter(
                     region,
@@ -280,6 +282,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     enable_api_gateway,
                     resource,
                     metric_collection_rate,
+                    metric_start_date,
+                    metric_end_date,
                 )
                 .await?;
             }

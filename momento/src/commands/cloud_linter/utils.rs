@@ -58,6 +58,14 @@ impl From<std::io::Error> for CliError {
     }
 }
 
+impl From<chrono::ParseError> for CliError {
+    fn from(val: chrono::ParseError) -> Self {
+        CliError {
+            msg: format!("{val:?}"),
+        }
+    }
+}
+
 pub(crate) async fn check_aws_credentials(config: &SdkConfig) -> Result<(), CliError> {
     if let Some(credentials_provider) = config.credentials_provider() {
         let credentials = credentials_provider

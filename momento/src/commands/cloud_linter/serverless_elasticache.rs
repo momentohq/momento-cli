@@ -119,11 +119,14 @@ impl ResourceWithMetrics for ServerlessElastiCacheResource {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn process_serverless_elasticache_resources(
     config: &SdkConfig,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
     sender: Sender<Resource>,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
 ) -> Result<(), CliError> {
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
@@ -136,21 +139,26 @@ pub(crate) async fn process_serverless_elasticache_resources(
         &metrics_client,
         control_plane_limiter,
         metrics_limiter,
-        region,
         sender,
+        region,
+        metrics_start_millis,
+        metrics_end_millis,
     )
     .await?;
 
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn process_resources(
     elasticache_client: &aws_sdk_elasticache::Client,
     metrics_client: &aws_sdk_cloudwatch::Client,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     metrics_limiter: Arc<DefaultDirectRateLimiter>,
-    region: &str,
     sender: Sender<Resource>,
+    region: &str,
+    metrics_start_millis: i64,
+    metrics_end_millis: i64,
 ) -> Result<(), CliError> {
     let describe_bar =
         ProgressBar::new_spinner().with_message("Listing Serverless ElastiCache resources");
@@ -178,7 +186,12 @@ async fn process_resources(
 
             futures.push(tokio::spawn(async move {
                 resource
-                    .append_metrics(&metrics_client_clone, metrics_limiter_clone)
+                    .append_metrics(
+                        &metrics_client_clone,
+                        metrics_limiter_clone,
+                        metrics_start_millis,
+                        metrics_end_millis,
+                    )
                     .await?;
 
                 let wrapped_resource = Resource::ServerlessElastiCache(resource);
