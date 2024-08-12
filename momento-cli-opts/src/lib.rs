@@ -240,7 +240,7 @@ to help find opportunities for optimizations with Momento.
         )]
         enable_s3: bool,
         #[arg(
-            long = "enable-apt-gateway",
+            long = "enable-api-gateway",
             help = "Opt in to check metrics on API Gateway"
         )]
         enable_api_gateway: bool,
