@@ -148,26 +148,20 @@ async fn query_metrics_for_target(
             metric_data_queries.push(metric_data_query);
         }
 
-        let mut metric_stream = client
-            .get_metric_data()
-            .start_time(DateTime::from_millis(start_millis))
-            .end_time(DateTime::from_millis(end_millis))
-            .set_metric_data_queries(Some(metric_data_queries))
-            .into_paginator()
-            .send();
+        let mut next_token: Option<String> = None;
+        loop {
+            let response = rate_limit(Arc::clone(&limiter), || {
+                client
+                    .get_metric_data()
+                    .start_time(DateTime::from_millis(start_millis))
+                    .end_time(DateTime::from_millis(end_millis))
+                    .set_metric_data_queries(Some(metric_data_queries.clone()))
+                    .set_next_token(next_token)
+                    .send()
+            })
+            .await?;
 
-        while let Some(result) = rate_limit(Arc::clone(&limiter), || metric_stream.next()).await {
-            let result = match result {
-                Ok(res) => res,
-                Err(e) => {
-                    println!("get_metric_data_error: {:?}", e);
-                    return Err(CliError {
-                        msg: "error from aws api while querying metrics".to_string(),
-                    });
-                }
-            };
-            // let result = result?;
-            if let Some(mdr_vec) = result.metric_data_results {
+            if let Some(mdr_vec) = response.metric_data_results {
                 for mdr in mdr_vec {
                     let name = mdr.id.ok_or_else(|| CliError {
                         msg: "Metric has no id".to_string(),
@@ -177,6 +171,11 @@ async fn query_metrics_for_target(
                     })?;
                     metric_results.push(Metric { name, values });
                 }
+            }
+
+            next_token = response.next_token;
+            if next_token.is_none() {
+                break;
             }
         }
     }

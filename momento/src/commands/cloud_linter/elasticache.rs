@@ -217,45 +217,38 @@ async fn describe_clusters(
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     region: &str,
 ) -> Result<Vec<ElastiCacheResource>, CliError> {
-    let mut resources = Vec::new();
-    let mut elasticache_stream = elasticache_client
-        .describe_cache_clusters()
-        .show_cache_node_info(true)
-        .into_paginator()
-        .send();
+    let mut clusters = Vec::new();
+    let mut next_marker: Option<String> = None;
+    loop {
+        let response = rate_limit(Arc::clone(&control_plane_limiter), || {
+            let mut req = elasticache_client
+                .describe_cache_clusters()
+                .show_cache_node_info(true);
+            if let Some(marker) = &next_marker {
+                req = req.marker(marker);
+            }
+            req.send()
+        })
+        .await?;
 
-    while let Some(result) = rate_limit(Arc::clone(&control_plane_limiter), || {
-        elasticache_stream.next()
-    })
-    .await
-    {
-        match result {
-            Ok(result) => {
-                if let Some(aws_clusters) = result.cache_clusters {
-                    let mut chunks = Vec::new();
-                    for chunk in aws_clusters.chunks(10) {
-                        chunks.push(chunk.to_owned());
-                    }
-                    for clusters in chunks {
-                        for cluster in clusters {
-                            let cluster_resources = convert_to_resources(cluster, region).await?;
-                            resources.extend(cluster_resources);
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                return Err(CliError {
-                    msg: format!("Failed to describe cache clusters: {}", err),
-                });
-            }
+        if let Some(aws_clusters) = response.cache_clusters.as_ref() {
+            clusters.extend_from_slice(aws_clusters);
+        }
+
+        next_marker = response.marker().map(String::from);
+        if next_marker.is_none() {
+            break;
         }
     }
 
-    Ok(resources)
+    clusters
+        .into_iter()
+        .map(|cluster| convert_to_resources(cluster, region))
+        .collect::<Result<Vec<_>, _>>()
+        .map(|vec| vec.into_iter().flatten().collect())
 }
 
-async fn convert_to_resources(
+fn convert_to_resources(
     cluster: CacheCluster,
     region: &str,
 ) -> Result<Vec<ElastiCacheResource>, CliError> {
