@@ -231,42 +231,35 @@ async fn describe_caches(
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     region: &str,
 ) -> Result<Vec<ServerlessElastiCacheResource>, CliError> {
-    let mut resources = Vec::new();
-    let mut elasticache_stream = elasticache_client
-        .describe_serverless_caches()
-        .into_paginator()
-        .send();
+    let mut caches = Vec::new();
+    let mut next_token: Option<String> = None;
+    loop {
+        let response = rate_limit(Arc::clone(&control_plane_limiter), || {
+            let mut req = elasticache_client.describe_serverless_caches();
+            if let Some(token) = &next_token {
+                req = req.next_token(token);
+            }
+            req.send()
+        })
+        .await?;
 
-    while let Some(result) = rate_limit(Arc::clone(&control_plane_limiter), || {
-        elasticache_stream.next()
-    })
-    .await
-    {
-        match result {
-            Ok(result) => {
-                if let Some(aws_caches) = result.serverless_caches {
-                    let mut chunks = Vec::new();
-                    for chunk in aws_caches.chunks(10) {
-                        chunks.push(chunk.to_owned());
-                    }
-                    for clusters in chunks {
-                        for cluster in clusters {
-                            resources.push(convert_to_resource(cluster, region).await?);
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                return Err(CliError {
-                    msg: format!("Failed to describe serverless caches: {}", err),
-                });
-            }
+        if let Some(aws_caches) = response.serverless_caches.as_ref() {
+            caches.extend_from_slice(aws_caches);
+        }
+
+        next_token = response.next_token().map(String::from);
+        if next_token.is_none() {
+            break;
         }
     }
-    Ok(resources)
+
+    caches
+        .into_iter()
+        .map(|cluster| convert_to_resource(cluster, region))
+        .collect::<Result<_, _>>()
 }
 
-async fn convert_to_resource(
+fn convert_to_resource(
     cache: ServerlessCache,
     region: &str,
 ) -> Result<ServerlessElastiCacheResource, CliError> {
