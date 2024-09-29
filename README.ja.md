@@ -4,6 +4,12 @@ _他言語バージョンもあります_: [English](README.md)、[Português](R
 
 <br>
 
+## 前提条件
+
+初めに[Momento Console](https://console.gomomento.com)にサインアップします。トークンタブで CLI で使用するオーストークンを生成します。
+
+このトークンはキャッシュを一意に識別します。トークンは機密性の高いパスワードのように扱われ、その機密性を確保するためにあらゆる重要な注意を払う必要があります。このトークンは AWS Secrets Manager のような秘密の保管庫に保存することをお勧めします。Momento オーストークンの詳細については[ドキュメント](https://docs.momentohq.com/develop/guides/working-with-momento-auth-tokens)を参照してください。
+
 ## クイックスタート
 
 Linux のインストールマニュアルは[こちら](https://github.com/momentohq/momento-cli/blob/main/README.ja.md#linux)、Windows のインストールマニュアルは[こちら](https://github.com/momentohq/momento-cli/blob/main/README.ja.md#windows)を参照してください。
@@ -13,19 +19,21 @@ Linux のインストールマニュアルは[こちら](https://github.com/mome
 brew tap momentohq/tap
 brew install momento-cli
 
-# サインアップ [available regions are us-west-2, us-east-1, ap-south-1, ap-northeast-1, eu-west-1]
-momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
-
-# 上記のメールアドレスに送付されたトークンとデフォルトのキャッシュ名とTTLであなたのアカウントコンフィグ
+# コンソールでコピーしたオーストークンを使ってアカウントを設定します。
+# さらにデフォルトのキャッシュ名 (`default-cache`) と TTL (600秒) を設定します。
+# これによって、アカウントに `default-cache` というキャッシュを作成します。
 momento configure --quick
 
-# キャッシュ作成
+# デフォルトの TTL を使用して、デフォルトキャッシュに値を設定して取得する
+momento cache set key value
+momento cache get key
+
+# 別のキャッシュを作成する
 momento cache create example-cache
 
-# キャッシュからSet・Getでバリューを取得
+# 任意の TTL を使用して、デフォルト以外のキャッシュに値を設定して取得する
 momento cache set key value --ttl 100 --cache example-cache
 momento cache get key --cache example-cache
-
 ```
 
 ## インストール
