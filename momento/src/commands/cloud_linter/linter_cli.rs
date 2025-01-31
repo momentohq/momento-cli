@@ -23,7 +23,7 @@ use crate::commands::cloud_linter::utils::check_aws_credentials;
 use crate::error::CliError;
 
 use super::elasticache::process_elasticache_resources;
-use super::resource::Resource;
+use super::resource::{Resource, ResourceType};
 
 #[allow(clippy::too_many_arguments)]
 pub async fn run_cloud_linter(
@@ -180,9 +180,48 @@ async fn process_data(
                     sender.clone(),
                     metrics_start_millis,
                     metrics_end_millis,
+                    None,
                 )
                 .await?;
 
+                process_serverless_elasticache_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
+                )
+                .await?;
+                Ok(())
+            }
+            CloudLinterResources::ElastiCacheRedis => {
+                process_elasticache_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
+                    Some(ResourceType::ElastiCacheRedisNode),
+                )
+                .await?;
+                Ok(())
+            }
+            CloudLinterResources::ElastiCacheMemcached => {
+                process_elasticache_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
+                    Some(ResourceType::ElastiCacheMemcachedNode),
+                )
+                .await?;
+                Ok(())
+            }
+            CloudLinterResources::ElastiCacheServerless => {
                 process_serverless_elasticache_resources(
                     &config,
                     Arc::clone(&control_plane_limiter),
@@ -241,6 +280,7 @@ async fn process_data(
         sender.clone(),
         metrics_start_millis,
         metrics_end_millis,
+        None,
     )
     .await?;
 

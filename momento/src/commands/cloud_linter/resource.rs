@@ -17,7 +17,7 @@ pub(crate) enum Resource {
     S3(S3Resource),
 }
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, PartialEq, Eq, Copy, Clone)]
 pub(crate) enum ResourceType {
     #[serde(rename = "AWS::ApiGateway::API")]
     ApiGateway,
