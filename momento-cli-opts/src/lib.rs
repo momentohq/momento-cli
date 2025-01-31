@@ -275,6 +275,9 @@ pub enum CloudLinterResources {
     S3,
     Dynamo,
     ElastiCache,
+    ElastiCacheRedis,
+    ElastiCacheMemcached,
+    ElastiCacheServerless,
 }
 
 #[derive(Debug, Parser)]

@@ -7,6 +7,7 @@ use aws_sdk_elasticache::types::CacheCluster;
 use futures::stream::FuturesUnordered;
 use governor::DefaultDirectRateLimiter;
 use indicatif::{ProgressBar, ProgressStyle};
+use log::debug;
 use phf::{phf_map, Map};
 use serde::Serialize;
 use tokio::sync::mpsc::Sender;
@@ -113,6 +114,7 @@ pub(crate) async fn process_elasticache_resources(
     sender: Sender<Resource>,
     metrics_start_millis: i64,
     metrics_end_millis: i64,
+    resource_filter: Option<ResourceType>,
 ) -> Result<(), CliError> {
     let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
         msg: "No region configured for client".to_string(),
@@ -129,6 +131,7 @@ pub(crate) async fn process_elasticache_resources(
         region,
         metrics_start_millis,
         metrics_end_millis,
+        resource_filter,
     )
     .await?;
 
@@ -145,11 +148,17 @@ async fn process_resources(
     region: &str,
     metrics_start_millis: i64,
     metrics_end_millis: i64,
+    resource_filter: Option<ResourceType>,
 ) -> Result<(), CliError> {
     let describe_bar = ProgressBar::new_spinner().with_message("Listing ElastiCache resources");
     describe_bar.enable_steady_tick(Duration::from_millis(100));
-    let mut resources =
-        describe_clusters(elasticache_client, control_plane_limiter, region).await?;
+    let mut resources = describe_clusters(
+        elasticache_client,
+        control_plane_limiter,
+        region,
+        resource_filter,
+    )
+    .await?;
     describe_bar.finish();
 
     let process_bar =
@@ -216,6 +225,7 @@ async fn describe_clusters(
     elasticache_client: &aws_sdk_elasticache::Client,
     control_plane_limiter: Arc<DefaultDirectRateLimiter>,
     region: &str,
+    resource_filter: Option<ResourceType>,
 ) -> Result<Vec<ElastiCacheResource>, CliError> {
     let mut clusters = Vec::new();
     let mut next_marker: Option<String> = None;
@@ -243,7 +253,7 @@ async fn describe_clusters(
 
     clusters
         .into_iter()
-        .map(|cluster| convert_to_resources(cluster, region))
+        .map(|cluster| convert_to_resources(cluster, region, resource_filter))
         .collect::<Result<Vec<_>, _>>()
         .map(|vec| vec.into_iter().flatten().collect())
 }
@@ -251,6 +261,7 @@ async fn describe_clusters(
 fn convert_to_resources(
     cluster: CacheCluster,
     region: &str,
+    resource_filter: Option<ResourceType>,
 ) -> Result<Vec<ElastiCacheResource>, CliError> {
     let mut resources = Vec::new();
 
@@ -269,6 +280,12 @@ fn convert_to_resources(
     })?;
     match engine.as_str() {
         "redis" => {
+            if resource_filter.is_some()
+                && resource_filter != Some(ResourceType::ElastiCacheRedisNode)
+            {
+                return Ok(vec![]);
+            }
+
             let (cluster_id, cluster_mode_enabled) = cluster
                 .replication_group_id
                 .map(|replication_group_id| {
@@ -300,6 +317,12 @@ fn convert_to_resources(
             resources.push(resource);
         }
         "memcached" => {
+            if resource_filter.is_some()
+                && resource_filter != Some(ResourceType::ElastiCacheMemcachedNode)
+            {
+                return Ok(vec![]);
+            }
+
             let metadata = ElastiCacheMetadata {
                 cluster_id: cache_cluster_id,
                 engine,
@@ -325,10 +348,14 @@ fn convert_to_resources(
                 }
             }
         }
+        "valkey" => {
+            // TODO: add Valkey support
+            debug!("Valkey is not currently supported");
+            return Ok(vec![]);
+        }
         _ => {
-            return Err(CliError {
-                msg: format!("Unsupported engine: {}", engine),
-            });
+            debug!("Unknown engine: {}", engine.as_str());
+            return Ok(vec![]);
         }
     };
 
