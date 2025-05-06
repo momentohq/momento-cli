@@ -221,6 +221,19 @@ async fn process_data(
                 .await?;
                 Ok(())
             }
+            CloudLinterResources::ElastiCacheValkey => {
+                process_elasticache_resources(
+                    &config,
+                    Arc::clone(&control_plane_limiter),
+                    Arc::clone(&metrics_limiter),
+                    sender.clone(),
+                    metrics_start_millis,
+                    metrics_end_millis,
+                    Some(ResourceType::ElastiCacheValkeyNode),
+                )
+                .await?;
+                Ok(())
+            }
             CloudLinterResources::ElastiCacheServerless => {
                 process_serverless_elasticache_resources(
                     &config,

@@ -92,6 +92,15 @@ impl ResourceWithMetrics for ElastiCacheResource {
                 ]),
                 targets: CACHE_METRICS,
             }]),
+            ResourceType::ElastiCacheValkeyNode => Ok(vec![MetricTarget {
+                namespace: "AWS/ElastiCache".to_string(),
+                expression: "".to_string(),
+                dimensions: HashMap::from([
+                    ("CacheClusterId".to_string(), self.id.clone()),
+                    ("CacheNodeId".to_string(), "0001".to_string()),
+                ]),
+                targets: CACHE_METRICS,
+            }]),
             _ => Err(CliError {
                 msg: "Invalid resource type".to_string(),
             }),
@@ -349,9 +358,36 @@ fn convert_to_resources(
             }
         }
         "valkey" => {
-            // TODO: add Valkey support
-            debug!("Valkey is not currently supported");
-            return Ok(vec![]);
+            if resource_filter.is_some()
+                && resource_filter != Some(ResourceType::ElastiCacheValkeyNode)
+            {
+                return Ok(vec![]);
+            }
+
+            let metadata = ElastiCacheMetadata {
+                cluster_id: cache_cluster_id,
+                engine,
+                cache_node_type,
+                preferred_az,
+                cluster_mode_enabled: false,
+            };
+
+            if let Some(cache_nodes) = cluster.cache_nodes {
+                for node in cache_nodes {
+                    let cache_node_id = node.cache_node_id.ok_or(CliError {
+                        msg: "Cache node has no ID".to_string(),
+                    })?;
+                    let resource = ElastiCacheResource {
+                        resource_type: ResourceType::ElastiCacheValkeyNode,
+                        region: region.to_string(),
+                        id: cache_node_id,
+                        metrics: vec![],
+                        metric_period_seconds: 0,
+                        metadata: metadata.clone(),
+                    };
+                    resources.push(resource)
+                }
+            }
         }
         _ => {
             debug!("Unknown engine: {}", engine.as_str());
