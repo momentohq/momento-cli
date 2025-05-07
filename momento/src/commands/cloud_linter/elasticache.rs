@@ -36,6 +36,7 @@ pub(crate) const CACHE_METRICS: Map<&'static str, &'static [&'static str]> = phf
             "PubSubBasedCmds",
             "SortedSetBasedCmds",
             "StreamBasedCmds",
+            "ErrorCount",
         ],
         "Average" => &[
             "DB0AverageTTL",
