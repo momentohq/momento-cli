@@ -278,6 +278,7 @@ pub enum CloudLinterResources {
     ElastiCacheRedis,
     ElastiCacheMemcached,
     ElastiCacheServerless,
+    ElastiCacheValkey,
 }
 
 #[derive(Debug, Parser)]

@@ -29,6 +29,8 @@ pub(crate) enum ResourceType {
     ElastiCacheRedisNode,
     #[serde(rename = "AWS::Elasticache::MemcachedNode")]
     ElastiCacheMemcachedNode,
+    #[serde(rename = "AWS::Elasticache::ValkeyNode")]
+    ElastiCacheValkeyNode,
     #[serde(rename = "AWS::Elasticache::Serverless")]
     ServerlessElastiCache,
     #[serde(rename = "AWS::S3::Bucket")]
