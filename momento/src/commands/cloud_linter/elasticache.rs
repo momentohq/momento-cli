@@ -300,8 +300,8 @@ fn convert_to_resources(
                 .replication_group_id
                 .map(|replication_group_id| {
                     let trimmed_cluster_id = cache_cluster_id.clone();
-                    let trimmed_cluster_id = trimmed_cluster_id
-                        .trim_start_matches(&format!("{replication_group_id}-"));
+                    let trimmed_cluster_id =
+                        trimmed_cluster_id.trim_start_matches(&format!("{replication_group_id}-"));
                     let parts_len = trimmed_cluster_id.split('-').count();
                     (replication_group_id, parts_len == 2)
                 })
