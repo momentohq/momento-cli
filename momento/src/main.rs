@@ -5,12 +5,11 @@ use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
-use momento::{CredentialProviderBuilder, MomentoError};
+use momento::{topics, CredentialProvider, MomentoError, TopicClient};
 use momento_cli_opts::PreviewCommand;
 use utils::{console::output_info, user::get_creds_and_config};
 
 use crate::utils::console::console_info;
-use crate::utils::user::clobber_session_token;
 
 mod commands;
 mod config;
@@ -140,17 +139,16 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider_builder =
-                CredentialProviderBuilder::from_string(creds.token);
+            let mut credential_provider = CredentialProvider::from_string(creds.token)?;
             if let Some(endpoint_override) = endpoint {
-                credential_provider_builder =
-                    credential_provider_builder.with_momento_endpoint(endpoint_override)
+                credential_provider = credential_provider.base_endpoint(&endpoint_override);
             }
-            let credential_provider = credential_provider_builder.build()?;
 
-            let mut client =
-                momento::preview::topics::TopicClient::connect(credential_provider, Some("cli"))
-                    .map_err(Into::<CliError>::into)?;
+            let client = TopicClient::builder()
+                .configuration(topics::configurations::Laptop::latest())
+                .credential_provider(credential_provider)
+                .build()
+                .map_err(Into::<CliError>::into)?;
             match operation {
                 momento_cli_opts::TopicCommand::Publish {
                     cache_name,
@@ -159,7 +157,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 } => {
                     let cache_name = cache_name.unwrap_or(config.cache);
                     client
-                        .publish_mut(cache_name, topic, value)
+                        .publish(cache_name, topic, value)
                         .await
                         .map_err(Into::<CliError>::into)?;
                 }
@@ -167,7 +165,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     let cache_name = cache_name.unwrap_or(config.cache);
                     let subscription =
                         client
-                            .subscribe(cache_name, topic, None)
+                            .subscribe(cache_name, topic)
                             .await
                             .map_err(|e| CliError {
                                 msg: format!(
@@ -176,16 +174,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             })?;
                     match print_subscription(subscription).await {
                         Ok(_) => console_info!("The subscription ended"),
-                        Err(e) => match e {
-                            momento::MomentoError::Interrupted {
-                                description,
-                                source,
-                            } => {
-                                output_info(&format!("The subscription ended: {description}"));
-                                console_info!("detail: {source:?}");
-                            }
-                            _ => return Err(e.into()),
-                        },
+                        Err(e) => {
+                            output_info(&format!("The subscription ended: {}", e.message));
+                            console_info!("detail: {}", e.message);
+                            return Err(e.into());
+                        }
                     }
                 }
             }
@@ -200,69 +193,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             } => commands::account::signup_decommissioned().await?,
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
-            momento_cli_opts::PreviewCommand::SigningKey {
-                endpoint,
-                operation,
-            } => match operation {
-                momento_cli_opts::SigningKeyCommand::Create { ttl_minutes } => {
-                    let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                    commands::signingkey::signingkey_cli::create_signing_key(
-                        ttl_minutes,
-                        creds.token,
-                        endpoint,
-                    )
-                    .await?;
-                }
-                momento_cli_opts::SigningKeyCommand::Revoke { key_id } => {
-                    let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                    commands::signingkey::signingkey_cli::revoke_signing_key(
-                        key_id.clone(),
-                        creds.token,
-                        endpoint,
-                    )
-                    .await?;
-                    debug!("revoked signing key {}", key_id)
-                }
-                momento_cli_opts::SigningKeyCommand::List {} => {
-                    let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                    commands::signingkey::signingkey_cli::list_signing_keys(creds.token, endpoint)
-                        .await?
-                }
-            },
-            momento_cli_opts::PreviewCommand::Login { via } => {
-                match commands::login::login(via).await {
-                    Ok(credentials) => {
-                        let session_token = credentials.token();
-                        let session_duration = credentials.valid_for();
-                        debug!("{session_token}");
-                        clobber_session_token(
-                            Some(session_token.to_string()),
-                            session_duration.as_secs() as u32,
-                        )
-                        .await?;
-                        console_info!("Login valid for {}m", session_duration.as_secs() / 60);
-                    }
-                    Err(auth_error) => {
-                        return Err(CliError {
-                            msg: format!("auth error: {auth_error:?}"),
-                        })
-                    }
-                }
-            }
-            momento_cli_opts::PreviewCommand::GenerateToken {
-                valid_for,
-                never_expire,
-                endpoint,
-            } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::tokens::generate_api_token(
-                    creds.token,
-                    endpoint,
-                    never_expire,
-                    valid_for,
-                )
-                .await?;
-            }
             PreviewCommand::CloudLinter {
                 region,
                 enable_ddb_ttl_check,

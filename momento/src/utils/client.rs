@@ -1,40 +1,24 @@
 use std::{future::Future, time::Duration};
 
-use momento::{
-    response::MomentoError, CredentialProviderBuilder, SimpleCacheClient, SimpleCacheClientBuilder,
-};
+use momento::{cache::configurations, CacheClient, CredentialProvider, MomentoError};
 
-use crate::{error::CliError, utils::console::console_data};
+use crate::error::CliError;
 
 pub async fn get_momento_client(
     auth_token: String,
     endpoint: Option<String>,
-) -> Result<SimpleCacheClient, CliError> {
-    let mut credential_provider_builder = CredentialProviderBuilder::from_string(auth_token);
+) -> Result<CacheClient, CliError> {
+    let mut credential_provider = CredentialProvider::from_string(auth_token)?;
     if let Some(momento_override) = endpoint {
-        credential_provider_builder =
-            credential_provider_builder.with_momento_endpoint(momento_override);
+        credential_provider = credential_provider.base_endpoint(&momento_override);
     }
-    let credential_provider = credential_provider_builder.build()?;
-    SimpleCacheClientBuilder::new_with_explicit_agent_name(
-        credential_provider,
-        Duration::from_secs(120),
-        "cli",
-    )
-    .map_or_else(
-        |error| Err(Into::<CliError>::into(error)),
-        |builder| Ok(builder.build()),
-    )
-}
 
-pub fn print_whatever_this_is_as_json<T>(value: &T)
-where
-    T: serde::Serialize,
-{
-    console_data!(
-        "{}",
-        serde_json::to_string_pretty(value).expect("Could not print whatever this is as json")
-    );
+    CacheClient::builder()
+        .default_ttl(Duration::from_secs(120))
+        .configuration(configurations::Laptop::latest())
+        .credential_provider(credential_provider)
+        .build()
+        .map_err(Into::<CliError>::into)
 }
 
 pub async fn interact_with_momento<U, FutureT>(
