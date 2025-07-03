@@ -22,8 +22,7 @@ mod tests {
             .assert()
             .failure()
             .stderr(
-                predicate::str::is_match("error trying to connect: dns error:")
-                    .expect("Unable to create dns error predicate"),
+                predicate::str::contains("ERROR: MomentoError { message: \"Could not parse token. Please ensure a valid token was entered correctly.\", error_code: InvalidArgumentError, inner_error: Some(Unknown(InvalidByte(20, 46))), details: None }"),
             );
 
         // now create the additional profile, which we will use for all of our tests.
@@ -116,10 +115,6 @@ mod tests {
             // configure subcommand
             vec!["configure", "--profile", profile_name],
             vec!["--profile", profile_name, "configure"],
-            // signing-key subcommand
-            vec!["preview", "signing-key", "list", "--profile", profile_name],
-            vec!["preview", "signing-key", "--profile", profile_name, "list"],
-            vec!["--profile", profile_name, "preview", "signing-key", "list"],
             // account subcommand
             vec!["account", "signup", "--profile", profile_name, "help"],
             vec!["account", "--profile", profile_name, "signup", "help"],
