@@ -199,7 +199,7 @@ async fn process_resources(
                     .send(wrapped_resource)
                     .await
                     .map_err(|err| CliError {
-                        msg: format!("Failed to send serverless elasticache resource: {}", err),
+                        msg: format!("Failed to send serverless elasticache resource: {err}"),
                     })?;
                 process_bar_clone.inc(1);
                 Ok::<(), CliError>(())

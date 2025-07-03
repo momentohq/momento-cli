@@ -142,7 +142,7 @@ pub(crate) async fn process_s3_resources(
     let list_buckets_bar = ProgressBar::new_spinner().with_message("Listing S3 Buckets");
     list_buckets_bar.enable_steady_tick(std::time::Duration::from_millis(100));
     let bucket_names = list_buckets(&s3client).await.unwrap_or_else(|err| {
-        eprint!("{}", err);
+        eprint!("{err}");
         vec![]
     });
     list_buckets_bar.finish();
@@ -203,7 +203,7 @@ async fn list_bucket_metrics_configs(
                     break;
                 }
                 return Err(CliError {
-                    msg: format!("Failed to get bucket metrics configuration: {}", err),
+                    msg: format!("Failed to get bucket metrics configuration: {err}"),
                 });
             }
         }

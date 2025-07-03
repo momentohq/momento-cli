@@ -75,14 +75,13 @@ pub async fn run_cloud_linter(
 
     // now we compress the json into a .gz file for the customer to upload
     let compression_bar = ProgressBar::new_spinner().with_message(format!(
-        "Compressing and writing to {} and {}.gz",
-        file_path, file_path
+        "Compressing and writing to {file_path} and {file_path}.gz"
     ));
     compression_bar.enable_steady_tick(Duration::from_millis(100));
     let opened_file_tokio = File::open(file_path).await?;
     let opened_file = opened_file_tokio.into_std().await;
     let mut unzipped_file = BufReader::new(opened_file);
-    let zipped_file_output_tokio = File::create(format!("{}.gz", file_path)).await?;
+    let zipped_file_output_tokio = File::create(format!("{file_path}.gz")).await?;
     let zipped_file_output = zipped_file_output_tokio.into_std().await;
     let mut gz = GzEncoder::new(zipped_file_output, Compression::default());
     copy(&mut unzipped_file, &mut gz)?;

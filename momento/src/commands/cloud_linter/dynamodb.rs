@@ -304,7 +304,7 @@ async fn list_table_names(
             }
             Err(err) => {
                 return Err(CliError {
-                    msg: format!("Failed to list Dynamo DB table names: {}", err),
+                    msg: format!("Failed to list Dynamo DB table names: {err}"),
                 });
             }
         }
@@ -539,7 +539,7 @@ async fn process_table_resources(
                 .send(Resource::DynamoDb(resource))
                 .await
                 .map_err(|err| CliError {
-                    msg: format!("Failed to stream dynamodb resource to file: {}", err),
+                    msg: format!("Failed to stream dynamodb resource to file: {err}"),
                 })?;
             continue;
         }
@@ -563,7 +563,7 @@ async fn process_table_resources(
             .send(Resource::DynamoDb(resource))
             .await
             .map_err(|err| CliError {
-                msg: format!("Failed to stream dynamodb resource to file: {}", err),
+                msg: format!("Failed to stream dynamodb resource to file: {err}"),
             })?;
     }
 

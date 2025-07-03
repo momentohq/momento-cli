@@ -204,7 +204,7 @@ async fn process_resources(
                     .send(wrapped_resource)
                     .await
                     .map_err(|err| CliError {
-                        msg: format!("Failed to send elasticache resource: {}", err),
+                        msg: format!("Failed to send elasticache resource: {err}"),
                     })?;
                 process_bar_clone.inc(1);
                 Ok::<(), CliError>(())
@@ -301,7 +301,7 @@ fn convert_to_resources(
                 .map(|replication_group_id| {
                     let trimmed_cluster_id = cache_cluster_id.clone();
                     let trimmed_cluster_id = trimmed_cluster_id
-                        .trim_start_matches(&format!("{}-", replication_group_id));
+                        .trim_start_matches(&format!("{replication_group_id}-"));
                     let parts_len = trimmed_cluster_id.split('-').count();
                     (replication_group_id, parts_len == 2)
                 })
