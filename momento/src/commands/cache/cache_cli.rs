@@ -1,4 +1,5 @@
 use log::debug;
+use momento::cache::{GetResponse, SetRequest};
 use std::process::exit;
 use std::time::Duration;
 
@@ -15,9 +16,11 @@ pub async fn create_cache(
     auth_token: String,
     endpoint: Option<String>,
 ) -> Result<(), CliError> {
-    let mut client = get_momento_client(auth_token, endpoint).await?;
+    let client = get_momento_client(auth_token, endpoint).await?;
 
-    interact_with_momento("creating cache...", client.create_cache(&cache_name)).await
+    interact_with_momento("creating cache...", client.create_cache(&cache_name))
+        .await
+        .map(|_| ())
 }
 
 pub async fn delete_cache(
@@ -25,20 +28,22 @@ pub async fn delete_cache(
     auth_token: String,
     endpoint: Option<String>,
 ) -> Result<(), CliError> {
-    let mut client = get_momento_client(auth_token, endpoint).await?;
+    let client = get_momento_client(auth_token, endpoint).await?;
 
-    interact_with_momento("deleting cache...", client.delete_cache(&cache_name)).await
+    interact_with_momento("deleting cache...", client.delete_cache(&cache_name))
+        .await
+        .map(|_| ())
 }
 
 pub async fn list_caches(auth_token: String, endpoint: Option<String>) -> Result<(), CliError> {
-    let mut client = get_momento_client(auth_token, endpoint).await?;
+    let client = get_momento_client(auth_token, endpoint).await?;
 
-    let list_result = interact_with_momento("listing caches...", client.list_caches(None)).await?;
+    let list_result = interact_with_momento("listing caches...", client.list_caches()).await?;
 
     list_result
         .caches
         .into_iter()
-        .for_each(|cache| console_data!("{}", cache.cache_name));
+        .for_each(|cache| console_data!("{}", cache.name));
 
     Ok(())
 }
@@ -48,7 +53,7 @@ pub async fn flush_cache(
     auth_token: String,
     endpoint: Option<String>,
 ) -> Result<(), CliError> {
-    let mut client = get_momento_client(auth_token, endpoint).await?;
+    let client = get_momento_client(auth_token, endpoint).await?;
     client.flush_cache(&cache_name).await?;
     Ok(())
 }
@@ -62,19 +67,12 @@ pub async fn set(
     endpoint: Option<String>,
 ) -> Result<(), CliError> {
     debug!("setting key: {} into cache: {}", key, cache_name);
-    let mut client = get_momento_client(auth_token, endpoint).await?;
+    let client = get_momento_client(auth_token, endpoint).await?;
 
-    interact_with_momento(
-        "setting...",
-        client.set(
-            &cache_name,
-            key,
-            value,
-            Some(Duration::from_secs(ttl_seconds)),
-        ),
-    )
-    .await
-    .map(|_| ())
+    let set_request = SetRequest::new(cache_name, key, value).ttl(Duration::from_secs(ttl_seconds));
+    interact_with_momento("setting...", client.send_request(set_request))
+        .await
+        .map(|_| ())
 }
 
 pub async fn get(
@@ -85,15 +83,15 @@ pub async fn get(
 ) -> Result<(), CliError> {
     debug!("getting key: {} from cache: {}", key, cache_name);
 
-    let mut client = get_momento_client(auth_token, endpoint).await?;
+    let client = get_momento_client(auth_token, endpoint).await?;
 
     let response = interact_with_momento("getting...", client.get(&cache_name, key)).await?;
     match response {
-        momento::response::Get::Hit { value } => {
+        GetResponse::Hit { value } => {
             let value: String = value.try_into()?;
             console_data!("{}", value);
         }
-        momento::response::Get::Miss => {
+        GetResponse::Miss => {
             debug!("cache miss");
             exit(1)
         }
@@ -109,7 +107,7 @@ pub async fn delete_key(
 ) -> Result<(), CliError> {
     debug!("deleting key: {} from cache: {}", key, cache_name);
 
-    let mut client = get_momento_client(auth_token, endpoint).await?;
+    let client = get_momento_client(auth_token, endpoint).await?;
 
     interact_with_momento("deleting...", client.delete(&cache_name, key))
         .await

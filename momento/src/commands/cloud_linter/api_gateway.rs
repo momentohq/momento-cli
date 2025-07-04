@@ -98,7 +98,7 @@ pub(crate) async fn process_api_gateway_resources(
             }
             Err(e) => {
                 return Err(CliError {
-                    msg: format!("Failed to list API Gateway resources: {}", e),
+                    msg: format!("Failed to list API Gateway resources: {e}"),
                 });
             }
         }
