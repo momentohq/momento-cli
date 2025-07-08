@@ -94,29 +94,6 @@ To delete a topic, stop subscribing to it."
     },
 }
 
-#[derive(Debug, Parser)]
-pub enum SigningKeyCommand {
-    #[command(about = "Create a signing key")]
-    Create {
-        #[arg(
-            long = "ttl",
-            short = 't',
-            default_value = "86400",
-            help = "Duration, in minutes, that the signing key will be valid"
-        )]
-        ttl_minutes: u32,
-    },
-
-    #[command(about = "Revoke the signing key")]
-    Revoke {
-        #[arg(long = "key-id", short, help = "Signing Key ID")]
-        key_id: String,
-    },
-
-    #[command(about = "List all signing keys")]
-    List {},
-}
-
 const SIGNUP_DEPRECATED_MSG: &str =
     "*DECOMMISSIONED* Please go to the Momento Console (https://console.gomomento.com) to sign up.";
 
@@ -129,6 +106,68 @@ pub enum AccountCommand {
         #[command(subcommand)]
         signup_operation: Option<CloudSignupCommand>,
     },
+}
+
+#[derive(Debug, Parser)]
+pub enum FunctionCommand {
+    #[command(about = "Create or update a Momento Function")]
+    PutFunction {
+        #[arg(long = "cache-name", short, help = "Cache namespace")]
+        cache_name: String,
+        #[arg(long = "name", short, help = "Function name")]
+        name: String,
+        #[arg(
+            long = "wasm-file",
+            short,
+            help = ".wasm file compiled with wasm32-wasip2"
+        )]
+        wasm_file: Option<String>,
+        #[arg(
+            long = "id-uploaded-wasm",
+            short,
+            help = "ID of a Wasm binary previously uploaded to Momento Functions"
+        )]
+        id_uploaded_wasm: Option<String>,
+        #[arg(
+            long = "version-uploaded-wasm",
+            short,
+            help = "Version number of a Wasm binary previously uploaded to Momento Functions"
+        )]
+        version_uploaded_wasm: Option<u32>,
+        #[arg(long = "description", short, help = "Description")]
+        description: Option<String>,
+        #[arg(
+            long = "env-var",
+            short,
+            help = "Environment variables to provide to the Function. Example: --env-var KEY1,VALUE1,KEY2,VALUE2"
+        )]
+        environment_variables: Option<Vec<String>>,
+    },
+    #[command(about = "Create or update a wasm source that can be used in a Momento Function")]
+    PutWasm {
+        #[arg(long = "name", short, help = "Wasm source name")]
+        name: String,
+        #[arg(
+            long = "wasm-file",
+            short,
+            help = ".wasm file compiled with wasm32-wasip2"
+        )]
+        wasm_file: String,
+        #[arg(long = "description", short, help = "Description")]
+        description: Option<String>,
+    },
+    #[command(about = "List all Momento Functions in the given cache namespace")]
+    ListFunctions {
+        #[arg(long = "cache-name", short, help = "Cache namespace")]
+        cache_name: String,
+    },
+    #[command(about = "List all versions of a Momento Function")]
+    ListFunctionVersions {
+        #[arg(long = "id", short, help = "Function ID")]
+        function_id: String,
+    },
+    #[command(about = "List all wasm sources")]
+    ListWasms {},
 }
 
 #[derive(Debug, Parser)]
@@ -190,6 +229,11 @@ to help find opportunities for optimizations with Momento.
             help = "The inclusive UTC end date of the metric collection period. Will use the current date if not provided. (YYYY-MM-DD)"
         )]
         metric_end_date: Option<String>,
+    },
+    #[command(about = "**PREVIEW** Create or update your Momento Functions")]
+    Function {
+        #[command(subcommand)]
+        operation: FunctionCommand,
     },
 }
 
