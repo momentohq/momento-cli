@@ -41,9 +41,15 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
         console_data!("No functions found in cache namespace: {cache_name}");
     } else {
         console_data!("Functions in cache namespace: {cache_name}");
-        functions_list
-            .iter()
-            .for_each(|function| console_data!("{}", function.name())); // TODO: use ID accessor once available
+        functions_list.iter().for_each(|function| {
+            console_data!(
+                "Name: {}, ID: {}, Version: {}, Description: {}",
+                function.name(),
+                function.function_id(),
+                function.version(),
+                function.description()
+            )
+        });
     }
     Ok(())
 }
