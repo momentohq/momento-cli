@@ -66,9 +66,15 @@ pub async fn list_function_versions(
         console_data!("No versions found for function: {function_id}");
     } else {
         console_data!("Versions for function: {function_id}");
-        function_versions_list
-            .iter()
-            .for_each(|version| console_data!("{:?}", version)); // TODO: use accessors once available
+        function_versions_list.iter().for_each(|version| {
+            console_data!(
+                "Function Version: {}, Wasm ID: {}, Wasm Version: {}, Environment Variables: {:#?}",
+                version.version_id().id(),
+                version.wasm_version_id().id(),
+                version.wasm_version_id().version(),
+                version.environment()
+            )
+        });
     }
     Ok(())
 }
@@ -97,9 +103,15 @@ pub async fn list_wasms(client: FunctionClient) -> Result<(), CliError> {
         console_data!("No wasm sources found");
     } else {
         console_data!("Wasm sources:");
-        wasms_list
-            .iter()
-            .for_each(|wasm| console_data!("{:?}", wasm)); // TODO: use accessors once available
+        wasms_list.iter().for_each(|wasm| {
+            console_data!(
+                "Name: {}, ID: {}, Version: {}, Description: {}",
+                wasm.name(),
+                wasm.id().id(),
+                wasm.id().version(),
+                wasm.description()
+            )
+        });
     }
     Ok(())
 }
