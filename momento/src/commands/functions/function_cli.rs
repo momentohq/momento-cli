@@ -23,7 +23,13 @@ pub async fn put_function(
         request = request.description(description);
     }
     request = request.environment(environment_variables);
-    client.send(request).await.map_err(Into::<CliError>::into)?;
+    let response = client.send(request).await.map_err(Into::<CliError>::into)?;
+    console_data!(
+        "Function uploaded or updated! Name: {}, ID: {}, Version: {}",
+        response.name(),
+        response.function_id(),
+        response.version()
+    );
     Ok(())
 }
 
@@ -85,7 +91,13 @@ pub async fn put_wasm(
     if let Some(description) = description {
         request = request.description(description);
     }
-    client.send(request).await.map_err(Into::<CliError>::into)?;
+    let response = client.send(request).await.map_err(Into::<CliError>::into)?;
+    console_data!(
+        "Wasm uploaded or updated! Name: {}, ID: {}, Version: {}",
+        response.name(),
+        response.id().id(),
+        response.id().version()
+    );
     Ok(())
 }
 
