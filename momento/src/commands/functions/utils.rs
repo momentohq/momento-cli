@@ -14,24 +14,6 @@ pub fn read_wasm_file(wasm_file: String) -> Result<Vec<u8>, CliError> {
     Ok(binary)
 }
 
-pub fn parse_environment_variables(
-    environment_variables: Vec<String>,
-) -> Result<Vec<(String, String)>, CliError> {
-    if environment_variables.len() % 2 != 0 {
-        return Err(CliError {
-            msg: "Environment variables must be provided in pairs of key-value".to_string(),
-        });
-    }
-    let mut env_vars = Vec::new();
-    for i in (0..environment_variables.len()).step_by(2) {
-        env_vars.push((
-            environment_variables[i].clone(),
-            environment_variables[i + 1].clone(),
-        ));
-    }
-    Ok(env_vars)
-}
-
 pub fn determine_wasm_source(
     wasm_file: Option<String>,
     id_uploaded_wasm: Option<String>,

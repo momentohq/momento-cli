@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use clap::CommandFactory;
 use clap::Parser;
 
@@ -138,10 +140,11 @@ pub enum FunctionCommand {
         description: Option<String>,
         #[arg(
             long = "env-var",
-            short,
-            help = "Environment variables to provide to the Function. Example: --env-var KEY1,VALUE1,KEY2,VALUE2"
+            short = 'E',
+            value_parser = parse_env::<String, String>,
+            help = "Environment variables to provide to the Function. Example: -E KEY1=value_1 -E KEY2=value_2"
         )]
-        environment_variables: Option<Vec<String>>,
+        environment_variables: Vec<(String, String)>,
     },
     #[command(about = "Create or update a wasm source that can be used in a Momento Function")]
     PutWasm {
@@ -459,4 +462,19 @@ pub enum TopicCommand {
         #[arg(help = "Name of the topic to which you would like to subscribe")]
         topic: String,
     },
+}
+
+fn parse_env<K, V>(s: &str) -> Result<(K, V), Box<dyn Error + Send + Sync + 'static>>
+where
+    K: std::str::FromStr,
+    K::Err: Error + Send + Sync + 'static,
+    V: std::str::FromStr,
+    V::Err: Error + Send + Sync + 'static,
+{
+    let equals = s
+        .find('=')
+        .ok_or_else(|| format!("invalid environment variable syntax: no `=` found in `{s}`"))?;
+    let key = s[..equals].parse()?;
+    let value = s[equals + 1..].parse()?;
+    Ok((key, value))
 }

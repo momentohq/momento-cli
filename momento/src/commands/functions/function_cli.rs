@@ -7,9 +7,7 @@ use momento::{
 };
 
 use crate::{
-    commands::functions::utils::{parse_environment_variables, read_wasm_file},
-    error::CliError,
-    utils::console::console_data,
+    commands::functions::utils::read_wasm_file, error::CliError, utils::console::console_data,
 };
 
 pub async fn put_function(
@@ -18,16 +16,13 @@ pub async fn put_function(
     name: String,
     wasm_source: WasmSource,
     description: Option<String>,
-    environment_variables: Option<Vec<String>>,
+    environment_variables: Vec<(String, String)>,
 ) -> Result<(), CliError> {
     let mut request = PutFunctionRequest::new(&cache_name, &name, wasm_source);
     if let Some(description) = description {
         request = request.description(description);
     }
-    if let Some(environment_variables) = environment_variables {
-        let env_vars = parse_environment_variables(environment_variables)?;
-        request = request.environment(env_vars);
-    }
+    request = request.environment(environment_variables);
     client.send(request).await.map_err(Into::<CliError>::into)?;
     Ok(())
 }
@@ -69,7 +64,7 @@ pub async fn list_function_versions(
         function_versions_list.iter().for_each(|version| {
             console_data!(
                 "Function Version: {}, Wasm ID: {}, Wasm Version: {}, Environment Variables: {:#?}",
-                version.version_id().id(),
+                version.version_id().version(),
                 version.wasm_version_id().id(),
                 version.wasm_version_id().version(),
                 version.environment()
