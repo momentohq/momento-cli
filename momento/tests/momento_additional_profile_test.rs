@@ -21,9 +21,7 @@ mod tests {
             .write_stdin(bogus_auth_token)
             .assert()
             .failure()
-            .stderr(
-                predicate::str::contains("ERROR: MomentoError { message: \"Could not parse token. Please ensure a valid token was entered correctly.\", error_code: InvalidArgumentError, inner_error: Some(Unknown(InvalidByte(20, 46))), details: None }"),
-            );
+            .stderr(predicate::str::contains("Please paste your Momento auth token.  (If you do not have an auth token, use `momento account` to generate one.)"));
 
         // now create the additional profile, which we will use for all of our tests.
         let mut cmd2 = Command::cargo_bin("momento").unwrap();

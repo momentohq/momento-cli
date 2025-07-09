@@ -5,11 +5,11 @@ use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
-use momento::{topics, CredentialProvider, MomentoError, TopicClient};
+use momento::{topics, CredentialProvider, FunctionClient, MomentoError, TopicClient};
 use momento_cli_opts::PreviewCommand;
 use utils::{console::output_info, user::get_creds_and_config};
 
-use crate::utils::console::console_info;
+use crate::{commands::functions::utils::determine_wasm_source, utils::console::console_info};
 
 mod commands;
 mod config;
@@ -216,6 +216,68 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     metric_end_date,
                 )
                 .await?;
+            }
+            PreviewCommand::Function { operation } => {
+                let (creds, _) = get_creds_and_config(&args.profile).await?;
+                let credential_provider = CredentialProvider::from_string(creds.token)?;
+                let client = FunctionClient::builder()
+                    .credential_provider(credential_provider)
+                    .build()
+                    .map_err(Into::<CliError>::into)?;
+
+                match operation {
+                    momento_cli_opts::FunctionCommand::PutFunction {
+                        cache_name,
+                        name,
+                        wasm_file,
+                        id_uploaded_wasm,
+                        version_uploaded_wasm,
+                        description,
+                        environment_variables,
+                    } => {
+                        let wasm_source = determine_wasm_source(
+                            wasm_file,
+                            id_uploaded_wasm,
+                            version_uploaded_wasm,
+                        )?;
+                        commands::functions::function_cli::put_function(
+                            client,
+                            cache_name,
+                            name,
+                            wasm_source,
+                            description,
+                            environment_variables,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::FunctionCommand::PutWasm {
+                        name,
+                        wasm_file,
+                        description,
+                    } => {
+                        commands::functions::function_cli::put_wasm(
+                            client,
+                            name,
+                            wasm_file,
+                            description,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::FunctionCommand::ListFunctions { cache_name } => {
+                        commands::functions::function_cli::list_functions(client, cache_name)
+                            .await?
+                    }
+                    momento_cli_opts::FunctionCommand::ListFunctionVersions { function_id } => {
+                        commands::functions::function_cli::list_function_versions(
+                            client,
+                            function_id,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::FunctionCommand::ListWasms {} => {
+                        commands::functions::function_cli::list_wasms(client).await?
+                    }
+                }
             }
         },
     }
