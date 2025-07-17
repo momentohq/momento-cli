@@ -13,7 +13,7 @@ lazy_static! {
         .expect("Unable to compile config file cache setting regex");
     static ref REGEX_CONFIG_FILE_TTL_SETTING: Regex = Regex::new(r"^ttl\s*=\s*([\d]*)\s*$")
         .expect("Unable to compile config file ttl setting regex");
-    static ref REGEX_CREDS_FILE_TOKEN_SETTING: Regex = Regex::new(r"^token\s*=\s*([\w\.-]*)\s*$")
+    static ref REGEX_CREDS_FILE_TOKEN_SETTING: Regex = Regex::new(r"^token\s*=\s*([\w\.-=]*)\s*$")
         .expect("Unable to compile creds file token regex");
 }
 
