@@ -80,6 +80,18 @@ To delete a topic, stop subscribing to it."
     Configure {
         #[arg(long, short)]
         quick: bool,
+        #[arg(
+            long,
+            short,
+            help = "Overwrite credentials by providing an api key v2 and endpoint"
+        )]
+        api_key_and_endpoint: bool,
+        #[arg(
+            long,
+            short,
+            help = "Overwrite credentials by providing a disposable auth token"
+        )]
+        disposable_token: bool,
     },
     #[command(about = "Manage accounts", hide = true)]
     Account {

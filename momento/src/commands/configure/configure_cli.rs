@@ -1,3 +1,4 @@
+use log::warn;
 use std::path::Path;
 use tokio::fs;
 
@@ -20,8 +21,14 @@ use crate::{
     },
 };
 
-pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), CliError> {
-    let credentials = prompt_user_for_creds(profile_name).await?;
+pub async fn configure_momento(
+    quick: bool,
+    profile_name: &str,
+    api_key_and_endpoint: bool,
+    disposable_token: bool,
+) -> Result<(), CliError> {
+    let credentials =
+        prompt_user_for_creds(profile_name, api_key_and_endpoint, disposable_token).await?;
     let config = prompt_user_for_config(quick, profile_name).await?;
 
     let momento_dir = get_momento_config_dir()?;
@@ -54,7 +61,7 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
     .await?;
 
     // TODO: Update the endpoint to read from config
-    match create_cache(config.cache.clone(), credentials.token, None).await {
+    match create_cache(config.cache.clone(), credentials, None).await {
         Ok(_) => console_info!(
             "{} successfully created as the default with default TTL of {}s",
             config.cache.clone(),
@@ -72,20 +79,76 @@ pub async fn configure_momento(quick: bool, profile_name: &str) -> Result<(), Cl
     Ok(())
 }
 
-async fn prompt_user_for_creds(profile_name: &str) -> Result<Credentials, CliError> {
-    let current_credentials = get_creds_for_profile(profile_name)
-        .await
-        .unwrap_or_default();
+async fn prompt_user_for_creds(
+    profile_name: &str,
+    api_key_and_endpoint: bool,
+    disposable_token: bool,
+) -> Result<Credentials, CliError> {
+    if api_key_and_endpoint && disposable_token {
+        warn!(
+            "Both --api-key-and-endpoint and --disposable-token were provided. Proceeding with --api-key-and-endpoint."
+        );
+    }
+    if api_key_and_endpoint {
+        return prompt_user_for_api_key_v2().await;
+    }
+    if disposable_token {
+        return prompt_user_for_disposable_token().await;
+    }
 
-    console_info!("Please paste your Momento auth token.  (If you do not have an auth token, use `momento account` to generate one.)");
+    if let Ok(existing_creds) = get_creds_for_profile(profile_name).await {
+        console_info!(
+            "Found existing credentials for profile '{}', do you wish to use those values? (y/n)",
+            profile_name
+        );
+        let use_existing = prompt_user_for_input("Use existing credentials", "y", false).await?;
+        if use_existing.to_lowercase() == "y" || use_existing.to_lowercase() == "yes" {
+            return Ok(existing_creds);
+        }
+    }
+
+    console_info!("\n");
+    let v2_or_disposable_token = prompt_user_for_input(
+        "Are you setting an [1] API key or [2] disposable auth token?",
+        "1",
+        false,
+    )
+    .await?;
+    if v2_or_disposable_token.trim() == "2" {
+        prompt_user_for_disposable_token().await
+    } else {
+        prompt_user_for_api_key_v2().await
+    }
+}
+
+async fn prompt_user_for_api_key_v2() -> Result<Credentials, CliError> {
+    console_info!("\n");
+    console_info!("Please paste your Momento API Key v2 and endpoint.");
+    console_info!("  - If you do not have an API Key, use the Momento Console (https://console.gomomento.com) to generate one.");
+    console_info!("  - If you do not already know what endpoint to connect to, please refer to https://docs.momentohq.com/platform/regions#resp-and-sdk-endpoints to select an appropriate endpoint.");
     console_info!(
-        "Windows users: if CTRL-V does not work, try right-click or SHIFT-INSERT to paste."
+        "  - Windows users: if CTRL-V does not work, try right-click or SHIFT-INSERT to paste."
     );
     console_info!("");
 
-    let token = prompt_user_for_input("Token", current_credentials.token.as_str(), true).await?;
+    let api_key_v2 = prompt_user_for_input("API Key", "", true).await?;
+    let endpoint = prompt_user_for_input("Endpoint", "", false).await?;
 
-    Ok(Credentials { token })
+    Ok(Credentials::ApiKeyV2(api_key_v2, endpoint))
+}
+
+async fn prompt_user_for_disposable_token() -> Result<Credentials, CliError> {
+    console_info!("\n");
+    console_info!("Please paste your Momento disposable auth token.");
+    console_info!("  - If you do not have a token, use a Momento SDK that supports GenerateDisposableToken to create one (https://docs.momentohq.com/topics/api-reference/auth#generatedisposabletoken).");
+    console_info!(
+        "  - Windows users: if CTRL-V does not work, try right-click or SHIFT-INSERT to paste."
+    );
+    console_info!("");
+
+    let token = prompt_user_for_input("Disposable Auth Token", "", true).await?;
+
+    Ok(Credentials::DisposableToken(token))
 }
 
 async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Config, CliError> {
@@ -314,13 +377,11 @@ mod tests {
     }
 
     #[test]
-    fn add_or_update_credentials_profile_no_existing_file() {
+    fn add_or_update_credentials_profile_no_existing_file_disposable_token() {
         let existing_content = vec![];
         let updated = add_or_update_credentials_profile(
             "default",
-            Credentials {
-                token: "awesome-token".to_string(),
-            },
+            Credentials::DisposableToken("awesome-token".to_string()),
             existing_content,
         )
         .expect("d'oh");
@@ -334,13 +395,33 @@ token=awesome-token
     }
 
     #[test]
+    fn add_or_update_credentials_profile_no_existing_file_v2_api_key() {
+        let existing_content = vec![];
+        let updated = add_or_update_credentials_profile(
+            "default",
+            Credentials::ApiKeyV2(
+                "awesome-api-key".to_string(),
+                "awesome-endpoint".to_string(),
+            ),
+            existing_content,
+        )
+        .expect("d'oh");
+        let expected = test_file_content(
+            "
+[default]
+api_key_v2=awesome-api-key
+endpoint=awesome-endpoint
+        ",
+        );
+        assert_eq!(expected.trim_end(), updated.join("\n"));
+    }
+
+    #[test]
     fn add_or_update_credentials_profile_empty_existing_file() {
         let existing_content = test_content_to_lines("");
         let updated = add_or_update_credentials_profile(
             "default",
-            Credentials {
-                token: "awesome-token".to_string(),
-            },
+            Credentials::DisposableToken("awesome-token".to_string()),
             existing_content,
         )
         .expect("d'oh");
@@ -365,9 +446,7 @@ token=old-token
             "{}\n",
             add_or_update_credentials_profile(
                 "default",
-                Credentials {
-                    token: "old-token".to_string()
-                },
+                Credentials::DisposableToken("old-token".to_string()),
                 existing_content
             )
             .expect("d'oh")
@@ -375,9 +454,7 @@ token=old-token
         );
         let updated2 = add_or_update_credentials_profile(
             "default",
-            Credentials {
-                token: "old-token".to_string(),
-            },
+            Credentials::DisposableToken("old-token".to_string()),
             test_content_to_lines(&updated1),
         )
         .expect("d'oh");
@@ -400,9 +477,7 @@ token=old-token
         );
         let updated = add_or_update_credentials_profile(
             "default",
-            Credentials {
-                token: "awesome-token".to_string(),
-            },
+            Credentials::DisposableToken("awesome-token".to_string()),
             existing_content,
         )
         .expect("d'oh");
@@ -425,9 +500,7 @@ token=
         );
         let updated = add_or_update_credentials_profile(
             "default",
-            Credentials {
-                token: "awesome-token".to_string(),
-            },
+            Credentials::DisposableToken("awesome-token".to_string()),
             existing_content,
         )
         .expect("d'oh");

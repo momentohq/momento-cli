@@ -1,14 +1,14 @@
 use std::{future::Future, time::Duration};
 
-use momento::{cache::configurations, CacheClient, CredentialProvider, MomentoError};
+use momento::{cache::configurations, CacheClient, MomentoError};
 
-use crate::error::CliError;
+use crate::{config::Credentials, error::CliError};
 
 pub async fn get_momento_client(
-    auth_token: String,
+    credentials: Credentials,
     endpoint: Option<String>,
 ) -> Result<CacheClient, CliError> {
-    let mut credential_provider = CredentialProvider::from_string(auth_token)?;
+    let mut credential_provider = credentials.authenticate()?;
     if let Some(momento_override) = endpoint {
         credential_provider = credential_provider.base_endpoint(&momento_override);
     }

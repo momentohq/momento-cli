@@ -14,7 +14,7 @@ mod tests {
 
     async fn configure_momento_default_profile(test_auth_token: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["configure"])
+        cmd.args(["configure", "--disposable-token"])
             .write_stdin(test_auth_token)
             .assert()
             .success();
