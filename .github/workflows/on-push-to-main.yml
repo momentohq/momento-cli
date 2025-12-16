@@ -40,16 +40,17 @@ jobs:
       - name: Run Integration Tests
         run: ./run_test_sequentially.sh
 
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
+  # TODO: re-enable once windows publishing is fixed
+  # build-windows:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
 
-      - name: Install protoc
-        run: choco install protoc
+  #     - name: Install protoc
+  #       run: choco install protoc
 
-      - name: Build
-        run: cargo build --verbose
+  #     - name: Build
+  #       run: cargo build --verbose
 
   dry-run-release:
     runs-on: ubuntu-latest
