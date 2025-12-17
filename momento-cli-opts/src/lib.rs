@@ -89,7 +89,7 @@ To delete a topic, stop subscribing to it."
         #[arg(
             long,
             short,
-            help = "Overwrite credentials by providing a disposable auth token"
+            help = "Overwrite credentials by providing a disposable auth token or legacy v1 api key"
         )]
         disposable_token: bool,
     },

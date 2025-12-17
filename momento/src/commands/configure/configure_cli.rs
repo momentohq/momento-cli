@@ -109,7 +109,7 @@ async fn prompt_user_for_creds(
 
     console_info!("\n");
     let v2_or_disposable_token = prompt_user_for_input(
-        "Are you setting an [1] API key or [2] disposable auth token?",
+        "Are you setting a [1] v2 API key or [2] disposable auth token or legacy v1 API key?",
         "1",
         false,
     )
@@ -139,7 +139,7 @@ async fn prompt_user_for_api_key_v2() -> Result<Credentials, CliError> {
 
 async fn prompt_user_for_disposable_token() -> Result<Credentials, CliError> {
     console_info!("\n");
-    console_info!("Please paste your Momento disposable auth token.");
+    console_info!("Please paste your Momento disposable auth token or legacy v1 API key.");
     console_info!("  - If you do not have a token, use a Momento SDK that supports GenerateDisposableToken to create one (https://docs.momentohq.com/topics/api-reference/auth#generatedisposabletoken).");
     console_info!(
         "  - Windows users: if CTRL-V does not work, try right-click or SHIFT-INSERT to paste."
