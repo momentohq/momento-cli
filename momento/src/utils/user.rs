@@ -41,17 +41,27 @@ pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config)
 pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliError> {
     let credentials_file = read_credentials().await?;
 
-    get_session_token(&credentials_file).or_else(|| {
-        credentials_file.get(profile, "token")
-    }).map(|credentials| {
-        Ok(Credentials {
-            token: credentials,
-        })
-    }).unwrap_or_else(|| {
-        Err(CliError{
-            msg: format!("failed to get credentials for profile {profile}, please run 'momento configure' to configure your profile")
-        })
-    })
+    // if session is configured, use that
+    if let Some(session_token) = get_session_token(&credentials_file) {
+        return Ok(Credentials::DisposableToken(session_token));
+    }
+
+    // if only token is set, use disposable token method
+    if let Some(token) = credentials_file.get(profile, "token") {
+        return Ok(Credentials::DisposableToken(token));
+    }
+
+    // if both api_key_v2 and endpoint are set, use api key v2 method
+    if let (Some(api_key_v2), Some(endpoint)) = (
+        credentials_file.get(profile, "api_key_v2"),
+        credentials_file.get(profile, "endpoint"),
+    ) {
+        return Ok(Credentials::ApiKeyV2(api_key_v2, endpoint));
+    }
+
+    // else invalid credentials, prompt to reconfigure
+    Err(CliError{
+            msg: format!("failed to get credentials for profile {profile}, please run 'momento configure' to configure your profile")})
 }
 
 async fn read_credentials() -> Result<Ini, CliError> {

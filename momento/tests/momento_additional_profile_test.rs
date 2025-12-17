@@ -17,18 +17,22 @@ mod tests {
         // commands use the default profile
         let mut cmd1 = Command::cargo_bin("momento").unwrap();
         let bogus_auth_token = "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJmb29AdGVzdC5ub3RhcmVhbGRvbWFpbiIsImNwIjoiY29udHJvbC1wbGFuZS1lbmRwb2ludC50ZXN0Lm5vdGFyZWFsZG9tYWluIiwiYyI6ImNhY2hlLWVuZHBvaW50LnRlc3Qubm90YXJlYWxkb21haW4ifQo.rtxfu4miBHQ1uptWJ2x3UiAwwJYcMeYIkkpXxUno_wIavg4h6YJStcbxk32NDBbmJkJS7mUw6MsvJNWaxfdPOw";
-        cmd1.args(["configure"])
+        cmd1.args(["configure", "--disposable-token"])
             .write_stdin(bogus_auth_token)
             .assert()
             .failure()
-            .stderr(predicate::str::contains("Please paste your Momento auth token.  (If you do not have an auth token, use `momento account` to generate one.)"));
+            .stderr(predicate::str::contains(
+                "Please paste your Momento disposable auth token",
+            ));
+        println!("Configured default profile with bogus token");
 
         // now create the additional profile, which we will use for all of our tests.
         let mut cmd2 = Command::cargo_bin("momento").unwrap();
-        cmd2.args(["configure", "--profile", profile_name])
+        cmd2.args(["configure", "--disposable-token", "--profile", profile_name])
             .write_stdin(test_auth_token)
             .assert()
             .success();
+        println!("Configured additional profile {profile_name}");
     }
 
     async fn momento_cache_create_with_profile(profile_name: &str, cache_name: &str) {
@@ -111,8 +115,9 @@ mod tests {
             vec!["cache", "--profile", profile_name, "get", "--key", "key"],
             vec!["--profile", profile_name, "cache", "get", "--key", "key"],
             // configure subcommand
-            vec!["configure", "--profile", profile_name],
-            vec!["--profile", profile_name, "configure"],
+            vec!["configure", "--disposable-token", "--profile", profile_name],
+            vec!["--profile", profile_name, "configure", "--disposable-token"],
+            vec!["configure", "--profile", profile_name, "--disposable-token"],
             // account subcommand
             vec!["account", "signup", "--profile", profile_name, "help"],
             vec!["account", "--profile", profile_name, "signup", "help"],
@@ -130,6 +135,7 @@ mod tests {
         let test_auth_token = get_test_auth_token_from_env_var();
         let test_run_id = get_unique_test_run_id();
         let test_momento_home_dir = initialize_temp_momento_config_dir(&test_run_id);
+        println!("initialized stuff");
 
         momento_configure_profiles(&test_auth_token, &test_run_id).await;
         momento_cache_create_with_profile(&test_run_id, &test_run_id).await;

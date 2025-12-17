@@ -13,15 +13,29 @@ lazy_static! {
         .expect("Unable to compile config file cache setting regex");
     static ref REGEX_CONFIG_FILE_TTL_SETTING: Regex = Regex::new(r"^ttl\s*=\s*([\d]*)\s*$")
         .expect("Unable to compile config file ttl setting regex");
-    static ref REGEX_CREDS_FILE_TOKEN_SETTING: Regex = Regex::new(r"^token\s*=\s*([\w\.-=]*)\s*$")
+    static ref REGEX_CREDS_FILE_TOKEN_SETTING: Regex = Regex::new(r"^token\s*=\s*([\w\--=]*)\s*$")
         .expect("Unable to compile creds file token regex");
+    static ref REGEX_CREDS_FILE_API_KEY_V2_SETTING: Regex =
+        Regex::new(r"^api_key_v2\s*=\s*([\w\--=]*)\s*$")
+            .expect("Unable to compile creds file api_key_v2 regex");
+    static ref REGEX_CREDS_FILE_ENDPOINT_SETTING: Regex =
+        Regex::new(r"^endpoint\s*=\s*([\w\--=]*)\s*$")
+            .expect("Unable to compile creds file endpoint regex");
 }
 
 pub fn create_new_credentials_profile(profile_name: &str, credentials: Credentials) -> Vec<String> {
-    vec![
-        format!("[{profile_name}]"),
-        format!("token={}", credentials.token),
-    ]
+    match credentials {
+        Credentials::ApiKeyV2(api_key, endpoint) => {
+            vec![
+                format!("[{profile_name}]"),
+                format!("api_key_v2={}", api_key),
+                format!("endpoint={}", endpoint),
+            ]
+        }
+        Credentials::DisposableToken(token) => {
+            vec![format!("[{profile_name}]"), format!("token={}", token)]
+        }
+    }
 }
 
 pub fn create_new_config_profile(profile_name: &str, config: Config) -> Vec<String> {
@@ -75,10 +89,49 @@ pub fn update_config_profile<T: AsRef<str>>(
 }
 
 fn replace_credentials_value(existing_line: &str, credentials: &Credentials) -> String {
-    let line_with_updated_token = REGEX_CREDS_FILE_TOKEN_SETTING
-        .replace(existing_line, format!("token={}", credentials.token));
+    match credentials {
+        Credentials::ApiKeyV2(api_key, endpoint) => {
+            replace_api_key_v2_credentials(existing_line, api_key, endpoint)
+        }
+        Credentials::DisposableToken(token) => replace_token_credentials(existing_line, token),
+    }
+}
 
-    line_with_updated_token.to_string()
+fn replace_api_key_v2_credentials(existing_line: &str, api_key: &str, endpoint: &str) -> String {
+    // If the line starts with token, we want to replace with both api_key_v2 and endpoint
+    if REGEX_CREDS_FILE_TOKEN_SETTING.is_match(existing_line) {
+        [
+            format!("api_key_v2={}", api_key),
+            format!("endpoint={}", endpoint),
+        ]
+        .join("\n")
+    } else {
+        let line_with_updated_api_key = REGEX_CREDS_FILE_API_KEY_V2_SETTING
+            .replace(existing_line, format!("api_key_v2={}", api_key));
+
+        let line_with_updated_endpoint = REGEX_CREDS_FILE_ENDPOINT_SETTING.replace(
+            line_with_updated_api_key.as_ref(),
+            format!("endpoint={}", endpoint),
+        );
+
+        line_with_updated_endpoint.to_string()
+    }
+}
+
+fn replace_token_credentials(existing_line: &str, token: &str) -> String {
+    if REGEX_CREDS_FILE_TOKEN_SETTING.is_match(existing_line) {
+        REGEX_CREDS_FILE_TOKEN_SETTING
+            .replace(existing_line, format!("token={}", token))
+            .to_string()
+    } else if REGEX_CREDS_FILE_API_KEY_V2_SETTING.is_match(existing_line) {
+        REGEX_CREDS_FILE_API_KEY_V2_SETTING
+            .replace(existing_line, format!("token={}", token))
+            .to_string()
+    } else if REGEX_CREDS_FILE_ENDPOINT_SETTING.is_match(existing_line) {
+        "".to_string()
+    } else {
+        existing_line.to_string()
+    }
 }
 
 fn replace_config_value(existing_line: &str, config: &Config) -> String {
@@ -169,9 +222,7 @@ mod tests {
     fn create_new_credentials_profile_happy_path() {
         let profile_text = create_new_credentials_profile(
             "default",
-            Credentials {
-                token: "awesome-token".to_string(),
-            },
+            Credentials::DisposableToken("awesome-token".to_string()),
         )
         .join("\n");
         let expected_text = test_file_content(
@@ -212,9 +263,7 @@ token=invalidtoken
         ",
         );
         let file_lines: Vec<&str> = file_contents.split('\n').collect();
-        let creds = Credentials {
-            token: "newtoken".to_string(),
-        };
+        let creds = Credentials::DisposableToken("newtoken".to_string());
         let result = update_credentials_profile("default", &file_lines, creds);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
@@ -238,9 +287,7 @@ token=
         ",
         );
         let file_lines: Vec<&str> = file_contents.split('\n').collect();
-        let creds = Credentials {
-            token: "newtoken".to_string(),
-        };
+        let creds = Credentials::DisposableToken("newtoken".to_string());
         let result = update_credentials_profile("default", &file_lines, creds);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
@@ -270,9 +317,7 @@ token=spicytoken
         ",
         );
         let file_lines: Vec<&str> = file_contents.split('\n').collect();
-        let creds = Credentials {
-            token: "newtoken".to_string(),
-        };
+        let creds = Credentials::DisposableToken("newtoken".to_string());
         let result = update_credentials_profile("default", &file_lines, creds);
         assert!(result.is_ok());
         let new_content = result.expect("d'oh").join("\n");
