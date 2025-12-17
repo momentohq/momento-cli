@@ -54,7 +54,8 @@ jobs:
 
   dry-run-release:
     runs-on: ubuntu-latest
-    needs: [rustfmt, build, build-windows]
+    # needs: [rustfmt, build, build-windows]
+    needs: [rustfmt, build]
     steps:
       - name: Setup Python
         uses: actions/setup-python@v2
