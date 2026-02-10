@@ -365,30 +365,35 @@ fn convert_to_resources(
                 return Ok(vec![]);
             }
 
+            let (cluster_id, cluster_mode_enabled) = cluster
+                .replication_group_id
+                .map(|replication_group_id| {
+                    let trimmed_cluster_id = cache_cluster_id.clone();
+                    let trimmed_cluster_id =
+                        trimmed_cluster_id.trim_start_matches(&format!("{replication_group_id}-"));
+                    let parts_len = trimmed_cluster_id.split('-').count();
+                    (replication_group_id, parts_len == 2)
+                })
+                .unwrap_or_else(|| (cache_cluster_id.clone(), false));
+
             let metadata = ElastiCacheMetadata {
-                cluster_id: cache_cluster_id,
+                cluster_id,
                 engine,
                 cache_node_type,
                 preferred_az,
-                cluster_mode_enabled: false,
+                cluster_mode_enabled,
             };
 
-            if let Some(cache_nodes) = cluster.cache_nodes {
-                for node in cache_nodes {
-                    let cache_node_id = node.cache_node_id.ok_or(CliError {
-                        msg: "Cache node has no ID".to_string(),
-                    })?;
-                    let resource = ElastiCacheResource {
-                        resource_type: ResourceType::ElastiCacheValkeyNode,
-                        region: region.to_string(),
-                        id: cache_node_id,
-                        metrics: vec![],
-                        metric_period_seconds: 0,
-                        metadata: metadata.clone(),
-                    };
-                    resources.push(resource)
-                }
-            }
+            let resource = ElastiCacheResource {
+                resource_type: ResourceType::ElastiCacheValkeyNode,
+                region: region.to_string(),
+                id: cache_cluster_id.clone(),
+                metrics: vec![],
+                metric_period_seconds: 0,
+                metadata,
+            };
+
+            resources.push(resource);
         }
         _ => {
             debug!("Unknown engine: {}", engine.as_str());
