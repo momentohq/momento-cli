@@ -4,22 +4,22 @@
 cargo build
 ```
 
-### Setup
+### Manual Testing
 
-In the [Momento Console](https://console.gomomento.com/), generate an API key. For the automated tests, a [legacy API key](https://console.gomomento.com/api-keys) is required with the following settings:
-- **Type of key**: Super User Key
-- **Expiration**: highly recommended (Legacy keys do not support revocation.)
-
-Make sure you have `~/.momento/credentials` and `~/.momento/config` files with the following data.
+Make sure you have `~/.momento/credentials` and `~/.momento/config` files with your [API key(s)](https://console.gomomento.com/keys), [endpoint URL(s)](https://docs.momentohq.com/platform/regions), and [cache name(s)](https://console.gomomento.com/caches).
 
 `~/.momento/credentials`
 
 ```
 [default]
-token=<YOUR_TOKEN>
+api_key_v2=<YOUR_TOKEN>
+endpoint=<YOUR_ENDPOINT_URL>
 [YOUR_TEST_PROFILE]
-token=<YOUR_TOKEN>
+api_key_v2=<YOUR_TOKEN>
+endpoint=<YOUR_ENDPOINT_URL>
 ```
+
+- If you prefer, create a legacy API key instead (as for [automated testing](#automated-testing)), then set a `token` instead of `api_key_v2`/`endpoint`.
 
 `~/.momento/config`
 
@@ -32,14 +32,28 @@ cache=<YOUR_TEST_CACHE_WITH_PROFILE>
 ttl=700
 ```
 
-### Testing
+Follow the [README](./README.md#use-cli), using `./target/debug/momento` instead of `momento`, for example:
 
+```bash
+./target/debug/momento cache create example-cache
 ```
-read -p "Token: " TEST_AUTH_TOKEN
-# Enter <YOUR_TOKEN> from above
-export TEST_AUTH_TOKEN
 
+### Automated Testing
+
+For the automated tests, a [legacy API key](https://console.gomomento.com/api-keys) is required with the following settings:
+- **Type of key**: Super User Key
+- **Expiration**: highly recommended (Legacy keys do not support revocation.)
+
+```bash
+read -s -p "API key: " TEST_AUTH_TOKEN
+# Paste your API key. (Note: You will not be able to see it in the shell.)
+export TEST_AUTH_TOKEN
 ./run_test_sequentially.sh
+```
+
+### Formatting
+
+```bash
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 

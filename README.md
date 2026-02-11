@@ -16,6 +16,8 @@ First things first - go to the [Momento Console](https://console.gomomento.com) 
 
 This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager. See the [docs](https://docs.momentohq.com/topics/authentication/api-keys) for more information on Momento API keys.
 
+You'll also need your [endpoint URL](https://docs.momentohq.com/platform/regions).
+
 ## Installation
 
 ### Mac (intel or apple silicon)
@@ -70,7 +72,7 @@ These instructions assume you have the `momento` executable on your path, after 
 the appropriate installation steps above.
 
 ```
-# Configure your account with the auth token copied from the console
+# Configure your account with the API key and endpoint from above,
 # plus default cache name (`default-cache`) and TTL (600 seconds)
 # This will also create the cache `default-cache` in your account
 momento configure --quick
@@ -96,7 +98,7 @@ momento cache get key --cache example-cache
 momento configure
 ```
 
-This will prompt you for your Momento Auth Token, default cache name, default TTL, and save them to be reused as a part of your `default` profile.
+This will prompt you for your Momento API key (v2), endpoint, default cache name, default TTL, and save them to be reused as a part of your `default` profile.
 
 ```
 momento configure --profile new-profile
