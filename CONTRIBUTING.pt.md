@@ -4,7 +4,11 @@
 cargo build
 ```
 
-## Testando
+## Setup
+
+In the [Momento Console](https://console.gomomento.com/), generate an API key. For the automated tests, a [legacy API key](https://console.gomomento.com/api-keys) is required with the following settings:
+- **Type of key**: Super User Key
+- **Expiration**: highly recommended (Legacy keys do not support revocation.)
 
 Garanta que você tem os arquivos `~/.momento/credentials` e `~/.momento/config` com os seguintes dados.
 
@@ -27,6 +31,8 @@ ttl=600
 cache=<YOUR_TEST_CACHE_WITH_PROFILE>
 ttl=700
 ```
+
+## Testando
 
 ```
 read -p "Token: " TEST_AUTH_TOKEN
