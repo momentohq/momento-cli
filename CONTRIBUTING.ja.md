@@ -1,10 +1,10 @@
 ## ビルド
 
 ```
-cargo build
+make build
 ```
 
-## テスト
+## Manual Testing
 
 `~/.momento/credentials` と `~/.momento/config` が以下のデータを含み、存在している事をご確認ください。
 
@@ -12,10 +12,14 @@ cargo build
 
 ```
 [default]
-token=<YOUR_TOKEN>
+api_key_v2=<YOUR_TOKEN>
+endpoint=<YOUR_ENDPOINT_URL>
 [YOUR_TEST_PROFILE]
-token=<YOUR_TOKEN>
+api_key_v2=<YOUR_TOKEN>
+endpoint=<YOUR_ENDPOINT_URL>
 ```
+
+- If you prefer, create a legacy API key instead (as for [automated testing](#automated-testing)), then set a `token` instead of `api_key_v2`/`endpoint`.
 
 `~/.momento/config`
 
@@ -28,25 +32,30 @@ cache=<YOUR_TEST_CACHE_WITH_PROFILE>
 ttl=700
 ```
 
-```
-export TEST_CACHE_DEFAULT=<YOUR_TEST_CACHE_DEFAULT>
-export TEST_CACHE_WITH_PROFILE=<YOUR_TEST_CACHE_WITH_PROFILE>
-export TEST_PROFILE=<YOUR_TEST_PROFILE>
-./run_test_sequentially.sh
-cargo clippy --all-targets --all-features -- -D warnings
+Follow the [README](./README.md#use-cli), using `./target/debug/momento` instead of `momento`, for example:
+
+```bash
+./target/debug/momento cache create example-cache
 ```
 
-<br>
+## Automated Testing
 
-:warning: `cargo test --test configure_profiles_test`を実行する上での注意事項
+For the automated tests, a [legacy API key](https://console.gomomento.com/api-keys) is required with the following settings:
+- **Type of key**: Super User Key
+- **Expiration**: highly recommended (Legacy keys do not support revocation.)
 
+```bash
+read -s -p "API key: " TEST_AUTH_TOKEN
+# Paste your API key. (Note: You will not be able to see it in the shell.)
+export TEST_AUTH_TOKEN
+make test
 ```
-export TEST_AUTH_TOKEN=<YOUR_TEST_AUTH_TOKEN>
-cargo test --test configure_profile_test
-```
 
-- もし credentials と config ファイルがすでにローカル環境に存在する場合、`cargo test --test configure_profiles_test`を実行する事により`TEST_AUTH_TOKEN_DEFAULT`で指定されたトークンがご自身の`default`プロファイルで指定されたトークン値を上書きします。
-- `TEST_CACHE_DEFAULT`の値とご自身の`default`プロファルの`cache`値が同じである事、またその`cache`がすでに存在する事が必須条件です。しかし、このテストの実行が成功した場合、その`cache`は削除されます。
+### Formatting
+
+```bash
+make lint
+```
 
 ## デプロイ
 

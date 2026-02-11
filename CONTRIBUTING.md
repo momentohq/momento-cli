@@ -1,21 +1,25 @@
 ### Building
 
 ```
-cargo build
+make build
 ```
 
-### Testing
+### Manual Testing
 
-Make sure you have `~/.momento/credentials` and `~/.momento/config` files with the following data.
+Make sure you have `~/.momento/credentials` and `~/.momento/config` files with your [API key(s)](https://console.gomomento.com/keys), [endpoint URL(s)](https://docs.momentohq.com/platform/regions), and [cache name(s)](https://console.gomomento.com/caches).
 
 `~/.momento/credentials`
 
 ```
 [default]
-token=<YOUR_TOKEN>
+api_key_v2=<YOUR_TOKEN>
+endpoint=<YOUR_ENDPOINT_URL>
 [YOUR_TEST_PROFILE]
-token=<YOUR_TOKEN>
+api_key_v2=<YOUR_TOKEN>
+endpoint=<YOUR_ENDPOINT_URL>
 ```
+
+- If you prefer, create a legacy API key instead (as for [automated testing](#automated-testing)), then set a `token` instead of `api_key_v2`/`endpoint`.
 
 `~/.momento/config`
 
@@ -28,25 +32,30 @@ cache=<YOUR_TEST_CACHE_WITH_PROFILE>
 ttl=700
 ```
 
-```
-export TEST_CACHE_DEFAULT=<YOUR_TEST_CACHE_DEFAULT>
-export TEST_CACHE_WITH_PROFILE=<YOUR_TEST_CACHE_WITH_PROFILE>
-export TEST_PROFILE=<YOUR_TEST_PROFILE>
-./run_test_sequentially.sh
-cargo clippy --all-targets --all-features -- -D warnings
+Follow the [README](./README.md#use-cli), using `./target/debug/momento` instead of `momento`, for example:
+
+```bash
+./target/debug/momento cache create example-cache
 ```
 
-<br>
+### Automated Testing
 
-:warning: Important notes on running `cargo test --test configure_profiles_test`
+For the automated tests, a [legacy API key](https://console.gomomento.com/api-keys) is required with the following settings:
+- **Type of key**: Super User Key
+- **Expiration**: highly recommended (Legacy keys do not support revocation.)
 
+```bash
+read -s -p "API key: " TEST_AUTH_TOKEN
+# Paste your API key. (Note: You will not be able to see it in the shell.)
+export TEST_AUTH_TOKEN
+make test
 ```
-export TEST_AUTH_TOKEN=<YOUR_TEST_AUTH_TOKEN>
-cargo test --test configure_profile_test
-```
 
-- If you already have existing credentials and config files locally, running `cargo test --test configure_profiles_test` with provided `TEST_AUTH_TOKEN_DEFAULT` will overwrite the value for token in your `default` profile.
-- The value for `TEST_CACHE_DEFAULT` needs to match the cache value in your `default` profile and the cache needs to exist. However, this cache will be deleted after this test runs successfully.
+### Formatting
+
+```bash
+make lint
+```
 
 ### Deploying
 
