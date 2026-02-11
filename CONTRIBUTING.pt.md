@@ -1,7 +1,7 @@
 ## Construindo
 
 ```
-cargo build
+make build
 ```
 
 ## Manual Testing
@@ -48,13 +48,13 @@ For the automated tests, a [legacy API key](https://console.gomomento.com/api-ke
 read -s -p "API key: " TEST_AUTH_TOKEN
 # Paste your API key. (Note: You will not be able to see it in the shell.)
 export TEST_AUTH_TOKEN
-./run_test_sequentially.sh
+make test
 ```
 
 ### Formatting
 
 ```bash
-cargo clippy --all-targets --all-features -- -D warnings
+make lint
 ```
 
 ### Implantação
