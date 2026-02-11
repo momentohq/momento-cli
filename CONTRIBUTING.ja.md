@@ -29,9 +29,14 @@ ttl=700
 ```
 
 ```
+read -p "Token: " TEST_AUTH_TOKEN
+# Enter <YOUR_TOKEN> from above
+export TEST_AUTH_TOKEN
+
 export TEST_CACHE_DEFAULT=<YOUR_TEST_CACHE_DEFAULT>
 export TEST_CACHE_WITH_PROFILE=<YOUR_TEST_CACHE_WITH_PROFILE>
 export TEST_PROFILE=<YOUR_TEST_PROFILE>
+
 ./run_test_sequentially.sh
 cargo clippy --all-targets --all-features -- -D warnings
 ```
