@@ -33,6 +33,14 @@ pub async fn put_function(
     Ok(())
 }
 
+pub async fn invoke_function(
+    client: FunctionClient,
+    function_id: String,
+) -> Result<(), CliError> {
+    console_data!("Invoking function: {function_id}");
+    Ok(())
+}
+
 pub async fn list_functions(client: FunctionClient, cache_name: String) -> Result<(), CliError> {
     let request = ListFunctionsRequest::new(&cache_name);
     let response = client.send(request).await.map_err(Into::<CliError>::into)?;
