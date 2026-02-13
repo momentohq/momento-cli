@@ -10,6 +10,8 @@ use crate::{
     commands::functions::utils::read_wasm_file, error::CliError, utils::console::console_data,
 };
 
+use reqwest;
+
 pub async fn put_function(
     client: FunctionClient,
     cache_name: String,
@@ -39,6 +41,22 @@ pub async fn invoke_function(
     name: String,
 ) -> Result<(), CliError> {
     console_data!("Invoking function {name} from cache {cache_name}");
+
+    let endpoint = client.cache_endpoint.replace("https://cache", "https://api.cache");
+    let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
+    let api_key = client.auth_token;
+    console_data!("GET to {request_url}");
+
+    let req_client = reqwest::Client::new();
+    let request = req_client.get(&request_url)
+        .header("authorization", &api_key)
+        .build()?;
+    let response = req_client.execute(request).await?;
+    console_data!(
+        "response: {}, {}",
+        response.status(), response.text().await?
+    );
+
     Ok(())
 }
 

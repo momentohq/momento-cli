@@ -67,6 +67,10 @@ features = [ "derive",]
 [dependencies.serde_json]
 version = "1.0.79"
 
+[dependencies.reqwest]
+version = "0.13.2"
+features = [ "blocking", ]
+
 [dev-dependencies.uuid]
 version = "1.2.2"
 features = [ "v4",]
