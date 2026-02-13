@@ -273,10 +273,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::FunctionCommand::InvokeFunction { function_id } => {
+                    momento_cli_opts::FunctionCommand::InvokeFunction { cache_name, name } => {
                         commands::functions::function_cli::invoke_function(
                             client,
-                            function_id,
+                            cache_name,
+                            name,
                         )
                         .await?
                     }

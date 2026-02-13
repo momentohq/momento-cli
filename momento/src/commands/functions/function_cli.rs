@@ -35,9 +35,10 @@ pub async fn put_function(
 
 pub async fn invoke_function(
     client: FunctionClient,
-    function_id: String,
+    cache_name: String,
+    name: String,
 ) -> Result<(), CliError> {
-    console_data!("Invoking function: {function_id}");
+    console_data!("Invoking function {name} from cache {cache_name}");
     Ok(())
 }
 
