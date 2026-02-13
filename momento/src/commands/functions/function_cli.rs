@@ -46,13 +46,15 @@ pub async fn invoke_function(
     console_data!("GET to {request_url}");
 
     let req_client = reqwest::Client::new();
-    let request = req_client.get(&request_url)
+    let request = req_client
+        .get(&request_url)
         .header("authorization", &auth_token)
         .build()?;
     let response = req_client.execute(request).await?;
     console_data!(
         "response: {}, {}",
-        response.status(), response.text().await?
+        response.status(),
+        response.text().await?
     );
 
     Ok(())

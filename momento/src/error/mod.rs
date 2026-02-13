@@ -1,7 +1,6 @@
 use std::fmt;
 
 use colored::Colorize;
-use reqwest;
 
 pub struct CliError {
     pub(crate) msg: String,
@@ -21,8 +20,6 @@ impl fmt::Display for CliError {
 
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
-        CliError {
-            msg: e.to_string(),
-        }
+        CliError { msg: e.to_string() }
     }
 }
