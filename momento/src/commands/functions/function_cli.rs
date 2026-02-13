@@ -1,5 +1,4 @@
 use momento::{
-    CredentialProvider,
     functions::{
         ListFunctionVersionsRequest, ListFunctionsRequest, ListWasmsRequest, PutFunctionRequest,
         PutWasmRequest, WasmSource,
@@ -11,7 +10,6 @@ use crate::{
     commands::functions::utils::read_wasm_file, error::CliError, utils::console::console_data,
 };
 
-use std::env;
 use reqwest;
 
 pub async fn put_function(
@@ -38,28 +36,18 @@ pub async fn put_function(
 }
 
 pub async fn invoke_function(
-    client: FunctionClient,
+    endpoint: String,
+    auth_token: String,
     cache_name: String,
     name: String,
 ) -> Result<(), CliError> {
     console_data!("Invoking function {name} from cache {cache_name}");
-
-    let credential_provider = CredentialProvider::from_default_env_var_v2()?;
-    let endpoint = credential_provider.cache_http_endpoint();
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    let api_key = match env::var("MOMENTO_API_KEY") {
-        Ok(auth_token) => auth_token,
-        Err(_) => {
-            return Err(CliError {
-                msg: "Env var MOMENTO_API_KEY must be set".to_string()
-            });
-        }
-    };
     console_data!("GET to {request_url}");
 
     let req_client = reqwest::Client::new();
     let request = req_client.get(&request_url)
-        .header("authorization", &api_key)
+        .header("authorization", &auth_token)
         .build()?;
     let response = req_client.execute(request).await?;
     console_data!(
