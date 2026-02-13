@@ -231,10 +231,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let (creds, _) = get_creds_and_config(&args.profile).await?;
                 let credential_provider = creds.authenticate()?;
                 let endpoint = credential_provider.cache_http_endpoint().to_string();
-                let auth_token = match creds {
-                    config::Credentials::ApiKeyV2(key, _) => key,
-                    config::Credentials::DisposableToken(token) => token,
-                };
+                let auth_token = credential_provider.auth_token().to_string();
                 let client = FunctionClient::builder()
                     .credential_provider(credential_provider)
                     .build()
