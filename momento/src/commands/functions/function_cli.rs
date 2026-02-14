@@ -61,11 +61,12 @@ pub async fn invoke_function(
         .header("authorization", &auth_token)
         .send()
         .await?;
-    console_data!(
-        "response: {}, {}",
-        response.status(),
-        response.text().await?
-    );
+    let status = response.status();
+    if status.is_success() {
+        console_data!("  Response:\n{}", response.text().await?);
+    } else {
+        console_data!("Failed with status {}", status);
+    }
 
     Ok(())
 }
