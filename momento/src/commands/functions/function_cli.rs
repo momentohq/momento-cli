@@ -43,7 +43,9 @@ pub async fn invoke_function(
 ) -> Result<(), CliError> {
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
+    let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
 
+    // Check if function exists / auth is valid
     let head_response = req_client
         .head(&request_url)
         .header("authorization", &auth_token)
@@ -51,23 +53,25 @@ pub async fn invoke_function(
         .await?;
     if !head_response.status().is_success() {
         return Err(CliError {
-            msg: format!("Function {name} in cache {cache_name} was not found"),
+            msg: format!("Function not found. {function_info}"),
         });
     }
 
-    console_data!("Invoking function {name} from cache {cache_name}");
+    // Try to invoke function
+    console_data!("Invoking function. {function_info}");
     let response = req_client
         .get(&request_url)
         .header("authorization", &auth_token)
         .send()
         .await?;
     let status = response.status();
-    if status.is_success() {
-        console_data!("  Response:\n{}", response.text().await?);
-    } else {
-        console_data!("Failed with status {}", status);
+    if !status.is_success() {
+        return Err(CliError {
+            msg: format!("Failed with status {status}"),
+        });
     }
 
+    console_data!("  Response:\n{}", response.text().await?);
     Ok(())
 }
 
