@@ -41,11 +41,21 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
 ) -> Result<(), CliError> {
-    console_data!("Invoking function {name} from cache {cache_name}");
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    console_data!("GET to {request_url}");
-
     let req_client = reqwest::Client::new();
+
+    let head_request = req_client
+        .head(&request_url)
+        .header("authorization", &auth_token)
+        .build()?;
+    let head_response = req_client.execute(head_request).await?;
+    if !head_response.status().is_success() {
+        return Err(CliError {
+            msg: format!("Function {name} in cache {cache_name} was not found"),
+        });
+    }
+
+    console_data!("Invoking function {name} from cache {cache_name}");
     let request = req_client
         .get(&request_url)
         .header("authorization", &auth_token)
