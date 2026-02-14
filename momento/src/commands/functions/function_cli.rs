@@ -44,11 +44,11 @@ pub async fn invoke_function(
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
 
-    let head_request = req_client
+    let head_response = req_client
         .head(&request_url)
         .header("authorization", &auth_token)
-        .build()?;
-    let head_response = req_client.execute(head_request).await?;
+        .send()
+        .await?;
     if !head_response.status().is_success() {
         return Err(CliError {
             msg: format!("Function {name} in cache {cache_name} was not found"),
@@ -56,11 +56,11 @@ pub async fn invoke_function(
     }
 
     console_data!("Invoking function {name} from cache {cache_name}");
-    let request = req_client
+    let response = req_client
         .get(&request_url)
         .header("authorization", &auth_token)
-        .build()?;
-    let response = req_client.execute(request).await?;
+        .send()
+        .await?;
     console_data!(
         "response: {}, {}",
         response.status(),
