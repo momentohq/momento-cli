@@ -67,7 +67,7 @@ pub async fn invoke_function(
                     "Invalid authentication credentials to connect to cache service".into()
                 }
                 StatusCode::NOT_FOUND => format!("Function not found. {function_info}"),
-                _ => "Failed to reach function. {function_info}, Status: {status}".into(),
+                _ => format!("Failed to reach function. {function_info}, Status: {head_status}"),
             },
         });
     }
