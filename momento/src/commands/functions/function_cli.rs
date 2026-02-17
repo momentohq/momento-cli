@@ -46,12 +46,7 @@ pub async fn invoke_function(
 ) -> Result<(), CliError> {
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
-
-    let mut function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
-    if data.is_some() {
-        let _ = write!(function_info, ", Data: {}", data.unwrap_or("N/A".into()));
-    }
-    let function_info = function_info; // Make immutable
+    let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
 
     // Check function before invoking
     let head_status = req_client
@@ -73,7 +68,13 @@ pub async fn invoke_function(
     }
 
     // Try to invoke function
-    console_data!("Invoking function. {function_info}");
+    let mut call_info = function_info.clone();
+    if data.is_some() {
+        let _ = write!(call_info, ", Data: {}", data.unwrap_or("N/A".into()));
+    }
+    let call_info = call_info; // Make immutable
+    console_data!("Invoking function. {call_info}");
+
     let response = req_client
         .get(&request_url)
         .header("authorization", &auth_token)
