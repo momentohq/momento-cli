@@ -11,6 +11,7 @@ use crate::{
 };
 
 use reqwest;
+use reqwest::StatusCode;
 
 pub async fn put_function(
     client: FunctionClient,
@@ -45,15 +46,22 @@ pub async fn invoke_function(
     let req_client = reqwest::Client::new();
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
 
-    // Check if function exists / auth is valid
-    let head_response = req_client
+    // Check function before invoking
+    let head_status = req_client
         .head(&request_url)
         .header("authorization", &auth_token)
         .send()
-        .await?;
-    if !head_response.status().is_success() {
+        .await?
+        .status();
+    if !head_status.is_success() {
         return Err(CliError {
-            msg: format!("Function not found. {function_info}"),
+            msg: match head_status {
+                StatusCode::UNAUTHORIZED => {
+                    "Invalid authentication credentials to connect to cache service".into()
+                }
+                StatusCode::NOT_FOUND => format!("Function not found. {function_info}"),
+                _ => "Failed to reach function. {function_info}, Status: {status}".into(),
+            },
         });
     }
 
