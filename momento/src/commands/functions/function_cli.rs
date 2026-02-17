@@ -70,13 +70,18 @@ pub async fn invoke_function(
     // Try to invoke function
     let mut call_info = function_info.clone();
     if data.is_some() {
-        let _ = write!(call_info, ", Data: {}", data.unwrap_or("N/A".into()));
+        let _ = write!(
+            call_info,
+            ", Data: {}",
+            data.clone().unwrap_or("N/A".into())
+        );
     }
     let call_info = call_info; // Make immutable
     console_data!("Invoking function. {call_info}");
 
     let response = req_client
-        .get(&request_url)
+        .post(&request_url)
+        .body(data.unwrap_or("".into()))
         .header("authorization", &auth_token)
         .send()
         .await?;
