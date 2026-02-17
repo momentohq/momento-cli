@@ -12,6 +12,7 @@ use crate::{
 
 use reqwest;
 use reqwest::StatusCode;
+use std::fmt::Write;
 
 pub async fn put_function(
     client: FunctionClient,
@@ -41,10 +42,16 @@ pub async fn invoke_function(
     auth_token: String,
     cache_name: String,
     name: String,
+    data: Option<String>,
 ) -> Result<(), CliError> {
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
-    let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
+
+    let mut function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
+    if data.is_some() {
+        let _ = write!(function_info, ", Data: {}", data.unwrap_or("N/A".into()));
+    }
+    let function_info = function_info; // Make immutable
 
     // Check function before invoking
     let head_status = req_client
