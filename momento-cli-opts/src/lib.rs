@@ -177,7 +177,7 @@ pub enum FunctionCommand {
         cache_name: String,
         #[arg(long = "name", short, help = "Function name")]
         name: String,
-        #[arg(long = "data", short, help = "HTTP POST data")]
+        #[arg(long = "data", short, help = "HTTP POST payload body")]
         data: Option<String>,
     },
     #[command(about = "List all Momento Functions in the given cache namespace")]

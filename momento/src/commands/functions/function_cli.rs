@@ -46,12 +46,9 @@ pub async fn invoke_function(
 ) -> Result<(), CliError> {
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let mut call_info = format!("Name: {name}, Cache Namespace: {cache_name}");
+    let unwrapped_data = data.clone().unwrap_or("".into());
     if data.is_some() {
-        let _ = write!(
-            call_info,
-            ", Data: {}",
-            data.clone().unwrap_or("N/A".into())
-        );
+        let _ = write!(call_info, ", Payload: {}", unwrapped_data);
     }
     let call_info = call_info; // Make immutable
     console_data!("Invoking function. {call_info}");
@@ -59,7 +56,7 @@ pub async fn invoke_function(
     let req_client = reqwest::Client::new();
     let response = req_client
         .post(&request_url)
-        .body(data.unwrap_or("".into()))
+        .body(unwrapped_data.clone())
         .header("authorization", &auth_token)
         .send()
         .await?;
@@ -70,11 +67,23 @@ pub async fn invoke_function(
     } else {
         Err(CliError {
             msg: match status {
-                StatusCode::UNAUTHORIZED => {
-                    "Invalid authentication credentials to connect to cache service".into()
+                StatusCode::UNAUTHORIZED => "Invalid authentication credentials".into(),
+                StatusCode::NOT_FOUND => "Function or cache not found".into(),
+                StatusCode::FORBIDDEN => "Insufficient permissions to invoke function".into(),
+                StatusCode::BAD_REQUEST => {
+                    format!(
+                        "Invocation failed with 400 Bad Request. {}",
+                        if data.is_some() {
+                            format!(
+                                "Data/payload may be formatted incorrectly: {}",
+                                unwrapped_data
+                            )
+                        } else {
+                            "May need to provide data/payload".into()
+                        }
+                    )
                 }
-                StatusCode::NOT_FOUND => "Function not found".into(),
-                _ => format!("Failed with status {status}"),
+                _ => format!("Invocation failed. {status}"),
             },
         })
     }
