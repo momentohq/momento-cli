@@ -12,6 +12,12 @@ use crate::{
 
 use reqwest;
 use reqwest::StatusCode;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct NotFoundResponse {
+    detail: String,
+}
 
 pub async fn put_function(
     client: FunctionClient,
@@ -67,7 +73,7 @@ pub async fn invoke_function(
         Err(CliError {
             msg: match status {
                 StatusCode::UNAUTHORIZED => "Invalid authentication credentials".into(),
-                StatusCode::NOT_FOUND => "Function or cache not found".into(),
+                StatusCode::NOT_FOUND => response.json::<NotFoundResponse>().await?.detail,
                 StatusCode::FORBIDDEN => "Insufficient permissions to invoke function".into(),
                 _ => {
                     let error_text = response.text().await?;
