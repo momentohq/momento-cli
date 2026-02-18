@@ -171,6 +171,15 @@ pub enum FunctionCommand {
         #[arg(long = "description", short, help = "Description")]
         description: Option<String>,
     },
+    #[command(about = "Call a Momento Function")]
+    InvokeFunction {
+        #[arg(long = "cache-name", short, help = "Cache namespace")]
+        cache_name: String,
+        #[arg(long = "name", short, help = "Function name")]
+        name: String,
+        #[arg(long = "data", short, help = "HTTP POST payload body")]
+        data: Option<String>,
+    },
     #[command(about = "List all Momento Functions in the given cache namespace")]
     ListFunctions {
         #[arg(long = "cache-name", short, help = "Cache namespace")]

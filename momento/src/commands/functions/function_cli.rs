@@ -10,6 +10,15 @@ use crate::{
     commands::functions::utils::read_wasm_file, error::CliError, utils::console::console_data,
 };
 
+use reqwest;
+use reqwest::StatusCode;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct NotFoundResponse {
+    detail: String,
+}
+
 pub async fn put_function(
     client: FunctionClient,
     cache_name: String,
@@ -31,6 +40,48 @@ pub async fn put_function(
         response.version()
     );
     Ok(())
+}
+
+pub async fn invoke_function(
+    endpoint: String,
+    auth_token: String,
+    cache_name: String,
+    name: String,
+    data: Option<String>,
+) -> Result<(), CliError> {
+    let data = data.unwrap_or_default();
+    let function_info = "Name: {name}, Cache Namespace: {cache_name}";
+    if data.is_empty() {
+        console_data!("Invoking function. {function_info}");
+    } else {
+        console_data!("Sending data to function. {function_info}, Payload: {data}");
+    };
+
+    let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
+    let req_client = reqwest::Client::new();
+    let response = req_client
+        .post(&request_url)
+        .body(data)
+        .header("authorization", &auth_token)
+        .send()
+        .await?;
+    let status = response.status();
+    if status.is_success() {
+        console_data!("  Response:\n{}", response.text().await?);
+        Ok(())
+    } else {
+        Err(CliError {
+            msg: match status {
+                StatusCode::UNAUTHORIZED => "Invalid authentication credentials".into(),
+                StatusCode::NOT_FOUND => response.json::<NotFoundResponse>().await?.detail,
+                StatusCode::FORBIDDEN => "Insufficient permissions to invoke function".into(),
+                _ => {
+                    let error_text = response.text().await?;
+                    format!("Invocation failed with {status}. {error_text}")
+                }
+            },
+        })
+    }
 }
 
 pub async fn list_functions(client: FunctionClient, cache_name: String) -> Result<(), CliError> {

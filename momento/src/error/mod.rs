@@ -17,3 +17,9 @@ impl fmt::Display for CliError {
         write!(f, "{}: {}", "ERROR".red().bold(), self.msg.red())
     }
 }
+
+impl From<reqwest::Error> for CliError {
+    fn from(e: reqwest::Error) -> Self {
+        CliError { msg: e.to_string() }
+    }
+}

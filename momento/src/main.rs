@@ -230,6 +230,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             PreviewCommand::Function { operation } => {
                 let (creds, _) = get_creds_and_config(&args.profile).await?;
                 let credential_provider = creds.authenticate()?;
+                let endpoint = credential_provider.cache_http_endpoint().to_string();
+                let auth_token = credential_provider.auth_token().to_string();
                 let client = FunctionClient::builder()
                     .credential_provider(credential_provider)
                     .build()
@@ -270,6 +272,16 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             name,
                             wasm_file,
                             description,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::FunctionCommand::InvokeFunction {
+                        cache_name,
+                        name,
+                        data,
+                    } => {
+                        commands::functions::function_cli::invoke_function(
+                            endpoint, auth_token, cache_name, name, data,
                         )
                         .await?
                     }
