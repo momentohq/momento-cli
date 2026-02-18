@@ -49,15 +49,15 @@ pub async fn invoke_function(
     name: String,
     data: Option<String>,
 ) -> Result<(), CliError> {
-    let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let data = data.unwrap_or_default();
-    let call_info = if !data.is_empty() {
-        format!("Name: {name}, Cache Namespace: {cache_name}, Payload: {data}")
+    let function_info = "Name: {name}, Cache Namespace: {cache_name}";
+    if data.is_empty() {
+        console_data!("Invoking function. {function_info}");
     } else {
-        format!("Name: {name}, Cache Namespace: {cache_name}")
+        console_data!("Sending data to function. {function_info}, Payload: {data}");
     };
-    console_data!("Invoking function. {call_info}");
 
+    let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
     let response = req_client
         .post(&request_url)
