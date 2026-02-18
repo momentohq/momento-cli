@@ -45,8 +45,7 @@ pub async fn invoke_function(
 ) -> Result<(), CliError> {
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let data = data.unwrap_or_default();
-    let have_data = !data.is_empty();
-    let call_info = if have_data {
+    let call_info = if !data.is_empty() {
         format!("Name: {name}, Cache Namespace: {cache_name}, Payload: {data}")
     } else {
         format!("Name: {name}, Cache Namespace: {cache_name}")
@@ -71,14 +70,8 @@ pub async fn invoke_function(
                 StatusCode::NOT_FOUND => "Function or cache not found".into(),
                 StatusCode::FORBIDDEN => "Insufficient permissions to invoke function".into(),
                 StatusCode::BAD_REQUEST => {
-                    format!(
-                        "Invocation failed with 400 Bad Request. {}",
-                        if have_data {
-                            "Data/payload may be formatted incorrectly".to_string()
-                        } else {
-                            "May need to provide data/payload".to_string()
-                        }
-                    )
+                    let error_text = response.text().await?;
+                    format!("Invocation failed with 400 Bad Request. {error_text}")
                 }
                 _ => format!("Invocation failed. {status}"),
             },
