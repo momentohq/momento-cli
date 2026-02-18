@@ -69,11 +69,10 @@ pub async fn invoke_function(
                 StatusCode::UNAUTHORIZED => "Invalid authentication credentials".into(),
                 StatusCode::NOT_FOUND => "Function or cache not found".into(),
                 StatusCode::FORBIDDEN => "Insufficient permissions to invoke function".into(),
-                StatusCode::BAD_REQUEST => {
+                _ => {
                     let error_text = response.text().await?;
-                    format!("Invocation failed with 400 Bad Request. {error_text}")
+                    format!("Invocation failed with {status}. {error_text}")
                 }
-                _ => format!("Invocation failed. {status}"),
             },
         })
     }
