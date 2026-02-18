@@ -45,30 +45,7 @@ pub async fn invoke_function(
     data: Option<String>,
 ) -> Result<(), CliError> {
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    let req_client = reqwest::Client::new();
-    let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
-
-    // Check function before invoking
-    let head_status = req_client
-        .head(&request_url)
-        .header("authorization", &auth_token)
-        .send()
-        .await?
-        .status();
-    if !head_status.is_success() {
-        return Err(CliError {
-            msg: match head_status {
-                StatusCode::UNAUTHORIZED => {
-                    "Invalid authentication credentials to connect to cache service".into()
-                }
-                StatusCode::NOT_FOUND => format!("Function not found. {function_info}"),
-                _ => format!("Failed to reach function. {function_info}, Status: {head_status}"),
-            },
-        });
-    }
-
-    // Try to invoke function
-    let mut call_info = function_info.clone();
+    let mut call_info = format!("Name: {name}, Cache Namespace: {cache_name}");
     if data.is_some() {
         let _ = write!(
             call_info,
@@ -79,6 +56,7 @@ pub async fn invoke_function(
     let call_info = call_info; // Make immutable
     console_data!("Invoking function. {call_info}");
 
+    let req_client = reqwest::Client::new();
     let response = req_client
         .post(&request_url)
         .body(data.unwrap_or("".into()))
@@ -86,14 +64,20 @@ pub async fn invoke_function(
         .send()
         .await?;
     let status = response.status();
-    if !status.is_success() {
-        return Err(CliError {
-            msg: format!("Failed with status {status}"),
-        });
+    if status.is_success() {
+        console_data!("  Response:\n{}", response.text().await?);
+        Ok(())
+    } else {
+        Err(CliError {
+            msg: match status {
+                StatusCode::UNAUTHORIZED => {
+                    "Invalid authentication credentials to connect to cache service".into()
+                }
+                StatusCode::NOT_FOUND => "Function not found".into(),
+                _ => format!("Failed with status {status}"),
+            },
+        })
     }
-
-    console_data!("  Response:\n{}", response.text().await?);
-    Ok(())
 }
 
 pub async fn list_functions(client: FunctionClient, cache_name: String) -> Result<(), CliError> {
