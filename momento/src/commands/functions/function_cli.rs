@@ -12,7 +12,6 @@ use crate::{
 
 use reqwest;
 use reqwest::StatusCode;
-use std::fmt::Write;
 
 pub async fn put_function(
     client: FunctionClient,
@@ -45,18 +44,19 @@ pub async fn invoke_function(
     data: Option<String>,
 ) -> Result<(), CliError> {
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    let mut call_info = format!("Name: {name}, Cache Namespace: {cache_name}");
-    let unwrapped_data = data.clone().unwrap_or("".into());
-    if data.is_some() {
-        let _ = write!(call_info, ", Payload: {}", unwrapped_data);
-    }
-    let call_info = call_info; // Make immutable
+    let data = data.unwrap_or_default();
+    let have_data = !data.is_empty();
+    let call_info = if have_data {
+        format!("Name: {name}, Cache Namespace: {cache_name}, Payload: {data}")
+    } else {
+        format!("Name: {name}, Cache Namespace: {cache_name}")
+    };
     console_data!("Invoking function. {call_info}");
 
     let req_client = reqwest::Client::new();
     let response = req_client
         .post(&request_url)
-        .body(unwrapped_data.clone())
+        .body(data)
         .header("authorization", &auth_token)
         .send()
         .await?;
@@ -73,13 +73,10 @@ pub async fn invoke_function(
                 StatusCode::BAD_REQUEST => {
                     format!(
                         "Invocation failed with 400 Bad Request. {}",
-                        if data.is_some() {
-                            format!(
-                                "Data/payload may be formatted incorrectly: {}",
-                                unwrapped_data
-                            )
+                        if have_data {
+                            "Data/payload may be formatted incorrectly".to_string()
                         } else {
-                            "May need to provide data/payload".into()
+                            "May need to provide data/payload".to_string()
                         }
                     )
                 }
