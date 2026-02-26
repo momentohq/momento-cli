@@ -126,26 +126,34 @@ pub enum AccountCommand {
 pub enum FunctionCommand {
     #[command(about = "Create or update a Momento Function")]
     PutFunction {
-        #[arg(long = "cache-name", short, help = "Cache namespace")]
+        #[arg(
+            long = "cache-name",
+            short,
+            help = "Cache namespace",
+            value_name = "CACHE"
+        )]
         cache_name: String,
-        #[arg(long = "name", short, help = "Function name")]
+        #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
         name: String,
         #[arg(
             long = "wasm-file",
             short,
-            help = ".wasm file compiled with wasm32-wasip2"
+            help = ".wasm file compiled with wasm32-wasip2",
+            value_name = "WASM"
         )]
         wasm_file: Option<String>,
         #[arg(
             long = "id-uploaded-wasm",
             short,
-            help = "ID of a Wasm binary previously uploaded to Momento Functions"
+            help = "ID of a Wasm binary previously uploaded to Momento Functions",
+            value_name = "WASM"
         )]
         id_uploaded_wasm: Option<String>,
         #[arg(
             long = "version-uploaded-wasm",
             short,
-            help = "Version number of a Wasm binary previously uploaded to Momento Functions"
+            help = "Version number of a Wasm binary previously uploaded to Momento Functions",
+            value_name = "WASM"
         )]
         version_uploaded_wasm: Option<u32>,
         #[arg(long = "description", short, help = "Description")]
@@ -154,7 +162,8 @@ pub enum FunctionCommand {
             long = "env-var",
             short = 'E',
             value_parser = parse_env::<String, String>,
-            help = "Environment variables to provide to the Function. Example: -E KEY1=value_1 -E KEY2=value_2"
+            help = "Environment variables to provide to the Function. Example: -E KEY1=value_1 -E KEY2=value_2",
+            value_name = "WASM"
         )]
         environment_variables: Vec<(String, String)>,
     },
@@ -165,7 +174,8 @@ pub enum FunctionCommand {
         #[arg(
             long = "wasm-file",
             short,
-            help = ".wasm file compiled with wasm32-wasip2"
+            help = ".wasm file compiled with wasm32-wasip2",
+            value_name = "WASM"
         )]
         wasm_file: String,
         #[arg(long = "description", short, help = "Description")]
@@ -173,16 +183,26 @@ pub enum FunctionCommand {
     },
     #[command(about = "Call a Momento Function")]
     InvokeFunction {
-        #[arg(long = "cache-name", short, help = "Cache namespace")]
+        #[arg(
+            long = "cache-name",
+            short,
+            help = "Cache namespace",
+            value_name = "CACHE"
+        )]
         cache_name: String,
-        #[arg(long = "name", short, help = "Function name")]
+        #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
         name: String,
         #[arg(long = "data", short, help = "HTTP POST payload body")]
         data: Option<String>,
     },
     #[command(about = "List all Momento Functions in the given cache namespace")]
     ListFunctions {
-        #[arg(long = "cache-name", short, help = "Cache namespace")]
+        #[arg(
+            long = "cache-name",
+            short,
+            help = "Cache namespace",
+            value_name = "CACHE"
+        )]
         cache_name: String,
     },
     #[command(about = "List all versions of a Momento Function")]
