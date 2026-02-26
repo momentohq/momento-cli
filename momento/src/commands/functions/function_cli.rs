@@ -71,7 +71,7 @@ pub async fn invoke_function(
     let status = response.status();
     if status.is_success() {
         if !quiet {
-            console_data!("  Response:")
+            console_data!("  Response:");
         }
         console_data!("{}", response.text().await?);
         Ok(())
