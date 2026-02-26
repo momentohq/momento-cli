@@ -132,7 +132,7 @@ pub enum FunctionCommand {
             help = "Cache namespace",
             value_name = "CACHE"
         )]
-        cache_name: String,
+        cache_name: Option<String>,
         #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
         name: String,
         #[arg(
@@ -189,7 +189,7 @@ pub enum FunctionCommand {
             help = "Cache namespace",
             value_name = "CACHE"
         )]
-        cache_name: String,
+        cache_name: Option<String>,
         #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
         name: String,
         #[arg(long = "data", short, help = "HTTP POST payload body")]
@@ -203,7 +203,7 @@ pub enum FunctionCommand {
             help = "Cache namespace",
             value_name = "CACHE"
         )]
-        cache_name: String,
+        cache_name: Option<String>,
     },
     #[command(about = "List all versions of a Momento Function")]
     ListFunctionVersions {

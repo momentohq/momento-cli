@@ -228,7 +228,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 .await?;
             }
             PreviewCommand::Function { operation } => {
-                let (creds, _) = get_creds_and_config(&args.profile).await?;
+                let (creds, config) = get_creds_and_config(&args.profile).await?;
                 let credential_provider = creds.authenticate()?;
                 let endpoint = credential_provider.cache_http_endpoint().to_string();
                 let auth_token = credential_provider.auth_token().to_string();
@@ -247,6 +247,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         description,
                         environment_variables,
                     } => {
+                        let cache_name = cache_name.unwrap_or(config.cache);
                         let wasm_source = determine_wasm_source(
                             wasm_file,
                             id_uploaded_wasm,
@@ -280,12 +281,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         name,
                         data,
                     } => {
+                        let cache_name = cache_name.unwrap_or(config.cache);
                         commands::functions::function_cli::invoke_function(
                             endpoint, auth_token, cache_name, name, data,
                         )
                         .await?
                     }
                     momento_cli_opts::FunctionCommand::ListFunctions { cache_name } => {
+                        let cache_name = cache_name.unwrap_or(config.cache);
                         commands::functions::function_cli::list_functions(client, cache_name)
                             .await?
                     }
