@@ -48,14 +48,17 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
+    quiet: bool,
 ) -> Result<(), CliError> {
     let data = data.unwrap_or_default();
-    let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
-    if data.is_empty() {
-        console_data!("Invoking function. {function_info}");
-    } else {
-        console_data!("Sending data to function. {function_info}, Payload: {data}");
-    };
+    if !quiet {
+        let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
+        if data.is_empty() {
+            console_data!("Invoking function. {function_info}");
+        } else {
+            console_data!("Sending data to function. {function_info}, Payload: {data}");
+        };
+    }
 
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
@@ -67,7 +70,10 @@ pub async fn invoke_function(
         .await?;
     let status = response.status();
     if status.is_success() {
-        console_data!("  Response:\n{}", response.text().await?);
+        if !quiet {
+            console_data!("  Response:")
+        }
+        console_data!("{}", response.text().await?);
         Ok(())
     } else {
         Err(CliError {

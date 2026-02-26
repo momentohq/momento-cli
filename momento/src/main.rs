@@ -280,10 +280,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         cache_name,
                         name,
                         data,
+                        quiet,
                     } => {
                         let cache_name = cache_name.unwrap_or(config.cache);
                         commands::functions::function_cli::invoke_function(
-                            endpoint, auth_token, cache_name, name, data,
+                            endpoint, auth_token, cache_name, name, data, quiet,
                         )
                         .await?
                     }
