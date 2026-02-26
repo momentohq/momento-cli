@@ -194,8 +194,6 @@ pub enum FunctionCommand {
         name: String,
         #[arg(long = "data", short, help = "HTTP POST payload body")]
         data: Option<String>,
-        #[arg(long = "quiet", short, help = "Log less information")]
-        quiet: bool,
     },
     #[command(about = "List all Momento Functions in the given cache namespace")]
     ListFunctions {

@@ -48,10 +48,10 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
-    quiet: bool,
+    verbose: bool,
 ) -> Result<(), CliError> {
     let data = data.unwrap_or_default();
-    if !quiet {
+    if verbose {
         let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
         if data.is_empty() {
             console_data!("Invoking function. {function_info}");
@@ -70,9 +70,6 @@ pub async fn invoke_function(
         .await?;
     let status = response.status();
     if status.is_success() {
-        if !quiet {
-            console_data!("  Response:");
-        }
         console_data!("{}", response.text().await?);
         Ok(())
     } else {
