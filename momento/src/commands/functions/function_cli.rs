@@ -50,7 +50,7 @@ pub async fn invoke_function(
     data: Option<String>,
 ) -> Result<(), CliError> {
     let data = data.unwrap_or_default();
-    let function_info = "Name: {name}, Cache Namespace: {cache_name}";
+    let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
     if data.is_empty() {
         console_data!("Invoking function. {function_info}");
     } else {
