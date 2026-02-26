@@ -10,6 +10,7 @@ use crate::{
     commands::functions::utils::read_wasm_file, error::CliError, utils::console::console_data,
 };
 
+use log::info;
 use reqwest;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -48,17 +49,14 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
-    verbose: bool,
 ) -> Result<(), CliError> {
     let data = data.unwrap_or_default();
-    if verbose {
-        let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
-        if data.is_empty() {
-            console_data!("Invoking function. {function_info}");
-        } else {
-            console_data!("Sending data to function. {function_info}, Payload: {data}");
-        };
-    }
+    let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
+    if data.is_empty() {
+        info!("Invoking function. {function_info}");
+    } else {
+        info!("Sending data to function. {function_info}, Payload: {data}");
+    };
 
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
