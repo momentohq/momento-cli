@@ -231,7 +231,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
                 let credential_provider = creds.authenticate()?;
                 let endpoint = credential_provider.cache_http_endpoint().to_string();
-                let auth_token = credential_provider.auth_token().to_string();
+                let profile_auth_token = credential_provider.auth_token().to_string();
                 let client = FunctionClient::builder()
                     .credential_provider(credential_provider)
                     .build()
@@ -279,9 +279,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     momento_cli_opts::FunctionCommand::InvokeFunction {
                         cache_name,
                         name,
+                        token,
                         data,
                     } => {
                         let cache_name = cache_name.unwrap_or(config.cache);
+                        let auth_token = token.unwrap_or(profile_auth_token);
                         commands::functions::function_cli::invoke_function(
                             endpoint, auth_token, cache_name, name, data,
                         )
