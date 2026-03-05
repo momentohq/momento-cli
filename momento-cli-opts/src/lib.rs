@@ -192,8 +192,11 @@ pub enum FunctionCommand {
         cache_name: Option<String>,
         #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
         name: String,
-        #[arg(long = "token", short, help = "Auth token")]
-        token: Option<String>,
+        #[arg(
+            long = "momento-api-key",
+            help = "API key to use when interacting with Momento, instead of using your profile's API key"
+        )]
+        momento_api_key: Option<String>,
         #[arg(long = "data", short, help = "HTTP POST payload body")]
         data: Option<String>,
     },
