@@ -184,10 +184,16 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             }
         }
         momento_cli_opts::Subcommand::Configure {
+            momento_api_key,
             quick,
             api_key_and_endpoint,
             disposable_token,
         } => {
+            if momento_api_key.is_some() {
+                return Err(CliError {
+                    msg: "--momento-api-key should not be provided. You will be prompted for your API key.".to_string(),
+                });
+            }
             commands::configure::configure_cli::configure_momento(
                 quick,
                 &args.profile,

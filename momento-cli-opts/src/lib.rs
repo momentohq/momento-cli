@@ -85,6 +85,8 @@ To delete a topic, stop subscribing to it."
     },
     #[command(about = "Configure credentials")]
     Configure {
+        #[arg(hide = true, long)] // disallowed in this subcommand
+        momento_api_key: Option<String>,
         #[arg(long, short)]
         quick: bool,
         #[arg(
