@@ -7,7 +7,7 @@ use error::CliError;
 use log::{debug, error, LevelFilter};
 use momento::{topics, FunctionClient, MomentoError, TopicClient};
 use momento_cli_opts::PreviewCommand;
-use utils::{console::output_info, user::get_creds_and_config};
+use utils::{client::get_momento_client, console::output_info, user::get_creds_and_config};
 
 use crate::{commands::functions::utils::determine_wasm_source, utils::console::console_info};
 
@@ -40,7 +40,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     endpoint,
                     operation,
                 } => {
-                    // TODO shared logic here for Cache commands
+                    let client = get_momento_client(creds, endpoint).await?;
 
                     match operation {
                         momento_cli_opts::CacheCommand::Create {
@@ -52,12 +52,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                 .or(cache_name_flag)
                                 .or(cache_name_flag_for_backward_compatibility)
                                 .expect("The argument group guarantees 1 or the other");
-                            commands::cache::cache_cli::create_cache(
-                                cache_name.clone(),
-                                creds,
-                                endpoint,
-                            )
-                            .await?;
+                            commands::cache::cache_cli::create_cache(client, cache_name.clone())
+                                .await?;
                             debug!("created cache {cache_name}")
                         }
                         momento_cli_opts::CacheCommand::Delete {
@@ -69,16 +65,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                 .or(cache_name_flag)
                                 .or(cache_name_flag_for_backward_compatibility)
                                 .expect("The argument group guarantees 1 or the other");
-                            commands::cache::cache_cli::delete_cache(
-                                cache_name.clone(),
-                                creds,
-                                endpoint,
-                            )
-                            .await?;
+                            commands::cache::cache_cli::delete_cache(client, cache_name.clone())
+                                .await?;
                             debug!("deleted cache {}", cache_name)
                         }
                         momento_cli_opts::CacheCommand::List {} => {
-                            commands::cache::cache_cli::list_caches(creds, endpoint).await?
+                            commands::cache::cache_cli::list_caches(client).await?
                         }
                         momento_cli_opts::CacheCommand::Flush {
                             cache_name,
@@ -87,8 +79,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             let cache_name = cache_name
                                 .or(cache_name_flag)
                                 .expect("The argument group guarantees 1 or the other");
-                            commands::cache::cache_cli::flush_cache(cache_name, creds, endpoint)
-                                .await?
+                            commands::cache::cache_cli::flush_cache(client, cache_name).await?
                         }
                         momento_cli_opts::CacheCommand::Set {
                             cache_name,
@@ -109,12 +100,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                 .or(value_flag)
                                 .expect("The argument group guarantees 1 or the other");
                             commands::cache::cache_cli::set(
+                                client,
                                 cache_name,
-                                creds,
                                 key,
                                 value,
                                 ttl_seconds.unwrap_or(config.ttl),
-                                endpoint,
                             )
                             .await?
                         }
@@ -128,12 +118,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                 .or(key_flag)
                                 .expect("The argument group guarantees 1 or the other");
                             commands::cache::cache_cli::get(
+                                client,
                                 cache_name
                                     .or(cache_name_flag_for_backward_compatibility)
                                     .unwrap_or(config.cache),
-                                creds,
                                 key,
-                                endpoint,
                             )
                             .await?;
                         }
@@ -147,12 +136,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                 .or(key_flag)
                                 .expect("The argument group guarantees 1 or the other");
                             commands::cache::cache_cli::delete_key(
+                                client,
                                 cache_name
                                     .or(cache_name_flag_for_backward_compatibility)
                                     .unwrap_or(config.cache),
-                                creds,
                                 key,
-                                endpoint,
                             )
                             .await?;
                         }

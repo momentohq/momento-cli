@@ -9,6 +9,7 @@ use crate::{
     config::{Config, Credentials},
     error::CliError,
     utils::{
+        client::get_momento_client,
         console::console_info,
         file::{
             create_file, get_config_file_path, get_credentials_file_path, get_momento_config_dir,
@@ -61,7 +62,8 @@ pub async fn configure_momento(
     .await?;
 
     // TODO: Update the endpoint to read from config
-    match create_cache(config.cache.clone(), credentials, None).await {
+    let client = get_momento_client(credentials, None).await?;
+    match create_cache(client, config.cache.clone()).await {
         Ok(_) => console_info!(
             "{} successfully created as the default with default TTL of {}s",
             config.cache.clone(),
