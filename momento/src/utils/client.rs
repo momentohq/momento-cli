@@ -5,17 +5,11 @@ use momento::{
     TopicClient,
 };
 
-use crate::{config::Credentials, error::CliError};
+use crate::error::CliError;
 
 pub async fn get_cache_client(
-    credentials: Credentials,
-    endpoint: Option<String>,
+    credential_provider: CredentialProvider,
 ) -> Result<CacheClient, CliError> {
-    let mut credential_provider = credentials.authenticate()?;
-    if let Some(momento_override) = endpoint {
-        credential_provider = credential_provider.base_endpoint(&momento_override);
-    }
-
     CacheClient::builder()
         .default_ttl(Duration::from_secs(120))
         .configuration(configurations::Laptop::latest())

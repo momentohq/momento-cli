@@ -44,7 +44,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     endpoint,
                     operation,
                 } => {
-                    let client = get_cache_client(creds, endpoint).await?;
+                    let mut credential_provider = creds.authenticate()?;
+                    if let Some(endpoint_override) = endpoint {
+                        credential_provider = credential_provider.base_endpoint(&endpoint_override);
+                    }
+                    let client = get_cache_client(credential_provider).await?;
 
                     match operation {
                         momento_cli_opts::CacheCommand::Create {
