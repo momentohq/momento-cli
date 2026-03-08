@@ -62,7 +62,8 @@ pub async fn configure_momento(
     .await?;
 
     // TODO: Update the endpoint to read from config
-    let client = get_cache_client(credentials, None).await?;
+    let credential_provider = credentials.authenticate()?;
+    let client = get_cache_client(credential_provider).await?;
     match create_cache(client, config.cache.clone()).await {
         Ok(_) => console_info!(
             "{} successfully created as the default with default TTL of {}s",
