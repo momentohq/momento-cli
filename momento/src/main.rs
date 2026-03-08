@@ -5,9 +5,13 @@ use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
-use momento::{topics, FunctionClient, MomentoError, TopicClient};
+use momento::MomentoError;
 use momento_cli_opts::PreviewCommand;
-use utils::{client::get_momento_client, console::output_info, user::get_creds_and_config};
+use utils::{
+    client::{get_cache_client, get_function_client, get_topic_client},
+    console::output_info,
+    user::get_creds_and_config,
+};
 
 use crate::{commands::functions::utils::determine_wasm_source, utils::console::console_info};
 
@@ -40,7 +44,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     endpoint,
                     operation,
                 } => {
-                    let client = get_momento_client(creds, endpoint).await?;
+                    let client = get_cache_client(creds, endpoint).await?;
 
                     match operation {
                         momento_cli_opts::CacheCommand::Create {
@@ -154,12 +158,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     if let Some(endpoint_override) = endpoint {
                         credential_provider = credential_provider.base_endpoint(&endpoint_override);
                     }
+                    let client = get_topic_client(credential_provider).await?;
 
-                    let client = TopicClient::builder()
-                        .configuration(topics::configurations::Laptop::latest())
-                        .credential_provider(credential_provider)
-                        .build()
-                        .map_err(Into::<CliError>::into)?;
                     match operation {
                         momento_cli_opts::TopicCommand::Publish {
                             cache_name,
@@ -229,10 +229,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         let credential_provider = creds.authenticate()?;
                         let endpoint = credential_provider.cache_http_endpoint().to_string();
                         let auth_token = credential_provider.auth_token().to_string();
-                        let client = FunctionClient::builder()
-                            .credential_provider(credential_provider)
-                            .build()
-                            .map_err(Into::<CliError>::into)?;
+                        let client = get_function_client(credential_provider).await?;
 
                         match operation {
                             momento_cli_opts::FunctionCommand::PutFunction {
