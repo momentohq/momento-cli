@@ -30,11 +30,11 @@ pub struct Momento {
     pub profile: String,
 
     #[arg(
-        long = "momento-api-key",
+        long = "api-key",
         global = true,
         help = "API key to use when interacting with Momento, instead of using your profile's API key"
     )]
-    pub momento_api_key: Option<String>,
+    pub api_key: Option<String>,
 
     #[command(subcommand)]
     pub command: Subcommand,
@@ -86,7 +86,7 @@ To delete a topic, stop subscribing to it."
     #[command(about = "Configure credentials")]
     Configure {
         #[arg(hide = true, long)] // disallowed in this subcommand
-        momento_api_key: Option<String>,
+        api_key: Option<String>,
         #[arg(long, short)]
         quick: bool,
         #[arg(
