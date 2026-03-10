@@ -61,7 +61,7 @@ pub async fn configure_momento(
     )
     .await?;
 
-    let credential_provider = credentials.override_and_authenticate(None)?;
+    let credential_provider = credentials.override_and_authenticate(None, None)?;
     let client = get_cache_client(credential_provider).await?;
     match create_cache(client, config.cache.clone()).await {
         Ok(_) => console_info!(

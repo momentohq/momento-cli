@@ -28,12 +28,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider = creds.override_and_authenticate(api_key)?;
-            if let Some(endpoint_override) = endpoint {
-                credential_provider = credential_provider.base_endpoint(&endpoint_override);
-            }
-
+            let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
             let client = get_cache_client(credential_provider).await?;
+
             match operation {
                 momento_cli_opts::CacheCommand::Create {
                     cache_name_flag,
@@ -142,10 +139,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider = creds.override_and_authenticate(api_key)?;
-            if let Some(endpoint_override) = endpoint {
-                credential_provider = credential_provider.base_endpoint(&endpoint_override);
-            }
+            let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
             let client = get_topic_client(credential_provider).await?;
             match operation {
@@ -232,10 +226,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 operation,
             } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
-                let mut credential_provider = creds.authenticate(api_key)?;
-                if let Some(endpoint_override) = endpoint {
-                    credential_provider = credential_provider.base_endpoint(&endpoint_override);
-                }
+                let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
                 let api_endpoint = credential_provider.cache_http_endpoint().to_string();
                 let auth_token = credential_provider.auth_token().to_string();
