@@ -29,13 +29,6 @@ pub struct Momento {
     )]
     pub profile: String,
 
-    #[arg(
-        long = "api-key",
-        global = true,
-        help = "API key to use when interacting with Momento, instead of using your profile's API key"
-    )]
-    pub api_key: Option<String>,
-
     #[command(subcommand)]
     pub command: Subcommand,
 }
@@ -50,6 +43,13 @@ impl Momento {
 pub enum Subcommand {
     #[command(about = "Interact with caches")]
     Cache {
+        #[arg(
+            long = "api-key",
+            global = true,
+            help = "API key to use when interacting with Momento, instead of using your profile's API key"
+        )]
+        api_key: Option<String>,
+
         #[arg(
             long = "endpoint",
             short = 'e',
@@ -73,6 +73,13 @@ To delete a topic, stop subscribing to it."
     )]
     Topic {
         #[arg(
+            long = "api-key",
+            global = true,
+            help = "API key to use when interacting with Momento, instead of using your profile's API key"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
             long = "endpoint",
             short = 'e',
             global = true,
@@ -85,8 +92,6 @@ To delete a topic, stop subscribing to it."
     },
     #[command(about = "Configure credentials")]
     Configure {
-        #[arg(hide = true, long)] // disallowed in this subcommand
-        api_key: Option<String>,
         #[arg(long, short)]
         quick: bool,
         #[arg(
@@ -285,6 +290,13 @@ to help find opportunities for optimizations with Momento.
     },
     #[command(about = "**PREVIEW** Create or update your Momento Functions")]
     Function {
+        #[arg(
+            long = "api-key",
+            global = true,
+            help = "API key to use when interacting with Momento, instead of using your profile's API key"
+        )]
+        api_key: Option<String>,
+
         #[command(subcommand)]
         operation: FunctionCommand,
     },

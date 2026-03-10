@@ -23,11 +23,12 @@ mod utils;
 async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliError> {
     match args.command {
         momento_cli_opts::Subcommand::Cache {
+            api_key,
             endpoint,
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider = creds.authenticate(args.api_key)?;
+            let mut credential_provider = creds.authenticate(api_key)?;
             if let Some(endpoint_override) = endpoint {
                 credential_provider = credential_provider.base_endpoint(&endpoint_override);
             }
@@ -136,11 +137,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             }
         }
         momento_cli_opts::Subcommand::Topic {
+            api_key,
             endpoint,
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider = creds.authenticate(args.api_key)?;
+            let mut credential_provider = creds.authenticate(api_key)?;
             if let Some(endpoint_override) = endpoint {
                 credential_provider = credential_provider.base_endpoint(&endpoint_override);
             }
@@ -181,17 +183,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             }
         }
         momento_cli_opts::Subcommand::Configure {
-            api_key,
             quick,
             api_key_and_endpoint,
             disposable_token,
         } => {
-            if api_key.is_some() {
-                return Err(CliError {
-                    msg: "--api-key should not be provided. You will be prompted for your API key."
-                        .to_string(),
-                });
-            }
             commands::configure::configure_cli::configure_momento(
                 quick,
                 &args.profile,
@@ -231,9 +226,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 )
                 .await?;
             }
-            PreviewCommand::Function { operation } => {
+            PreviewCommand::Function { api_key, operation } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
-                let credential_provider = creds.authenticate(args.api_key)?;
+                let credential_provider = creds.authenticate(api_key)?;
                 let endpoint = credential_provider.cache_http_endpoint().to_string();
                 let auth_token = credential_provider.auth_token().to_string();
                 let client = get_function_client(credential_provider).await?;
