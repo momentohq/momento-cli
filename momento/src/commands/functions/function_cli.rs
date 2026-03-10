@@ -96,11 +96,12 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
         console_data!("Functions in cache namespace: {cache_name}");
         functions_list.iter().for_each(|function| {
             console_data!(
-                "Name: {}, ID: {}, Version: {}, Description: {}",
+                "Name: {}, ID: {}, Version: {}, Description: {}, Last Updated: {}",
                 function.name(),
                 function.function_id(),
                 function.version(),
-                function.description()
+                function.description(),
+                function.last_updated_at(),
             )
         });
     }

@@ -5,9 +5,13 @@ use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
 use log::{debug, error, LevelFilter};
-use momento::{topics, FunctionClient, MomentoError, TopicClient};
+use momento::MomentoError;
 use momento_cli_opts::PreviewCommand;
-use utils::{console::output_info, user::get_creds_and_config};
+use utils::{
+    client::{get_cache_client, get_function_client, get_topic_client},
+    console::output_info,
+    user::get_creds_and_config,
+};
 
 use crate::{commands::functions::utils::determine_wasm_source, utils::console::console_info};
 
@@ -21,119 +25,116 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
         momento_cli_opts::Subcommand::Cache {
             endpoint,
             operation,
-        } => match operation {
-            momento_cli_opts::CacheCommand::Create {
-                cache_name_flag,
-                cache_name,
-                cache_name_flag_for_backward_compatibility,
-            } => {
-                let cache_name = cache_name
-                    .or(cache_name_flag)
-                    .or(cache_name_flag_for_backward_compatibility)
-                    .expect("The argument group guarantees 1 or the other");
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::cache::cache_cli::create_cache(cache_name.clone(), creds, endpoint)
-                    .await?;
-                debug!("created cache {cache_name}")
+        } => {
+            let (creds, config) = get_creds_and_config(&args.profile).await?;
+            let mut credential_provider = creds.authenticate()?;
+            if let Some(endpoint_override) = endpoint {
+                credential_provider = credential_provider.base_endpoint(&endpoint_override);
             }
-            momento_cli_opts::CacheCommand::Delete {
-                cache_name,
-                cache_name_flag,
-                cache_name_flag_for_backward_compatibility,
-            } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                let cache_name = cache_name
-                    .or(cache_name_flag)
-                    .or(cache_name_flag_for_backward_compatibility)
-                    .expect("The argument group guarantees 1 or the other");
-                commands::cache::cache_cli::delete_cache(cache_name.clone(), creds, endpoint)
-                    .await?;
-                debug!("deleted cache {}", cache_name)
-            }
-            momento_cli_opts::CacheCommand::List {} => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                commands::cache::cache_cli::list_caches(creds, endpoint).await?
-            }
-            momento_cli_opts::CacheCommand::Flush {
-                cache_name,
-                cache_name_flag,
-            } => {
-                let (creds, _config) = get_creds_and_config(&args.profile).await?;
-                let cache_name = cache_name
-                    .or(cache_name_flag)
-                    .expect("The argument group guarantees 1 or the other");
-                commands::cache::cache_cli::flush_cache(cache_name, creds, endpoint).await?
-            }
-            momento_cli_opts::CacheCommand::Set {
-                cache_name,
-                cache_name_flag_for_backward_compatibility,
-                key,
-                key_flag,
-                value,
-                value_flag,
-                ttl_seconds,
-            } => {
-                let (creds, config) = get_creds_and_config(&args.profile).await?;
-                let cache_name = cache_name
-                    .or(cache_name_flag_for_backward_compatibility)
-                    .unwrap_or(config.cache);
-                let key = key
-                    .or(key_flag)
-                    .expect("The argument group guarantees 1 or the other");
-                let value = value
-                    .or(value_flag)
-                    .expect("The argument group guarantees 1 or the other");
-                commands::cache::cache_cli::set(
+
+            let client = get_cache_client(credential_provider).await?;
+            match operation {
+                momento_cli_opts::CacheCommand::Create {
+                    cache_name_flag,
                     cache_name,
-                    creds,
+                    cache_name_flag_for_backward_compatibility,
+                } => {
+                    let cache_name = cache_name
+                        .or(cache_name_flag)
+                        .or(cache_name_flag_for_backward_compatibility)
+                        .expect("The argument group guarantees 1 or the other");
+                    commands::cache::cache_cli::create_cache(client, cache_name.clone()).await?;
+                    debug!("created cache {cache_name}")
+                }
+                momento_cli_opts::CacheCommand::Delete {
+                    cache_name,
+                    cache_name_flag,
+                    cache_name_flag_for_backward_compatibility,
+                } => {
+                    let cache_name = cache_name
+                        .or(cache_name_flag)
+                        .or(cache_name_flag_for_backward_compatibility)
+                        .expect("The argument group guarantees 1 or the other");
+                    commands::cache::cache_cli::delete_cache(client, cache_name.clone()).await?;
+                    debug!("deleted cache {}", cache_name)
+                }
+                momento_cli_opts::CacheCommand::List {} => {
+                    commands::cache::cache_cli::list_caches(client).await?
+                }
+                momento_cli_opts::CacheCommand::Flush {
+                    cache_name,
+                    cache_name_flag,
+                } => {
+                    let cache_name = cache_name
+                        .or(cache_name_flag)
+                        .expect("The argument group guarantees 1 or the other");
+                    commands::cache::cache_cli::flush_cache(client, cache_name).await?
+                }
+                momento_cli_opts::CacheCommand::Set {
+                    cache_name,
+                    cache_name_flag_for_backward_compatibility,
                     key,
+                    key_flag,
                     value,
-                    ttl_seconds.unwrap_or(config.ttl),
-                    endpoint,
-                )
-                .await?
-            }
-            momento_cli_opts::CacheCommand::Get {
-                cache_name,
-                cache_name_flag_for_backward_compatibility,
-                key,
-                key_flag,
-            } => {
-                let (creds, config) = get_creds_and_config(&args.profile).await?;
-                let key = key
-                    .or(key_flag)
-                    .expect("The argument group guarantees 1 or the other");
-                commands::cache::cache_cli::get(
-                    cache_name
+                    value_flag,
+                    ttl_seconds,
+                } => {
+                    let cache_name = cache_name
                         .or(cache_name_flag_for_backward_compatibility)
-                        .unwrap_or(config.cache),
-                    creds,
+                        .unwrap_or(config.cache);
+                    let key = key
+                        .or(key_flag)
+                        .expect("The argument group guarantees 1 or the other");
+                    let value = value
+                        .or(value_flag)
+                        .expect("The argument group guarantees 1 or the other");
+                    commands::cache::cache_cli::set(
+                        client,
+                        cache_name,
+                        key,
+                        value,
+                        ttl_seconds.unwrap_or(config.ttl),
+                    )
+                    .await?
+                }
+                momento_cli_opts::CacheCommand::Get {
+                    cache_name,
+                    cache_name_flag_for_backward_compatibility,
                     key,
-                    endpoint,
-                )
-                .await?;
-            }
-            momento_cli_opts::CacheCommand::DeleteItem {
-                cache_name,
-                cache_name_flag_for_backward_compatibility,
-                key,
-                key_flag,
-            } => {
-                let (creds, config) = get_creds_and_config(&args.profile).await?;
-                let key = key
-                    .or(key_flag)
-                    .expect("The argument group guarantees 1 or the other");
-                commands::cache::cache_cli::delete_key(
-                    cache_name
-                        .or(cache_name_flag_for_backward_compatibility)
-                        .unwrap_or(config.cache),
-                    creds,
+                    key_flag,
+                } => {
+                    let key = key
+                        .or(key_flag)
+                        .expect("The argument group guarantees 1 or the other");
+                    commands::cache::cache_cli::get(
+                        client,
+                        cache_name
+                            .or(cache_name_flag_for_backward_compatibility)
+                            .unwrap_or(config.cache),
+                        key,
+                    )
+                    .await?;
+                }
+                momento_cli_opts::CacheCommand::DeleteItem {
+                    cache_name,
+                    cache_name_flag_for_backward_compatibility,
                     key,
-                    endpoint,
-                )
-                .await?;
+                    key_flag,
+                } => {
+                    let key = key
+                        .or(key_flag)
+                        .expect("The argument group guarantees 1 or the other");
+                    commands::cache::cache_cli::delete_key(
+                        client,
+                        cache_name
+                            .or(cache_name_flag_for_backward_compatibility)
+                            .unwrap_or(config.cache),
+                        key,
+                    )
+                    .await?;
+                }
             }
-        },
+        }
         momento_cli_opts::Subcommand::Topic {
             endpoint,
             operation,
@@ -144,11 +145,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 credential_provider = credential_provider.base_endpoint(&endpoint_override);
             }
 
-            let client = TopicClient::builder()
-                .configuration(topics::configurations::Laptop::latest())
-                .credential_provider(credential_provider)
-                .build()
-                .map_err(Into::<CliError>::into)?;
+            let client = get_topic_client(credential_provider).await?;
             match operation {
                 momento_cli_opts::TopicCommand::Publish {
                     cache_name,
@@ -237,11 +234,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
                 let credential_provider = creds.authenticate()?;
                 let endpoint = credential_provider.cache_http_endpoint().to_string();
-                let profile_auth_token = credential_provider.auth_token().to_string();
-                let client = FunctionClient::builder()
-                    .credential_provider(credential_provider)
-                    .build()
-                    .map_err(Into::<CliError>::into)?;
+                let auth_token = credential_provider.auth_token().to_string();
+                let client = get_function_client(credential_provider).await?;
 
                 match operation {
                     momento_cli_opts::FunctionCommand::PutFunction {
@@ -288,7 +282,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         data,
                     } => {
                         let cache_name = cache_name.unwrap_or(config.cache);
-                        let auth_token = args.momento_api_key.unwrap_or(profile_auth_token);
                         commands::functions::function_cli::invoke_function(
                             endpoint, auth_token, cache_name, name, data,
                         )
