@@ -21,15 +21,33 @@ pub enum Credentials {
 }
 
 impl Credentials {
-    pub fn authenticate(&self) -> Result<CredentialProvider, CliError> {
-        match self {
-            Credentials::ApiKeyV2(api_key, endpoint) => {
-                CredentialProvider::from_api_key_v2(api_key, endpoint)
-                    .map_err(Into::<CliError>::into)
-            }
-            Credentials::DisposableToken(token) => {
-                CredentialProvider::from_disposable_token(token).map_err(Into::<CliError>::into)
-            }
+    pub fn authenticate(
+        &self,
+        token_override: Option<String>,
+    ) -> Result<CredentialProvider, CliError> {
+        match token_override {
+            Some(token) => match CredentialProvider::from_disposable_token(token.clone()) {
+                Ok(credential_provider) => Ok(credential_provider),
+                Err(_) => match self {
+                    Credentials::ApiKeyV2(_, endpoint) => {
+                        CredentialProvider::from_api_key_v2(token, endpoint)
+                            .map_err(Into::<CliError>::into)
+                    }
+                    _ => Err(CliError {
+                        msg: "Need an endpoint. To test a v2 API key, start with a v2 profile"
+                            .to_string(),
+                    }),
+                },
+            },
+            None => match self {
+                Credentials::ApiKeyV2(api_key, endpoint) => {
+                    CredentialProvider::from_api_key_v2(api_key, endpoint)
+                        .map_err(Into::<CliError>::into)
+                }
+                Credentials::DisposableToken(token) => {
+                    CredentialProvider::from_disposable_token(token).map_err(Into::<CliError>::into)
+                }
+            },
         }
     }
 }
