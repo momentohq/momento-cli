@@ -28,7 +28,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider = creds.authenticate(api_key)?;
+            let mut credential_provider = creds.override_and_authenticate(api_key)?;
             if let Some(endpoint_override) = endpoint {
                 credential_provider = credential_provider.base_endpoint(&endpoint_override);
             }
@@ -142,7 +142,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider = creds.authenticate(api_key)?;
+            let mut credential_provider = creds.override_and_authenticate(api_key)?;
             if let Some(endpoint_override) = endpoint {
                 credential_provider = credential_provider.base_endpoint(&endpoint_override);
             }
