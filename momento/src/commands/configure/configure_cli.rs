@@ -61,7 +61,6 @@ pub async fn configure_momento(
     )
     .await?;
 
-    // TODO: Update the endpoint to read from config
     let credential_provider = credentials.authenticate()?;
     let client = get_cache_client(credential_provider).await?;
     match create_cache(client, config.cache.clone()).await {
