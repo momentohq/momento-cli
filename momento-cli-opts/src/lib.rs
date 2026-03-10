@@ -297,6 +297,14 @@ to help find opportunities for optimizations with Momento.
         )]
         api_key: Option<String>,
 
+        #[arg(
+            long = "endpoint",
+            short = 'e',
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
         #[command(subcommand)]
         operation: FunctionCommand,
     },
