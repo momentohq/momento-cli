@@ -26,54 +26,63 @@ impl Credentials {
         api_key_override: Option<String>,
         endpoint_override: Option<String>,
     ) -> Result<CredentialProvider, CliError> {
-        match api_key_override {
-            Some(new_api_key) => match CredentialProvider::from_disposable_token(new_api_key.clone()) {
-                Ok(credential_provider) => match endpoint_override {
-                    // Case: --api-key is disposable token
-                    Some(new_endpoint) => Ok(credential_provider.base_endpoint(&new_endpoint)),
-                    None => Ok(credential_provider)
-                }
-                Err(_) => match endpoint_override { // error treating as disposable token, so assuming v2 API key
-                    Some(new_endpoint) => {
+        match (api_key_override, endpoint_override) {
+            (Some(new_api_key), Some(new_endpoint)) => {
+                match CredentialProvider::from_disposable_token(new_api_key.clone()) {
+                    Ok(credential_provider) => {
+                        // Case: --api-key is disposable token, --endpoint provided
+                        Ok(credential_provider.base_endpoint(&new_endpoint))
+                    }
+                    Err(_) => {
                         // Case: --api-key is v2 API key, --endpoint provided
                         CredentialProvider::from_api_key_v2(new_api_key, new_endpoint)
                             .map_err(Into::<CliError>::into)
                     }
-                    None => match self {
-                        // Case: --api-key is v2 API key, defaulting to --profile's endpoint
+                }
+            }
+            (Some(new_api_key), None) => {
+                match CredentialProvider::from_disposable_token(new_api_key.clone()) {
+                    Ok(credential_provider) => {
+                        // Case: --api-key is disposable token, defaulting to --profile's endpoint
+                        Ok(credential_provider)
+                    }
+                    Err(_) => match self {
                         Credentials::ApiKeyV2(_, original_endpoint) => {
+                            // Case: --api-key is v2 API key, defaulting to --profile's endpoint
                             CredentialProvider::from_api_key_v2(new_api_key, original_endpoint)
                                 .map_err(Into::<CliError>::into)
                         }
                         _ => Err(CliError {
-                            // Case: --api-key is v2 API key, no endpoint available
+                            // Case: --api-key is v2 API key, no endpoint found
                             msg: "To test a v2 API key, provide an endpoint or start with a v2 profile".to_string(),
                         })
                     }
-                },
-            },
-            None => match endpoint_override {
-                // Case: defaulting to --profile's API key (v2 or disposable), overriding with --endpoint
-                Some(new_endpoint) => match self {
-                    Credentials::ApiKeyV2(original_api_key, _) => {
-                        CredentialProvider::from_api_key_v2(original_api_key, new_endpoint)
-                            .map_err(Into::<CliError>::into)
-                    }
-                    Credentials::DisposableToken(original_api_key) => match CredentialProvider::from_disposable_token(original_api_key) {
-                        Ok(credential_provider) => Ok(credential_provider.base_endpoint(&new_endpoint)),
-                        Err(err) => Err(CliError{msg: err.message})
+                }
+            }
+            (None, Some(new_endpoint)) => match self {
+                // Case: defaulting to --profile's API key, overriding endpoint
+                Credentials::ApiKeyV2(original_api_key, _) => {
+                    CredentialProvider::from_api_key_v2(original_api_key, new_endpoint)
+                        .map_err(Into::<CliError>::into)
+                }
+                Credentials::DisposableToken(original_api_key) => {
+                    match CredentialProvider::from_disposable_token(original_api_key) {
+                        Ok(credential_provider) => {
+                            Ok(credential_provider.base_endpoint(&new_endpoint))
+                        }
+                        Err(err) => Err(CliError { msg: err.message }),
                     }
                 }
-                None => match self {
-                    // Case: defaulting to --profile's API key and endpoint
-                    Credentials::ApiKeyV2(original_api_key, original_endpoint) => {
-                        CredentialProvider::from_api_key_v2(original_api_key, original_endpoint)
-                            .map_err(Into::<CliError>::into)
-                    }
-                    Credentials::DisposableToken(original_api_key) => {
-                        CredentialProvider::from_disposable_token(original_api_key)
-                            .map_err(Into::<CliError>::into)
-                    }
+            },
+            (None, None) => match self {
+                // Case: defaulting to --profile's API key and endpoint
+                Credentials::ApiKeyV2(original_api_key, original_endpoint) => {
+                    CredentialProvider::from_api_key_v2(original_api_key, original_endpoint)
+                        .map_err(Into::<CliError>::into)
+                }
+                Credentials::DisposableToken(original_api_key) => {
+                    CredentialProvider::from_disposable_token(original_api_key)
+                        .map_err(Into::<CliError>::into)
                 }
             },
         }
