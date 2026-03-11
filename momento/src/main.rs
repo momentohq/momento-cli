@@ -23,16 +23,14 @@ mod utils;
 async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliError> {
     match args.command {
         momento_cli_opts::Subcommand::Cache {
+            api_key,
             endpoint,
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider = creds.authenticate()?;
-            if let Some(endpoint_override) = endpoint {
-                credential_provider = credential_provider.base_endpoint(&endpoint_override);
-            }
-
+            let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
             let client = get_cache_client(credential_provider).await?;
+
             match operation {
                 momento_cli_opts::CacheCommand::Create {
                     cache_name_flag,
@@ -136,14 +134,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             }
         }
         momento_cli_opts::Subcommand::Topic {
+            api_key,
             endpoint,
             operation,
         } => {
             let (creds, config) = get_creds_and_config(&args.profile).await?;
-            let mut credential_provider = creds.authenticate()?;
-            if let Some(endpoint_override) = endpoint {
-                credential_provider = credential_provider.base_endpoint(&endpoint_override);
-            }
+            let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
             let client = get_topic_client(credential_provider).await?;
             match operation {
@@ -224,10 +220,15 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 )
                 .await?;
             }
-            PreviewCommand::Function { operation } => {
+            PreviewCommand::Function {
+                api_key,
+                endpoint,
+                operation,
+            } => {
                 let (creds, config) = get_creds_and_config(&args.profile).await?;
-                let credential_provider = creds.authenticate()?;
-                let endpoint = credential_provider.cache_http_endpoint().to_string();
+                let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
+
+                let api_endpoint = credential_provider.cache_http_endpoint().to_string();
                 let auth_token = credential_provider.auth_token().to_string();
                 let client = get_function_client(credential_provider).await?;
 
@@ -277,7 +278,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     } => {
                         let cache_name = cache_name.unwrap_or(config.cache);
                         commands::functions::function_cli::invoke_function(
-                            endpoint, auth_token, cache_name, name, data,
+                            api_endpoint,
+                            auth_token,
+                            cache_name,
+                            name,
+                            data,
                         )
                         .await?
                     }

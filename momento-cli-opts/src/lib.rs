@@ -44,8 +44,15 @@ pub enum Subcommand {
     #[command(about = "Interact with caches")]
     Cache {
         #[arg(
-            long = "endpoint",
-            short = 'e',
+            long,
+            global = true,
+            help = "An explicit Momento API key to use, instead of your profile's API key"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
             global = true,
             help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
         )]
@@ -66,8 +73,15 @@ To delete a topic, stop subscribing to it."
     )]
     Topic {
         #[arg(
-            long = "endpoint",
-            short = 'e',
+            long,
+            global = true,
+            help = "An explicit Momento API key to use, instead of your profile's API key"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
             global = true,
             help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
         )]
@@ -276,6 +290,21 @@ to help find opportunities for optimizations with Momento.
     },
     #[command(about = "**PREVIEW** Create or update your Momento Functions")]
     Function {
+        #[arg(
+            long,
+            global = true,
+            help = "An explicit Momento API key to use, instead of your profile's API key"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
         #[command(subcommand)]
         operation: FunctionCommand,
     },
