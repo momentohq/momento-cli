@@ -49,7 +49,11 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
+    header_string: Option<String>,
 ) -> Result<(), CliError> {
+    let headers = header_string.unwrap_or_default();
+    console_data!("headers: {}", headers);
+
     let data = data.unwrap_or_default();
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
     if data.is_empty() {
