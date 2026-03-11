@@ -1,6 +1,6 @@
 [package]
 name = "momento-cli-opts"
-version = "0.51.1"
+version = "0.52.0"
 edition = "2021"
 
 [dependencies.clap]
