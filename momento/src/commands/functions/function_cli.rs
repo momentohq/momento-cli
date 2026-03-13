@@ -12,12 +12,13 @@ use crate::{
 
 use log::info;
 use reqwest;
-use reqwest::StatusCode;
 use serde::Deserialize;
+use serde_json;
 
 #[derive(Deserialize)]
-struct NotFoundResponse {
-    detail: String,
+struct InvokeError {
+    detail: Option<String>,
+    message: Option<String>,
 }
 
 pub async fn put_function(
@@ -71,16 +72,18 @@ pub async fn invoke_function(
         console_data!("{}", response.text().await?);
         Ok(())
     } else {
+        let error_text = response.text().await?;
+        let error_message = match serde_json::from_str::<InvokeError>(error_text.as_str()) {
+            Ok(error_json) => {
+                info!("{error_text}");
+                error_json
+                    .detail
+                    .unwrap_or(error_json.message.unwrap_or(error_text))
+            }
+            Err(_) => error_text,
+        };
         Err(CliError {
-            msg: match status {
-                StatusCode::UNAUTHORIZED => "Invalid authentication credentials".into(),
-                StatusCode::NOT_FOUND => response.json::<NotFoundResponse>().await?.detail,
-                StatusCode::FORBIDDEN => "Insufficient permissions to invoke function".into(),
-                _ => {
-                    let error_text = response.text().await?;
-                    format!("Invocation failed with {status}. {error_text}")
-                }
-            },
+            msg: format!("{status}: {error_message}"),
         })
     }
 }
