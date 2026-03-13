@@ -12,7 +12,14 @@ use crate::{
 
 use log::info;
 use reqwest;
+use serde::Deserialize;
 use serde_json;
+
+#[derive(Deserialize)]
+struct InvokeError {
+    detail: Option<String>,
+    message: Option<String>,
+}
 
 pub async fn put_function(
     client: FunctionClient,
@@ -65,12 +72,13 @@ pub async fn invoke_function(
         console_data!("{}", response.text().await?);
         Ok(())
     } else {
-        let error_json = response.json::<serde_json::Value>().await?;
-        let error_message = serde_json::Value::to_string(
-            error_json
-                .get("detail")
-                .unwrap_or(error_json.get("message").unwrap_or(&error_json)),
-        );
+        let error_text = response.text().await?;
+        let error_message = match serde_json::from_str::<InvokeError>(error_text.as_str()) {
+            Ok(error_json) => error_json
+                .detail
+                .unwrap_or(error_json.message.unwrap_or(error_text)),
+            Err(_) => error_text,
+        };
         Err(CliError {
             msg: format!("{status}: {error_message}"),
         })
