@@ -51,16 +51,16 @@ pub async fn put_function(
 
 fn build_invocation_headers(
     auth_token: String,
-    header_string: Option<String>,
+    headers_string: Option<String>,
 ) -> Result<HeaderMap, CliError> {
     let mut headers = HeaderMap::new();
     headers.insert(
         "authorization",
         HeaderValue::from_bytes(auth_token.as_bytes()).unwrap(),
     );
-    if header_string.is_some() {
+    if headers_string.is_some() {
         let headers_map = match serde_json::from_str::<HashMap<String, String>>(
-            header_string.unwrap_or_default().as_str(),
+            headers_string.unwrap_or_default().as_str(),
         ) {
             Ok(map) => map,
             Err(e) => {
@@ -90,9 +90,9 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
-    header_string: Option<String>,
+    headers_string: Option<String>,
 ) -> Result<(), CliError> {
-    let headers = build_invocation_headers(auth_token, header_string)?;
+    let headers = build_invocation_headers(auth_token, headers_string)?;
 
     let data = data.unwrap_or_default();
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");

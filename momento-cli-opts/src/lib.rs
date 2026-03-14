@@ -211,8 +211,12 @@ pub enum FunctionCommand {
         #[arg(long = "data", short, help = "HTTP POST payload body")]
         data: Option<String>,
 
-        #[arg(long = "header", short = 'H', help = "HTTP headers (as a JSON string)")]
-        header: Option<String>,
+        #[arg(
+            long = "headers",
+            short = 'H',
+            help = "HTTP headers (as a JSON string)"
+        )]
+        headers: Option<String>,
     },
     #[command(about = "List all Momento Functions in the given cache namespace")]
     ListFunctions {
