@@ -4,6 +4,7 @@ use momento::functions::WasmSource;
 
 use crate::error::CliError;
 
+/// put-function
 pub fn read_wasm_file(wasm_file: String) -> Result<Vec<u8>, CliError> {
     let binary = fs::read(wasm_file).map_err(Into::<CliError>::into)?;
     if binary.is_empty() {
@@ -28,5 +29,12 @@ pub fn determine_wasm_source(
     _ => Err(CliError {
       msg: "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag or a previously uploaded wasm using the --id-uploaded-wasm and --version-uploaded-wasm flags".to_string(),
     }),
+    }
+}
+
+/// invoke-function
+impl From<reqwest::Error> for CliError {
+    fn from(e: reqwest::Error) -> Self {
+        CliError { msg: e.to_string() }
     }
 }
