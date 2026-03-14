@@ -101,7 +101,7 @@ pub async fn invoke_function(
         info!("Sending data to function. {function_info}, Payload: {data}");
     };
     if !headers.is_empty() {
-        info!("Sending HTTP headers: {headers:?}");
+        info!("Sending HTTP headers:\n{headers:#?}");
     }
 
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
