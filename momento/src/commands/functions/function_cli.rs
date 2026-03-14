@@ -56,7 +56,7 @@ fn build_invocation_headers(
     let mut headers = HeaderMap::new();
     headers.insert(
         "authorization",
-        HeaderValue::from_bytes(auth_token.as_bytes()).unwrap(),
+        HeaderValue::from_bytes(auth_token.as_bytes())?,
     );
     if headers_string.is_some() {
         let headers_map = match serde_json::from_str::<HashMap<String, String>>(
@@ -76,8 +76,8 @@ fn build_invocation_headers(
                 });
             }
             headers.insert(
-                HeaderName::from_bytes(key.as_bytes()).unwrap(),
-                HeaderValue::from_bytes(value.as_bytes()).unwrap(),
+                HeaderName::from_bytes(key.as_bytes())?,
+                HeaderValue::from_bytes(value.as_bytes())?,
             );
         }
     }

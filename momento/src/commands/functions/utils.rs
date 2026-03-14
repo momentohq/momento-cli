@@ -4,6 +4,8 @@ use momento::functions::WasmSource;
 
 use crate::error::CliError;
 
+use reqwest::header::{InvalidHeaderName, InvalidHeaderValue};
+
 /// put-function
 pub fn read_wasm_file(wasm_file: String) -> Result<Vec<u8>, CliError> {
     let binary = fs::read(wasm_file).map_err(Into::<CliError>::into)?;
@@ -36,5 +38,21 @@ pub fn determine_wasm_source(
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
         CliError { msg: e.to_string() }
+    }
+}
+
+impl From<InvalidHeaderName> for CliError {
+    fn from(e: InvalidHeaderName) -> Self {
+        CliError {
+            msg: format!("Header Name: {e}"),
+        }
+    }
+}
+
+impl From<InvalidHeaderValue> for CliError {
+    fn from(e: InvalidHeaderValue) -> Self {
+        CliError {
+            msg: format!("Header Value: {e}"),
+        }
     }
 }
