@@ -49,14 +49,10 @@ pub async fn put_function(
     Ok(())
 }
 
-pub async fn invoke_function(
-    endpoint: String,
+fn build_invocation_headers(
     auth_token: String,
-    cache_name: String,
-    name: String,
-    data: Option<String>,
     header_string: Option<String>,
-) -> Result<(), CliError> {
+) -> Result<HeaderMap, serde_json::Error> {
     let mut headers = HeaderMap::new();
     headers.insert(
         "authorization",
@@ -73,7 +69,18 @@ pub async fn invoke_function(
             );
         }
     }
-    let headers = headers;
+    Ok(headers)
+}
+
+pub async fn invoke_function(
+    endpoint: String,
+    auth_token: String,
+    cache_name: String,
+    name: String,
+    data: Option<String>,
+    header_string: Option<String>,
+) -> Result<(), CliError> {
+    let headers = build_invocation_headers(auth_token, header_string)?;
 
     let data = data.unwrap_or_default();
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
