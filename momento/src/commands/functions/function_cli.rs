@@ -93,14 +93,25 @@ pub async fn invoke_function(
     headers_string: Option<String>,
 ) -> Result<(), CliError> {
     let headers = build_invocation_headers(auth_token, headers_string)?;
-
     let data = data.unwrap_or_default();
+
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
-    if data.is_empty() {
-        info!("Invoking function. {function_info}");
-    } else {
-        info!("Sending data to function. {function_info}, Payload: {data}");
-    };
+    match (!data.is_empty(), !headers.is_empty()) {
+        (false, false) => {
+            info!("Invoking function. {function_info}");
+        }
+        (false, true) => {
+            info!("Invoking function. {function_info}, Headers: {headers:?}");
+        }
+        (true, false) => {
+            info!("Sending data to function. {function_info}, Payload: {data}");
+        }
+        (true, true) => {
+            info!(
+                "Sending data to function. {function_info}, Payload: {data}, Headers: {headers:?}"
+            );
+        }
+    }
 
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest_Client::new();
