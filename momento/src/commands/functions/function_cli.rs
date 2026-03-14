@@ -50,9 +50,8 @@ pub async fn put_function(
 }
 
 fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError> {
-    let mut headers = HeaderMap::new();
     if headers_str.is_empty() {
-        return Ok(headers);
+        return Ok(HeaderMap::new());
     }
     let headers_map = match serde_json::from_str::<HashMap<String, String>>(headers_str) {
         Ok(map) => map,
@@ -62,6 +61,7 @@ fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError> {
             })
         }
     };
+    let mut headers = HeaderMap::with_capacity(headers_map.len());
     for (key, value) in headers_map.iter() {
         let lower_key = key.to_lowercase();
         if lower_key == "authorization" {
