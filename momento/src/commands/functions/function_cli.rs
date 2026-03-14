@@ -95,21 +95,13 @@ pub async fn invoke_function(
     let data = data.unwrap_or_default();
 
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
-    match (!data.is_empty(), !headers.is_empty()) {
-        (false, false) => {
-            info!("Invoking function. {function_info}");
-        }
-        (false, true) => {
-            info!("Invoking function. {function_info}, Headers: {headers:?}");
-        }
-        (true, false) => {
-            info!("Sending data to function. {function_info}, Payload: {data}");
-        }
-        (true, true) => {
-            info!(
-                "Sending data to function. {function_info}, Payload: {data}, Headers: {headers:?}"
-            );
-        }
+    if data.is_empty() {
+        info!("Invoking function. {function_info}");
+    } else {
+        info!("Sending data to function. {function_info}, Payload: {data}");
+    };
+    if !headers.is_empty() {
+        info!("Sending HTTP headers: {headers:?}");
     }
 
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
