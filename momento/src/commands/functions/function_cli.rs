@@ -50,6 +50,7 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
+    path: Option<String>,
 ) -> Result<(), CliError> {
     let data = data.unwrap_or_default();
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
@@ -59,7 +60,13 @@ pub async fn invoke_function(
         info!("Sending data to function. {function_info}, Payload: {data}");
     };
 
-    let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
+    let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
+    let request_url = match path {
+        None => function_url,
+        Some(path) => format!("{function_url}/{path}"),
+    };
+    info!("at URL: {request_url}");
+
     let req_client = reqwest::Client::new();
     let response = req_client
         .post(&request_url)
