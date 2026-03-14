@@ -65,7 +65,7 @@ fn build_invocation_headers(
             Ok(map) => map,
             Err(e) => {
                 return Err(CliError {
-                    msg: format!("Header {:?}: {}", e.classify(), e.to_string()),
+                    msg: format!("Header {:?}: {e}", e.classify()),
                 })
             }
         };
