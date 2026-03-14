@@ -70,6 +70,11 @@ fn build_invocation_headers(
             }
         };
         for (key, value) in headers_map.iter() {
+            if key == "authorization" {
+                return Err(CliError {
+                    msg: "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header".to_string()
+                });
+            }
             headers.insert(
                 HeaderName::from_bytes(key.as_bytes()).unwrap(),
                 HeaderValue::from_bytes(value.as_bytes()).unwrap(),
