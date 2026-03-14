@@ -70,7 +70,7 @@ fn build_invocation_headers(
             }
         };
         for (key, value) in headers_map.iter() {
-            if key == "authorization" {
+            if key.to_lowercase() == "authorization" {
                 return Err(CliError {
                     msg: "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header".to_string()
                 });
