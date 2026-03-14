@@ -54,32 +54,39 @@ fn build_invocation_headers(
     headers_string: Option<String>,
 ) -> Result<HeaderMap, CliError> {
     let mut headers = HeaderMap::new();
+    if headers_string.is_none() {
+        return Ok(headers);
+    }
     headers.insert(
         "authorization",
         HeaderValue::from_bytes(auth_token.as_bytes())?,
     );
-    if headers_string.is_some() {
-        let headers_map = match serde_json::from_str::<HashMap<String, String>>(
-            headers_string.unwrap_or_default().as_str(),
-        ) {
-            Ok(map) => map,
-            Err(e) => {
-                return Err(CliError {
-                    msg: format!("Header {:?}: {e}", e.classify()),
-                })
-            }
-        };
-        for (key, value) in headers_map.iter() {
-            if key.to_lowercase() == "authorization" {
-                return Err(CliError {
-                    msg: "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header".to_string()
-                });
-            }
-            headers.insert(
-                HeaderName::from_bytes(key.as_bytes())?,
-                HeaderValue::from_bytes(value.as_bytes())?,
-            );
+    let headers_map = match serde_json::from_str::<HashMap<String, String>>(
+        headers_string.unwrap_or_default().as_str(),
+    ) {
+        Ok(map) => map,
+        Err(e) => {
+            return Err(CliError {
+                msg: format!("Header {:?}: {e}", e.classify()),
+            })
         }
+    };
+    for (key, value) in headers_map.iter() {
+        let lower_key = key.to_lowercase();
+        if lower_key == "authorization" {
+            return Err(CliError {
+                msg: "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header".to_string()
+            });
+        }
+        if headers.contains_key(&lower_key) {
+            // HashMap already case-sensitively ignored duplicate keys,
+            // so here, we case-insensitively ignore duplicate keys
+            continue;
+        }
+        headers.insert(
+            HeaderName::from_bytes(lower_key.as_bytes())?,
+            HeaderValue::from_bytes(value.as_bytes())?,
+        );
     }
     Ok(headers)
 }
