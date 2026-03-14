@@ -49,14 +49,12 @@ pub async fn put_function(
     Ok(())
 }
 
-fn build_invocation_headers(headers_string: Option<String>) -> Result<HeaderMap, CliError> {
+fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError> {
     let mut headers = HeaderMap::new();
-    if headers_string.is_none() {
+    if headers_str.is_empty() {
         return Ok(headers);
     }
-    let headers_map = match serde_json::from_str::<HashMap<String, String>>(
-        headers_string.unwrap_or_default().as_str(),
-    ) {
+    let headers_map = match serde_json::from_str::<HashMap<String, String>>(headers_str) {
         Ok(map) => map,
         Err(e) => {
             return Err(CliError {
@@ -92,7 +90,7 @@ pub async fn invoke_function(
     data: Option<String>,
     headers_string: Option<String>,
 ) -> Result<(), CliError> {
-    let headers = build_invocation_headers(headers_string)?;
+    let headers = build_invocation_headers(headers_string.unwrap_or_default().as_str())?;
     let data = data.unwrap_or_default();
 
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
