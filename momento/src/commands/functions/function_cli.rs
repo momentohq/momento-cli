@@ -52,16 +52,23 @@ pub async fn put_function(
 fn build_invocation_headers(
     auth_token: String,
     header_string: Option<String>,
-) -> Result<HeaderMap, serde_json::Error> {
+) -> Result<HeaderMap, CliError> {
     let mut headers = HeaderMap::new();
     headers.insert(
         "authorization",
         HeaderValue::from_bytes(auth_token.as_bytes()).unwrap(),
     );
     if header_string.is_some() {
-        let headers_map = serde_json::from_str::<HashMap<String, String>>(
+        let headers_map = match serde_json::from_str::<HashMap<String, String>>(
             header_string.unwrap_or_default().as_str(),
-        )?;
+        ) {
+            Ok(map) => map,
+            Err(e) => {
+                return Err(CliError {
+                    msg: format!("Header {:?}: {}", e.classify(), e.to_string()),
+                })
+            }
+        };
         for (key, value) in headers_map.iter() {
             headers.insert(
                 HeaderName::from_bytes(key.as_bytes()).unwrap(),
