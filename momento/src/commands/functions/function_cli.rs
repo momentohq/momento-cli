@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str::FromStr; // to use HeaderName::from_str
 
 use momento::{
     functions::{
@@ -74,9 +75,9 @@ fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError> {
             // so here, we case-insensitively ignore duplicate keys
             continue;
         }
-        headers.insert(
-            HeaderName::from_bytes(lower_key.as_bytes())?,
-            HeaderValue::from_bytes(value.as_bytes())?,
+        headers.append(
+            HeaderName::from_str(&lower_key)?,
+            HeaderValue::from_str(value)?,
         );
     }
     Ok(headers)
