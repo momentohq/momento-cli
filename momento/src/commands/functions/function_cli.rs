@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use momento::{
     functions::{
         ListFunctionVersionsRequest, ListFunctionsRequest, ListWasmsRequest, PutFunctionRequest,
@@ -11,7 +13,10 @@ use crate::{
 };
 
 use log::info;
-use reqwest;
+use reqwest::{
+    header::{HeaderMap, HeaderName, HeaderValue},
+    Client as reqwest_Client,
+};
 use serde::Deserialize;
 use serde_json;
 
@@ -52,8 +57,23 @@ pub async fn invoke_function(
     data: Option<String>,
     header_string: Option<String>,
 ) -> Result<(), CliError> {
-    let headers = header_string.unwrap_or_default();
-    console_data!("headers: {}", headers);
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "authorization",
+        HeaderValue::from_bytes(auth_token.as_bytes()).unwrap(),
+    );
+    if header_string.is_some() {
+        let headers_map = serde_json::from_str::<HashMap<String, String>>(
+            header_string.unwrap_or_default().as_str(),
+        )?;
+        for (key, value) in headers_map.iter() {
+            headers.insert(
+                HeaderName::from_bytes(key.as_bytes()).unwrap(),
+                HeaderValue::from_bytes(value.as_bytes()).unwrap(),
+            );
+        }
+    }
+    let headers = headers;
 
     let data = data.unwrap_or_default();
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
@@ -64,11 +84,11 @@ pub async fn invoke_function(
     };
 
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    let req_client = reqwest::Client::new();
+    let req_client = reqwest_Client::new();
     let response = req_client
         .post(&request_url)
         .body(data)
-        .header("authorization", &auth_token)
+        .headers(headers)
         .send()
         .await?;
     let status = response.status();
