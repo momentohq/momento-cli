@@ -204,10 +204,15 @@ pub enum FunctionCommand {
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
+
         #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
         name: String,
+
         #[arg(long = "data", short, help = "HTTP POST payload body")]
         data: Option<String>,
+
+        #[arg(long = "request", short = 'X', help = "HTTP request method to use")]
+        method: Option<String>,
     },
     #[command(about = "List all Momento Functions in the given cache namespace")]
     ListFunctions {

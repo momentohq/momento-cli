@@ -1,6 +1,7 @@
 use std::fmt;
 
 use colored::Colorize;
+use http::method::InvalidMethod;
 
 pub struct CliError {
     pub(crate) msg: String,
@@ -21,5 +22,13 @@ impl fmt::Display for CliError {
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
         CliError { msg: e.to_string() }
+    }
+}
+
+impl From<InvalidMethod> for CliError {
+    fn from(e: InvalidMethod) -> Self {
+        CliError {
+            msg: format!("Invalid HTTP method: {e}"),
+        }
     }
 }

@@ -10,10 +10,12 @@ use crate::{
     commands::functions::utils::read_wasm_file, error::CliError, utils::console::console_data,
 };
 
+use http::Method;
 use log::info;
 use reqwest;
 use serde::Deserialize;
 use serde_json;
+use std::str::FromStr; // to use http::Method::from_str
 
 #[derive(Deserialize)]
 struct InvokeError {
@@ -50,6 +52,7 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
+    method: Option<String>,
 ) -> Result<(), CliError> {
     let data = data.unwrap_or_default();
     let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
@@ -59,10 +62,13 @@ pub async fn invoke_function(
         info!("Sending data to function. {function_info}, Payload: {data}");
     };
 
+    let method = method.unwrap_or("POST".into());
+    info!("with request method: {method}");
+
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
     let response = req_client
-        .post(&request_url)
+        .request(Method::from_str(&method)?, &request_url)
         .body(data)
         .header("authorization", &auth_token)
         .send()
