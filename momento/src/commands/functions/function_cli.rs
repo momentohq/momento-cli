@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::str::FromStr; // to use HeaderName::from_str
-
 use momento::{
     functions::{
         ListFunctionVersionsRequest, ListFunctionsRequest, ListWasmsRequest, PutFunctionRequest,
@@ -10,14 +7,13 @@ use momento::{
 };
 
 use crate::{
-    commands::functions::utils::read_wasm_file, error::CliError, utils::console::console_data,
+    commands::functions::utils::{build_invocation_headers, read_wasm_file},
+    error::CliError,
+    utils::console::console_data,
 };
 
 use log::info;
-use reqwest::{
-    header::{HeaderMap, HeaderName, HeaderValue},
-    Client as reqwest_Client,
-};
+use reqwest;
 use serde::Deserialize;
 use serde_json;
 
@@ -50,39 +46,6 @@ pub async fn put_function(
     Ok(())
 }
 
-fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError> {
-    if headers_str.is_empty() {
-        return Ok(HeaderMap::new());
-    }
-    let headers_map = match serde_json::from_str::<HashMap<String, String>>(headers_str) {
-        Ok(map) => map,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("Header {:?}: {e}", e.classify()),
-            })
-        }
-    };
-    let mut headers = HeaderMap::with_capacity(headers_map.len());
-    for (key, value) in headers_map.iter() {
-        let lower_key = key.to_lowercase();
-        if lower_key == "authorization" {
-            return Err(CliError {
-                msg: "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header".to_string()
-            });
-        }
-        if headers.contains_key(&lower_key) {
-            // HashMap already case-sensitively ignored duplicate keys,
-            // so here, we case-insensitively ignore duplicate keys
-            continue;
-        }
-        headers.append(
-            HeaderName::from_str(&lower_key)?,
-            HeaderValue::from_str(value)?,
-        );
-    }
-    Ok(headers)
-}
-
 pub async fn invoke_function(
     endpoint: String,
     auth_token: String,
@@ -103,7 +66,7 @@ pub async fn invoke_function(
     }
 
     let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    let req_client = reqwest_Client::new();
+    let req_client = reqwest::Client::new();
     let response = req_client
         .post(&request_url)
         .body(data)
