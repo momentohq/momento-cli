@@ -63,7 +63,7 @@ pub async fn invoke_function(
     let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let request_url = match path {
         None => function_url,
-        Some(path) => format!("{function_url}/{path}"),
+        Some(path) => format!("{function_url}/{}", path.trim_start_matches("/")),
     };
     info!("at URL: {request_url}");
 
