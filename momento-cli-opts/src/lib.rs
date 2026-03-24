@@ -211,7 +211,10 @@ pub enum FunctionCommand {
         #[arg(long = "data", short, help = "HTTP POST payload body")]
         data: Option<String>,
 
-        #[arg(long = "path", help = "Path to append to function's endpoint URL")]
+        #[arg(
+            long = "path",
+            help = "Path (and/or query string) to append to function's endpoint URL. Start your query string with ? (for example, /my/path?someKey=someValue)"
+        )]
         path: Option<String>,
 
         #[arg(
