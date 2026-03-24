@@ -7,7 +7,9 @@ use momento::{
 };
 
 use crate::{
-    commands::functions::utils::read_wasm_file, error::CliError, utils::console::console_data,
+    commands::functions::utils::{build_invocation_headers, read_wasm_file},
+    error::CliError,
+    utils::console::console_data,
 };
 
 use log::info;
@@ -50,15 +52,19 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
+    headers_string: Option<String>,
     path: Option<String>,
 ) -> Result<(), CliError> {
+    let headers = build_invocation_headers(headers_string.unwrap_or_default().as_str())?;
     let data = data.unwrap_or_default();
-    let function_info = format!("Name: {name}, Cache Namespace: {cache_name}");
-    if data.is_empty() {
-        info!("Invoking function. {function_info}");
-    } else {
-        info!("Sending data to function. {function_info}, Payload: {data}");
+
+    info!("Invoking function. Name: {name}, Cache Namespace: {cache_name}");
+    if !headers.is_empty() {
+        info!("with payload:\n{data}");
     };
+    if !headers.is_empty() {
+        info!("with headers:\n{headers:#?}");
+    }
 
     let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let request_url = match path {
@@ -72,6 +78,7 @@ pub async fn invoke_function(
         .post(&request_url)
         .body(data)
         .header("authorization", &auth_token)
+        .headers(headers)
         .send()
         .await?;
     let status = response.status();

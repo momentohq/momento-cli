@@ -213,6 +213,13 @@ pub enum FunctionCommand {
 
         #[arg(long = "path", help = "Path to append to function's endpoint URL")]
         path: Option<String>,
+
+        #[arg(
+            long = "headers",
+            short = 'H',
+            help = "HTTP headers (as a JSON string)"
+        )]
+        headers: Option<String>,
     },
     #[command(about = "List all Momento Functions in the given cache namespace")]
     ListFunctions {
