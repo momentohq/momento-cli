@@ -59,7 +59,7 @@ pub async fn invoke_function(
     let data = data.unwrap_or_default();
 
     info!("Invoking function. Name: {name}, Cache Namespace: {cache_name}");
-    if !headers.is_empty() {
+    if !data.is_empty() {
         info!("with payload:\n{data}");
     };
     if !headers.is_empty() {
