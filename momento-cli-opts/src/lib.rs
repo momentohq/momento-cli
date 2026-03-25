@@ -211,7 +211,12 @@ pub enum FunctionCommand {
         #[arg(long = "data", short, help = "HTTP POST payload body")]
         data: Option<String>,
 
-        #[arg(long = "request", short = 'X', help = "HTTP request method to use")]
+        #[arg(
+            long = "method",
+            alias = "request",
+            short = 'X',
+            help = "HTTP request method to use"
+        )]
         method: Option<String>,
 
         #[arg(
