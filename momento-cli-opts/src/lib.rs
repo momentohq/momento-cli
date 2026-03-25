@@ -212,6 +212,14 @@ pub enum FunctionCommand {
         data: Option<String>,
 
         #[arg(
+            long = "method",
+            alias = "request",
+            short = 'X',
+            help = "HTTP request method to use"
+        )]
+        method: Option<String>,
+
+        #[arg(
             long = "headers",
             short = 'H',
             help = "HTTP headers (as a JSON string)"

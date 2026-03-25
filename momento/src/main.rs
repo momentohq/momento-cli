@@ -275,6 +275,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         cache_name,
                         name,
                         data,
+                        method,
                         headers,
                     } => {
                         let cache_name = cache_name.unwrap_or(config.cache);
@@ -284,6 +285,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             cache_name,
                             name,
                             data,
+                            method,
                             headers,
                         )
                         .await?
