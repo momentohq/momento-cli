@@ -12,10 +12,12 @@ use crate::{
     utils::console::console_data,
 };
 
+use http::Method;
 use log::info;
 use reqwest;
 use serde::Deserialize;
 use serde_json;
+use std::str::FromStr; // to use http::Method::from_str
 
 #[derive(Deserialize)]
 struct InvokeError {
@@ -52,6 +54,7 @@ pub async fn invoke_function(
     cache_name: String,
     name: String,
     data: Option<String>,
+    method: Option<String>,
     headers_string: Option<String>,
     path: Option<String>,
 ) -> Result<(), CliError> {
@@ -73,9 +76,12 @@ pub async fn invoke_function(
     };
     info!("at URL: {request_url}");
 
+    let method = method.unwrap_or("POST".into());
+    info!("with request method: {method}");
+
     let req_client = reqwest::Client::new();
     let response = req_client
-        .post(&request_url)
+        .request(Method::from_str(&method)?, &request_url)
         .body(data)
         .header("authorization", &auth_token)
         .headers(headers)

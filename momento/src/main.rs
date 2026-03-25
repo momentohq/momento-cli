@@ -275,6 +275,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         cache_name,
                         name,
                         data,
+                        method,
                         headers,
                         path,
                     } => {
@@ -285,6 +286,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             cache_name,
                             name,
                             data,
+                            method,
                             headers,
                             path,
                         )

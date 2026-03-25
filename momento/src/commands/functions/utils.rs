@@ -6,6 +6,7 @@ use momento::functions::WasmSource;
 
 use crate::error::CliError;
 
+use http::method::InvalidMethod;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderName, InvalidHeaderValue};
 
 /// put-function
@@ -73,6 +74,14 @@ pub fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
         CliError { msg: e.to_string() }
+    }
+}
+
+impl From<InvalidMethod> for CliError {
+    fn from(e: InvalidMethod) -> Self {
+        CliError {
+            msg: format!("Invalid HTTP method: {e}"),
+        }
     }
 }
 
