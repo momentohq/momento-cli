@@ -38,6 +38,13 @@ pub fn determine_wasm_source(
 }
 
 /// invoke-function
+pub struct InvocationOptions {
+    pub data: Option<String>,
+    pub method: Option<String>,
+    pub headers: Option<String>,
+    pub path: Option<String>,
+}
+
 pub fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError> {
     if headers_str.is_empty() {
         return Ok(HeaderMap::new());

@@ -13,7 +13,10 @@ use utils::{
     user::get_creds_and_config,
 };
 
-use crate::{commands::functions::utils::determine_wasm_source, utils::console::console_info};
+use crate::{
+    commands::functions::utils::{determine_wasm_source, InvocationOptions},
+    utils::console::console_info,
+};
 
 mod commands;
 mod config;
@@ -285,10 +288,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             auth_token,
                             cache_name,
                             name,
-                            data,
-                            method,
-                            headers,
-                            path,
+                            InvocationOptions {
+                                data,
+                                method,
+                                headers,
+                                path,
+                            },
                         )
                         .await?
                     }
