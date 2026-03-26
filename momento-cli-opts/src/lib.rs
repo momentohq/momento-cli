@@ -46,7 +46,7 @@ pub enum Subcommand {
         #[arg(
             long,
             global = true,
-            help = "An explicit Momento API key to use. Default: your profile's API key"
+            help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
 
@@ -75,7 +75,7 @@ To delete a topic, stop subscribing to it."
         #[arg(
             long,
             global = true,
-            help = "An explicit Momento API key to use. Default: your profile's API key"
+            help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
 
@@ -143,7 +143,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Name of the cache you want to use as your function namespace. Default: your profile's default cache",
+            help = "Name of the cache you want to use as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -205,7 +205,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Name of the cache you want to use as your function namespace. Default: your profile's default cache",
+            help = "Name of the cache you want to use as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -231,7 +231,7 @@ pub enum FunctionCommand {
             long = "method",
             alias = "request",
             short = 'X',
-            help = "HTTP request method to use. Default: POST"
+            help = "HTTP request method to use [default: POST]"
         )]
         method: Option<String>,
 
@@ -247,7 +247,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Name of the cache you want to check. Default: your profile's default cache",
+            help = "Name of the cache you want to check [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -312,12 +312,12 @@ to help find opportunities for optimizations with Momento.
         metric_collection_rate: u32,
         #[arg(
             long = "start-date",
-            help = "The inclusive UTC start date of the metric collection period (YYYY-MM-DD). Default: (end-date - 30 days)"
+            help = "The inclusive UTC start date of the metric collection period (YYYY-MM-DD) [default: end date - 30 days]"
         )]
         metric_start_date: Option<String>,
         #[arg(
             long = "end-date",
-            help = "The inclusive UTC end date of the metric collection period (YYYY-MM-DD). Default: the current date"
+            help = "The inclusive UTC end date of the metric collection period (YYYY-MM-DD) [default: the current date]"
         )]
         metric_end_date: Option<String>,
     },
@@ -335,7 +335,7 @@ https://github.com/momentohq/functions/"
         #[arg(
             long,
             global = true,
-            help = "An explicit Momento API key to use. Default: your profile's API key"
+            help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
 
@@ -459,7 +459,7 @@ clap::ArgGroup::new("cache-name")
     Set {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use. Default: your profile's default cache",
+            help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -479,7 +479,7 @@ clap::ArgGroup::new("cache-name")
 
         #[arg(
             long = "ttl",
-            help = "Max time, in seconds, that the item will be stored in cache. Default: your profile's default TTL"
+            help = "Max time, in seconds, that the item will be stored in cache [default: your profile's default TTL]"
         )]
         ttl_seconds: Option<u64>,
     },
@@ -499,7 +499,7 @@ clap::ArgGroup::new("cache-name")
     Get {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use. Default: your profile's default cache",
+            help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -528,7 +528,7 @@ clap::ArgGroup::new("cache-name")
     DeleteItem {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use. Default: your profile's default cache",
+            help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -550,7 +550,7 @@ pub enum TopicCommand {
     Publish {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use as your topic namespace. Default: your profile's default cache",
+            help = "Name of the cache you want to use as your topic namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -566,7 +566,7 @@ pub enum TopicCommand {
     Subscribe {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use as your topic namespace. Default: your profile's default cache",
+            help = "Name of the cache you want to use as your topic namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
