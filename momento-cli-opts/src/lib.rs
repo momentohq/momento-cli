@@ -143,11 +143,16 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Cache namespace",
+            help = "Name of the cache you want to use as your function namespace",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
-        #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
+        #[arg(
+            long = "name",
+            short,
+            help = "Name of the function you want to create or update",
+            value_name = "FUNCTION"
+        )]
         name: String,
         #[arg(
             long = "wasm-file",
@@ -200,12 +205,17 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Cache namespace",
+            help = "Name of the cache you want to use as your function namespace",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
 
-        #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
+        #[arg(
+            long = "name",
+            short,
+            help = "Name of the function you want to invoke",
+            value_name = "FUNCTION"
+        )]
         name: String,
 
         #[arg(long = "data", short, help = "HTTP payload body")]
@@ -213,7 +223,7 @@ pub enum FunctionCommand {
 
         #[arg(
             long = "path",
-            help = "Path (and/or query string) to append to Function's endpoint URL. Examples: /my/path or /my/path?someKey=someValue or just ?someKey=someValue"
+            help = "Path (and/or query string) to append to your function's endpoint URL. Examples: /my/path or /my/path?someKey=someValue or just ?someKey=someValue"
         )]
         path: Option<String>,
 
@@ -237,7 +247,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Cache namespace",
+            help = "Name of the cache you want to check",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -395,7 +405,7 @@ pub enum CacheCommand {
     ),
     )]
     Delete {
-        #[arg(help = "Name of the cache you want to delete.", value_name = "CACHE")]
+        #[arg(help = "Name of the cache you want to delete", value_name = "CACHE")]
         cache_name: Option<String>,
 
         #[arg(long = "cache", value_name = "CACHE")]
@@ -413,7 +423,7 @@ clap::ArgGroup::new("cache-name")
 .required(true)
 .args(["cache_name", "cache_name_flag"])))]
     Flush {
-        #[arg(help = "Name of the cache to flush.", value_name = "CACHE")]
+        #[arg(help = "Name of the cache you want to flush", value_name = "CACHE")]
         cache_name: Option<String>,
 
         #[arg(long = "cache", value_name = "CACHE")]
@@ -536,7 +546,7 @@ pub enum TopicCommand {
         )]
         cache_name: Option<String>,
 
-        #[arg(help = "Name of the topic to which you would like to publish")]
+        #[arg(help = "Name of the topic you want to publish to")]
         topic: String,
         #[arg(help = "String message value to publish")]
         value: String,
@@ -552,7 +562,7 @@ pub enum TopicCommand {
         )]
         cache_name: Option<String>,
 
-        #[arg(help = "Name of the topic to which you would like to subscribe")]
+        #[arg(help = "Name of the topic you want to subscribe to")]
         topic: String,
     },
 }
