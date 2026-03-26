@@ -321,7 +321,16 @@ to help find opportunities for optimizations with Momento.
         )]
         metric_end_date: Option<String>,
     },
-    #[command(about = "**PREVIEW** Create or update your Momento Functions")]
+    #[command(
+        about = "**PREVIEW** Interact with your Momento Functions",
+        before_help = "
+Momento Functions require a cache, which serves as a namespace
+for your Functions. If you haven't already, call `cache create`
+to make one!
+
+For more information about Momento Functions, visit our repo:
+https://github.com/momentohq/functions/"
+    )]
     Function {
         #[arg(
             long,
