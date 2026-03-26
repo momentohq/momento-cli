@@ -54,7 +54,7 @@ pub enum Subcommand {
             long,
             short,
             global = true,
-            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
 
@@ -83,7 +83,7 @@ To delete a topic, stop subscribing to it."
             long,
             short,
             global = true,
-            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
 
@@ -213,7 +213,7 @@ pub enum FunctionCommand {
 
         #[arg(
             long = "path",
-            help = "Path (and/or query string) to append to function's endpoint URL. Start your query string with ? (for example, /my/path?someKey=someValue)"
+            help = "Path (and/or query string) to append to function's endpoint URL. Start your query string with ? (Example: /my/path?someKey=someValue)"
         )]
         path: Option<String>,
 
@@ -324,7 +324,7 @@ to help find opportunities for optimizations with Momento.
             long,
             short,
             global = true,
-            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
 
