@@ -479,7 +479,7 @@ clap::ArgGroup::new("cache-name")
 
         #[arg(
             long = "ttl",
-            help = "Max time, in seconds, that the item will be stored in cache"
+            help = "Max time, in seconds, that the item will be stored in cache. Default: your profile's default TTL"
         )]
         ttl_seconds: Option<u64>,
     },
