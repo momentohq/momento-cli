@@ -53,6 +53,7 @@ pub async fn invoke_function(
     auth_token: String,
     cache_name: String,
     name: String,
+    method: String,
     options: InvocationOptions,
 ) -> Result<(), CliError> {
     let headers = build_invocation_headers(options.headers.unwrap_or_default().as_str())?;
@@ -73,7 +74,6 @@ pub async fn invoke_function(
     };
     info!("at URL: {request_url}");
 
-    let method = options.method.unwrap_or("POST".into());
     info!("with request method: {method}");
 
     let req_client = reqwest::Client::new();

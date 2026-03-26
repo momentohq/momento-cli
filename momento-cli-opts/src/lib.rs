@@ -235,9 +235,10 @@ pub enum FunctionCommand {
             long = "method",
             alias = "request",
             short = 'X',
-            help = "HTTP request method to invoke your function with [default: POST]"
+            default_value = "POST",
+            help = "HTTP request method to invoke your function with"
         )]
-        method: Option<String>,
+        method: String,
 
         #[arg(
             long = "headers",

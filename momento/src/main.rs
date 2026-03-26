@@ -277,8 +277,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     momento_cli_opts::FunctionCommand::InvokeFunction {
                         cache_name,
                         name,
-                        data,
                         method,
+                        data,
                         headers,
                         path,
                     } => {
@@ -288,9 +288,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             auth_token,
                             cache_name,
                             name,
+                            method,
                             InvocationOptions {
                                 data,
-                                method,
                                 headers,
                                 path,
                             },
