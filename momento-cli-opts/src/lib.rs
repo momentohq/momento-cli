@@ -186,7 +186,7 @@ pub enum FunctionCommand {
         )]
         environment_variables: Vec<(String, String)>,
     },
-    #[command(about = "Create or update a wasm source that can be used in a Momento Function")]
+    #[command(about = "Create or update a Wasm source that can be used in a Momento Function")]
     PutWasm {
         #[arg(long = "name", short, help = "Wasm source name")]
         name: String,
@@ -257,7 +257,7 @@ pub enum FunctionCommand {
         #[arg(long = "id", short, help = "Function ID")]
         function_id: String,
     },
-    #[command(about = "List all wasm sources")]
+    #[command(about = "List all Wasm sources")]
     ListWasms {},
 }
 
