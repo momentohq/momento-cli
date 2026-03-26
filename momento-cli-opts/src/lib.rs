@@ -208,7 +208,7 @@ pub enum FunctionCommand {
         #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
         name: String,
 
-        #[arg(long = "data", short, help = "HTTP POST payload body")]
+        #[arg(long = "data", short, help = "HTTP payload body")]
         data: Option<String>,
 
         #[arg(
