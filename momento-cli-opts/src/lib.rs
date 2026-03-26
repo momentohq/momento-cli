@@ -181,7 +181,7 @@ pub enum FunctionCommand {
             long = "env-var",
             short = 'E',
             value_parser = parse_env::<String, String>,
-            help = "Environment variables to provide to the Function. Example: -E KEY1=value_1 -E KEY2=value_2",
+            help = "Environment variables to provide to your function. Example: -E KEY1=value_1 -E KEY2=value_2",
             value_name = "WASM"
         )]
         environment_variables: Vec<(String, String)>,
