@@ -40,7 +40,6 @@ pub fn determine_wasm_source(
 /// invoke-function
 pub struct InvocationOptions {
     pub data: Option<String>,
-    pub method: Option<String>,
     pub headers: Option<String>,
     pub path: Option<String>,
 }
