@@ -64,7 +64,7 @@ pub enum Subcommand {
     #[command(
         about = "Interact with topics",
         before_help = "
-These commands requires a cache, which serves as a namespace
+These commands require a cache, which serves as a namespace
 for your topics. If you haven't already, call `cache create`
 to make one!
 
