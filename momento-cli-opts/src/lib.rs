@@ -213,7 +213,7 @@ pub enum FunctionCommand {
 
         #[arg(
             long = "path",
-            help = "Path (and/or query string) to append to function's endpoint URL. Examples: /my/path or /my/path?someKey=someValue or just ?someKey=someValue"
+            help = "Path (and/or query string) to append to Function's endpoint URL. Examples: /my/path or /my/path?someKey=someValue or just ?someKey=someValue"
         )]
         path: Option<String>,
 
