@@ -86,6 +86,7 @@ pub async fn invoke_function(
         .await?;
     let status = response.status();
     if status.is_success() {
+        info!("Headers sent back by {name}:\n{:#?}", response.headers());
         console_data!("{}", response.text().await?);
         Ok(())
     } else {
