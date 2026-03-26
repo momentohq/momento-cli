@@ -218,7 +218,11 @@ pub enum FunctionCommand {
         )]
         name: String,
 
-        #[arg(long = "data", short, help = "HTTP payload body")]
+        #[arg(
+            long = "data",
+            short,
+            help = "HTTP payload body to send to your function"
+        )]
         data: Option<String>,
 
         #[arg(
@@ -231,14 +235,14 @@ pub enum FunctionCommand {
             long = "method",
             alias = "request",
             short = 'X',
-            help = "HTTP request method to use [default: POST]"
+            help = "HTTP request method to invoke your function with [default: POST]"
         )]
         method: Option<String>,
 
         #[arg(
             long = "headers",
             short = 'H',
-            help = "HTTP headers (as a JSON string)"
+            help = "HTTP headers to send to your function (as a JSON string)"
         )]
         headers: Option<String>,
     },
