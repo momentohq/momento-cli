@@ -7,7 +7,7 @@ use momento::{
 };
 
 use crate::{
-    commands::functions::utils::{build_invocation_headers, read_wasm_file},
+    commands::functions::utils::{build_invocation_headers, read_wasm_file, InvocationOptions},
     error::CliError,
     utils::console::console_data,
 };
@@ -53,25 +53,29 @@ pub async fn invoke_function(
     auth_token: String,
     cache_name: String,
     name: String,
-    data: Option<String>,
-    method: Option<String>,
-    headers_string: Option<String>,
+    options: InvocationOptions,
 ) -> Result<(), CliError> {
-    let headers = build_invocation_headers(headers_string.unwrap_or_default().as_str())?;
-    let data = data.unwrap_or_default();
+    let headers = build_invocation_headers(options.headers.unwrap_or_default().as_str())?;
+    let data = options.data.unwrap_or_default();
 
     info!("Invoking function. Name: {name}, Cache Namespace: {cache_name}");
-    if !headers.is_empty() {
+    if !data.is_empty() {
         info!("with payload:\n{data}");
     };
     if !headers.is_empty() {
         info!("with headers:\n{headers:#?}");
     }
 
-    let method = method.unwrap_or("POST".into());
+    let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
+    let request_url = match options.path {
+        None => function_url,
+        Some(path) => format!("{function_url}/{}", path.trim_start_matches("/")),
+    };
+    info!("at URL: {request_url}");
+
+    let method = options.method.unwrap_or("POST".into());
     info!("with request method: {method}");
 
-    let request_url = format!("{endpoint}/functions/{cache_name}/{name}");
     let req_client = reqwest::Client::new();
     let response = req_client
         .request(Method::from_str(&method)?, &request_url)
