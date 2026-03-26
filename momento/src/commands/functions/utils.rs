@@ -32,7 +32,7 @@ pub fn determine_wasm_source(
       version: version_uploaded_wasm,
     }),
     _ => Err(CliError {
-      msg: "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag or a previously uploaded wasm using the --id-uploaded-wasm and --version-uploaded-wasm flags".to_string(),
+      msg: "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag or a previously uploaded Wasm using the --id-uploaded-wasm and --version-uploaded-wasm flags".to_string(),
     }),
     }
 }

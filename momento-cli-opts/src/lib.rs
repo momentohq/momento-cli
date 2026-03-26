@@ -46,7 +46,7 @@ pub enum Subcommand {
         #[arg(
             long,
             global = true,
-            help = "An explicit Momento API key to use, instead of your profile's API key"
+            help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
 
@@ -54,7 +54,7 @@ pub enum Subcommand {
             long,
             short,
             global = true,
-            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
 
@@ -64,7 +64,7 @@ pub enum Subcommand {
     #[command(
         about = "Interact with topics",
         before_help = "
-These commands requires a cache, which serves as a namespace
+These commands require a cache, which serves as a namespace
 for your topics. If you haven't already, call `cache create`
 to make one!
 
@@ -75,7 +75,7 @@ To delete a topic, stop subscribing to it."
         #[arg(
             long,
             global = true,
-            help = "An explicit Momento API key to use, instead of your profile's API key"
+            help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
 
@@ -83,7 +83,7 @@ To delete a topic, stop subscribing to it."
             long,
             short,
             global = true,
-            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
 
@@ -143,11 +143,16 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Cache namespace",
+            help = "Name of the cache you want to use as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
-        #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
+        #[arg(
+            long = "name",
+            short,
+            help = "Name of the function you want to create or update",
+            value_name = "FUNCTION"
+        )]
         name: String,
         #[arg(
             long = "wasm-file",
@@ -176,12 +181,12 @@ pub enum FunctionCommand {
             long = "env-var",
             short = 'E',
             value_parser = parse_env::<String, String>,
-            help = "Environment variables to provide to the Function. Example: -E KEY1=value_1 -E KEY2=value_2",
+            help = "Environment variables to provide to your function. Example: -E KEY1=value_1 -E KEY2=value_2",
             value_name = "WASM"
         )]
         environment_variables: Vec<(String, String)>,
     },
-    #[command(about = "Create or update a wasm source that can be used in a Momento Function")]
+    #[command(about = "Create or update a Wasm source that can be used in a Momento Function")]
     PutWasm {
         #[arg(long = "name", short, help = "Wasm source name")]
         name: String,
@@ -200,20 +205,29 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Cache namespace",
+            help = "Name of the cache you want to use as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
 
-        #[arg(long = "name", short, help = "Function name", value_name = "FUNCTION")]
+        #[arg(
+            long = "name",
+            short,
+            help = "Name of the function you want to invoke",
+            value_name = "FUNCTION"
+        )]
         name: String,
 
-        #[arg(long = "data", short, help = "HTTP POST payload body")]
+        #[arg(
+            long = "data",
+            short,
+            help = "HTTP payload body to send to your function"
+        )]
         data: Option<String>,
 
         #[arg(
             long = "path",
-            help = "Path (and/or query string) to append to function's endpoint URL. Start your query string with ? (for example, /my/path?someKey=someValue)"
+            help = "Path (and/or query string) to append to your function's endpoint URL. Examples: /my/path or /my/path?someKey=someValue or just ?someKey=someValue"
         )]
         path: Option<String>,
 
@@ -221,14 +235,14 @@ pub enum FunctionCommand {
             long = "method",
             alias = "request",
             short = 'X',
-            help = "HTTP request method to use"
+            help = "HTTP request method to invoke your function with [default: POST]"
         )]
         method: Option<String>,
 
         #[arg(
             long = "headers",
             short = 'H',
-            help = "HTTP headers (as a JSON string)"
+            help = "HTTP headers to send to your function (as a JSON string)"
         )]
         headers: Option<String>,
     },
@@ -237,7 +251,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Cache namespace",
+            help = "Name of the cache you want to check [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -247,7 +261,7 @@ pub enum FunctionCommand {
         #[arg(long = "id", short, help = "Function ID")]
         function_id: String,
     },
-    #[command(about = "List all wasm sources")]
+    #[command(about = "List all Wasm sources")]
     ListWasms {},
 }
 
@@ -302,21 +316,30 @@ to help find opportunities for optimizations with Momento.
         metric_collection_rate: u32,
         #[arg(
             long = "start-date",
-            help = "The inclusive UTC start date of the metric collection period. Will use (end-date - 30 days) if not provided. (YYYY-MM-DD)"
+            help = "The inclusive UTC start date of the metric collection period (YYYY-MM-DD) [default: end date - 30 days]"
         )]
         metric_start_date: Option<String>,
         #[arg(
             long = "end-date",
-            help = "The inclusive UTC end date of the metric collection period. Will use the current date if not provided. (YYYY-MM-DD)"
+            help = "The inclusive UTC end date of the metric collection period (YYYY-MM-DD) [default: the current date]"
         )]
         metric_end_date: Option<String>,
     },
-    #[command(about = "**PREVIEW** Create or update your Momento Functions")]
+    #[command(
+        about = "**PREVIEW** Interact with your Momento Functions",
+        before_help = "
+Momento Functions require a cache, which serves as a namespace
+for your Functions. If you haven't already, call `cache create`
+to make one!
+
+For more information about Momento Functions, visit our repo:
+https://github.com/momentohq/functions/"
+    )]
     Function {
         #[arg(
             long,
             global = true,
-            help = "An explicit Momento API key to use, instead of your profile's API key"
+            help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
 
@@ -324,7 +347,7 @@ to help find opportunities for optimizations with Momento.
             long,
             short,
             global = true,
-            help = "An explicit hostname to use; for example, cell-us-east-1-1.prod.a.momentohq.com"
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
 
@@ -395,7 +418,7 @@ pub enum CacheCommand {
     ),
     )]
     Delete {
-        #[arg(help = "Name of the cache you want to delete.", value_name = "CACHE")]
+        #[arg(help = "Name of the cache you want to delete", value_name = "CACHE")]
         cache_name: Option<String>,
 
         #[arg(long = "cache", value_name = "CACHE")]
@@ -413,7 +436,7 @@ clap::ArgGroup::new("cache-name")
 .required(true)
 .args(["cache_name", "cache_name_flag"])))]
     Flush {
-        #[arg(help = "Name of the cache to flush.", value_name = "CACHE")]
+        #[arg(help = "Name of the cache you want to flush", value_name = "CACHE")]
         cache_name: Option<String>,
 
         #[arg(long = "cache", value_name = "CACHE")]
@@ -440,7 +463,7 @@ clap::ArgGroup::new("cache-name")
     Set {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -460,7 +483,7 @@ clap::ArgGroup::new("cache-name")
 
         #[arg(
             long = "ttl",
-            help = "Max time, in seconds, that the item will be stored in cache"
+            help = "Max time that the item will be stored in cache (in seconds) [default: your profile's default TTL]"
         )]
         ttl_seconds: Option<u64>,
     },
@@ -480,7 +503,7 @@ clap::ArgGroup::new("cache-name")
     Get {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -509,7 +532,7 @@ clap::ArgGroup::new("cache-name")
     DeleteItem {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use. If not provided, your profile's default cache is used.",
+            help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -531,12 +554,12 @@ pub enum TopicCommand {
     Publish {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use as your topic namespace. If not provided, your profile's default cache is used.",
+            help = "Name of the cache you want to use as your topic namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
 
-        #[arg(help = "Name of the topic to which you would like to publish")]
+        #[arg(help = "Name of the topic you want to publish to")]
         topic: String,
         #[arg(help = "String message value to publish")]
         value: String,
@@ -547,12 +570,12 @@ pub enum TopicCommand {
     Subscribe {
         #[arg(
             long = "cache",
-            help = "Name of the cache you want to use as your topic namespace. If not provided, your profile's default cache is used.",
+            help = "Name of the cache you want to use as your topic namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
 
-        #[arg(help = "Name of the topic to which you would like to subscribe")]
+        #[arg(help = "Name of the topic you want to subscribe to")]
         topic: String,
     },
 }

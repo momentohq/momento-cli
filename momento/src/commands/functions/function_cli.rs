@@ -180,7 +180,7 @@ pub async fn list_wasms(client: FunctionClient) -> Result<(), CliError> {
     let wasms_list = response.into_vec().await.map_err(Into::<CliError>::into)?;
 
     if wasms_list.is_empty() {
-        console_data!("No wasm sources found");
+        console_data!("No Wasm sources found");
     } else {
         console_data!("Wasm sources:");
         wasms_list.iter().for_each(|wasm| {
