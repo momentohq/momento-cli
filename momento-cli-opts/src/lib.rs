@@ -221,7 +221,7 @@ pub enum FunctionCommand {
             long = "method",
             alias = "request",
             short = 'X',
-            help = "HTTP request method to use"
+            help = "HTTP request method to use. Default: POST"
         )]
         method: Option<String>,
 
