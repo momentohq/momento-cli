@@ -143,7 +143,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Name of the cache you want to use as your function namespace",
+            help = "Name of the cache you want to use as your function namespace. Default: your profile's default cache",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -205,7 +205,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Name of the cache you want to use as your function namespace",
+            help = "Name of the cache you want to use as your function namespace. Default: your profile's default cache",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -247,7 +247,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
-            help = "Name of the cache you want to check",
+            help = "Name of the cache you want to check. Default: your profile's default cache",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
