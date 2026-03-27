@@ -2422,6 +2422,7 @@ dependencies = [
  "configparser",
  "env_logger",
  "flate2",
+ "form_urlencoded",
  "futures",
  "governor",
  "home",
@@ -2440,7 +2441,6 @@ dependencies = [
  "struson",
  "tempdir",
  "tokio",
- "url",
  "uuid",
 ]
 
