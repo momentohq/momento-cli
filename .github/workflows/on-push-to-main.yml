@@ -18,10 +18,12 @@ jobs:
       - name: Install protoc
         run: ./scripts/install_protoc_linux.sh
 
+      - uses: Swatinem/rust-cache@v2
+
       - name: rustfmt
-        run: cargo fmt -- --check
+        run: make format-check
       - name: Rigorous lint via Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: make lint-check
 
   build:
     runs-on: ubuntu-latest
@@ -33,6 +35,8 @@ jobs:
 
       - name: Install protoc
         run: ./scripts/install_protoc_linux.sh
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: cargo build --verbose
