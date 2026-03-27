@@ -82,12 +82,20 @@ pub fn build_invocation_url(
     cache_name: String,
     name: String,
     path: Option<String>,
-) -> String {
+) -> Result<String, CliError> {
     let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    match path {
+    let request_url = match path {
         None => function_url,
-        Some(path) => format!("{function_url}/{}", path.trim_start_matches("/")),
-    }
+        Some(path) => {
+            if path.contains("token") {
+                return Err(CliError {
+                    msg: "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter".to_string()
+                });
+            }
+            format!("{function_url}/{}", path.trim_start_matches("/"))
+        }
+    };
+    Ok(request_url)
 }
 
 impl From<reqwest::Error> for CliError {
