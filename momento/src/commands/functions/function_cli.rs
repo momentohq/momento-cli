@@ -7,7 +7,9 @@ use momento::{
 };
 
 use crate::{
-    commands::functions::utils::{build_invocation_headers, read_wasm_file, InvocationOptions},
+    commands::functions::utils::{
+        build_invocation_headers, build_invocation_url, read_wasm_file, InvocationOptions,
+    },
     error::CliError,
     utils::console::console_data,
 };
@@ -67,11 +69,7 @@ pub async fn invoke_function(
         info!("with headers:\n{headers:#?}");
     }
 
-    let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    let request_url = match options.path {
-        None => function_url,
-        Some(path) => format!("{function_url}/{}", path.trim_start_matches("/")),
-    };
+    let request_url = build_invocation_url(endpoint, cache_name, name, options.path)?;
     info!("at URL: {request_url}");
 
     info!("with request method: {method}");

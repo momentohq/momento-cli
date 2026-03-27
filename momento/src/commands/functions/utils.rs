@@ -6,6 +6,7 @@ use momento::functions::WasmSource;
 
 use crate::error::CliError;
 
+use form_urlencoded;
 use http::method::InvalidMethod;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderName, InvalidHeaderValue};
 
@@ -75,6 +76,28 @@ pub fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError
         );
     }
     Ok(headers)
+}
+
+pub fn build_invocation_url(
+    endpoint: String,
+    cache_name: String,
+    name: String,
+    path: Option<String>,
+) -> Result<String, CliError> {
+    let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
+    let request_url = match path {
+        None => function_url,
+        Some(path) => {
+            let query_string = path.split_once('?').unwrap_or_default().1;
+            if form_urlencoded::parse(query_string.as_bytes()).any(|(key, _)| key == "token") {
+                return Err(CliError {
+                    msg: "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter".to_string()
+                });
+            }
+            format!("{function_url}/{}", path.trim_start_matches("/"))
+        }
+    };
+    Ok(request_url)
 }
 
 impl From<reqwest::Error> for CliError {

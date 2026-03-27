@@ -24,6 +24,7 @@ aws-sdk-s3 = "1.28.0"
 indicatif = "0.17.8"
 flate2 = "1.0.28"
 http = "1.4.0"
+form_urlencoded = "1.2.2"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
