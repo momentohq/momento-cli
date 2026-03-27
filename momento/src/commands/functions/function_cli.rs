@@ -74,7 +74,7 @@ pub async fn invoke_function(
 
     info!("with request method: {method}");
 
-    let req_client = reqwest::Client::new();
+    let req_client = reqwest::Client::builder().build()?;
     let response = req_client
         .request(Method::from_str(&method)?, &request_url)
         .body(data)
