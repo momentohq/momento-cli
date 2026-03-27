@@ -102,7 +102,9 @@ pub fn build_invocation_url(
 
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
-        CliError { msg: e.to_string() }
+        CliError {
+            msg: format!("Something went wrong with the CLI's reqwest dependency: {e}\nPlease try again or contact us at support@gomomento.com"),
+        }
     }
 }
 
