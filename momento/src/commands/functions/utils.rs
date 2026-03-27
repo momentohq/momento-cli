@@ -77,6 +77,19 @@ pub fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError
     Ok(headers)
 }
 
+pub fn build_invocation_url(
+    endpoint: String,
+    cache_name: String,
+    name: String,
+    path: Option<String>,
+) -> String {
+    let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
+    match path {
+        None => function_url,
+        Some(path) => format!("{function_url}/{}", path.trim_start_matches("/")),
+    }
+}
+
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
         CliError { msg: e.to_string() }
