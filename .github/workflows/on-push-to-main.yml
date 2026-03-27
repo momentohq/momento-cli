@@ -21,7 +21,9 @@ jobs:
       - name: rustfmt
         run: cargo fmt -- --check
       - name: Rigorous lint via Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used
+          cargo clippy --tests -- -D warnings -W clippy::unwrap_used
 
   build:
     runs-on: ubuntu-latest
