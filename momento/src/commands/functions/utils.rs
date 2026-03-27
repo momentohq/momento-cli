@@ -8,6 +8,7 @@ use crate::error::CliError;
 
 use http::method::InvalidMethod;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderName, InvalidHeaderValue};
+use url::Url;
 
 /// put-function
 pub fn read_wasm_file(wasm_file: String) -> Result<Vec<u8>, CliError> {
@@ -87,14 +88,18 @@ pub fn build_invocation_url(
     let request_url = match path {
         None => function_url,
         Some(path) => {
-            if path.contains("token") {
-                return Err(CliError {
-                    msg: "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter".to_string()
-                });
-            }
             format!("{function_url}/{}", path.trim_start_matches("/"))
         }
     };
+    if Url::try_from(request_url.as_str())
+        .unwrap()
+        .query_pairs()
+        .any(|(key, _)| key == "token")
+    {
+        return Err(CliError {
+            msg: "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter".to_string()
+        });
+    }
     Ok(request_url)
 }
 
