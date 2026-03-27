@@ -2,18 +2,25 @@
 ## Generate sync unit tests, format, lint, and test
 all: precommit
 
+.PHONY: format-check
+## Check the formatting of all files
+format-check:
+	cargo fmt -- --check
+
+.PHONY: lint-check
+## Run clippy on the source code and tests (but allow expect to be used in tests)
+lint-check:
+	cargo clippy --all-features -- -D warnings -W clippy::unwrap_used && \
+	cargo clippy --tests -- -D warnings -W clippy::unwrap_used
+
+.PHONY: lint
+## Check formatting and linting
+lint: format-check lint-check
+
 .PHONY: format
 ## Format all files
 format:
 	cargo fmt
-
-.PHONY: lint
-## Check the formatting of all files, run clippy on the source code, then run
-## clippy on the tests (but allow expect to be used in tests)
-lint:
-	cargo fmt -- --check && \
-	cargo clippy --all-features -- -D warnings -W clippy::unwrap_used && \
-	cargo clippy --tests -- -D warnings -W clippy::unwrap_used
 
 .PHONY: build
 ## Build project
