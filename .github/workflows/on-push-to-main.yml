@@ -19,11 +19,9 @@ jobs:
         run: ./scripts/install_protoc_linux.sh
 
       - name: rustfmt
-        run: cargo fmt -- --check
+        run: make format-check
       - name: Rigorous lint via Clippy
-        run: |
-          cargo clippy --all-targets --all-features -- -D warnings -W clippy::unwrap_used
-          cargo clippy --tests -- -D warnings -W clippy::unwrap_used
+        run: make lint-check
 
   build:
     runs-on: ubuntu-latest
