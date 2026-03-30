@@ -69,7 +69,7 @@ pub async fn invoke_function(
         info!("with headers:\n{headers:#?}");
     }
 
-    let request_url = build_invocation_url(endpoint, cache_name, name, options.path)?;
+    let request_url = build_invocation_url(endpoint, cache_name, name.clone(), options.path)?;
     info!("at URL: {request_url}");
 
     info!("with request method: {method}");
