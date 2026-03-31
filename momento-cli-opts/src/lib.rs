@@ -273,7 +273,7 @@ pub enum PreviewCommand {
         before_help = "
 !!                                                                !!
 !!                        Preview feature                         !!
-!!   For more information, contact us at support@gomomento.com.   !!
+!!   For more information, contact us at support@momentohq.com.   !!
 !!                                                                !!
 
 This command will be used to fetch information about your Elasticache clusters and DynamoDB tables
