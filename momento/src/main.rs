@@ -324,7 +324,13 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
 impl From<MomentoError> for CliError {
     fn from(val: MomentoError) -> Self {
         CliError {
-            msg: format!("{val:?}"),
+            msg: match val.inner_error {
+                None => format!("{} (SDK {:?})", val.message, val.error_code),
+                Some(error_source) => format!(
+                    "{} (SDK {:?} from: {})",
+                    val.message, val.error_code, error_source
+                ),
+            },
         }
     }
 }
