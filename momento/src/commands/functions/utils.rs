@@ -98,9 +98,7 @@ pub fn build_invocation_url(
 
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
-        CliError::new(
-            format!("Something went wrong with the CLI's reqwest dependency: {e}\nPlease try again or contact us at support@momentohq.com"),
-        )
+        CliError::new(format!("{e} (reqwest error)"))
     }
 }
 
