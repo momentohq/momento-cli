@@ -4,7 +4,7 @@ use clap::Parser;
 use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
-use log::{debug, error, LevelFilter};
+use log::{debug, error, info, LevelFilter};
 use momento::MomentoError;
 use momento_cli_opts::PreviewCommand;
 use utils::{
@@ -353,7 +353,7 @@ async fn main() {
     .init();
 
     if let Err(e) = run_momento_command(args).await {
-        debug!("{e:#?}"); // only in verbose mode (error!() would always output)
+        info!("{e:#?}"); // only in verbose mode (error!() would always output)
         console_info!("{e}");
         exit(1)
     }
