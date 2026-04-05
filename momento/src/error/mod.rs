@@ -8,7 +8,7 @@ pub struct CliError {
 
 impl fmt::Debug for CliError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {:#?}", "ERROR".red().bold(), self.msg.red())
+        write!(f, "{}: {}", "ERROR".red().bold(), self.msg.red())
     }
 }
 
