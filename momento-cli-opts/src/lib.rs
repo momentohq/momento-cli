@@ -254,6 +254,7 @@ pub enum FunctionCommand {
             alias = "request",
             short = 'X',
             default_value = "POST",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "HTTP request method to invoke your function with"
         )]
         method: String,
