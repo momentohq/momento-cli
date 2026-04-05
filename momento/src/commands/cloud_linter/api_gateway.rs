@@ -54,9 +54,7 @@ impl ResourceWithMetrics for ApiGatewayResource {
         }];
         match self.resource_type {
             ResourceType::ApiGateway => Ok(targets),
-            _ => Err(CliError {
-                msg: "Invalid resource type".to_string(),
-            }),
+            _ => Err(CliError::new("Invalid resource type")),
         }
     }
 
@@ -78,9 +76,10 @@ pub(crate) async fn process_api_gateway_resources(
     metrics_start_millis: i64,
     metrics_end_millis: i64,
 ) -> Result<(), CliError> {
-    let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
-        msg: "No region configured for client".to_string(),
-    })?;
+    let region = config
+        .region()
+        .map(|r| r.as_ref())
+        .ok_or(CliError::new("No region configured for client"))?;
     let apig_client = aws_sdk_apigateway::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
 
@@ -97,9 +96,9 @@ pub(crate) async fn process_api_gateway_resources(
                 apis.extend(result.items.unwrap_or_default());
             }
             Err(e) => {
-                return Err(CliError {
-                    msg: format!("Failed to list API Gateway resources: {e}"),
-                });
+                return Err(CliError::new(format!(
+                    "Failed to list API Gateway resources: {e}"
+                )));
             }
         }
     }
@@ -173,15 +172,11 @@ async fn process_apis(
                 sender
                     .send(Resource::ApiGateway(apig_resource))
                     .await
-                    .map_err(|_| CliError {
-                        msg: "Failed to send API Gateway resource".to_string(),
-                    })?;
+                    .map_err(|_| CliError::new("Failed to send API Gateway resource"))?;
                 get_apis_bar.inc(1);
             }
             _ => {
-                return Err(CliError {
-                    msg: "Invalid resource type".to_string(),
-                });
+                return Err(CliError::new("Invalid resource type"));
             }
         }
     }

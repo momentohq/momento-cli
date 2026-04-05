@@ -38,11 +38,7 @@ pub async fn configure_momento(
 
     match fs::create_dir_all(momento_dir).await {
         Ok(_) => (),
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to create directory: {e}"),
-            })
-        }
+        Err(e) => return Err(CliError::new(format!("failed to create directory: {e}"))),
     };
     let creds_file_contents = ensure_file_exists_and_get_contents(&credentials_file_path).await?;
     let new_creds_file_contents =
@@ -191,11 +187,7 @@ async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Confi
         .parse::<u64>()
         {
             Ok(ttl) => ttl,
-            Err(e) => {
-                return Err(CliError {
-                    msg: format!("failed to parse ttl: {e}"),
-                })
-            }
+            Err(e) => return Err(CliError::new(format!("failed to parse ttl: {e}"))),
         };
     }
 
@@ -210,19 +202,13 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     use std::os::unix::fs::PermissionsExt;
     let mut perms = match fs::metadata(path).await {
         Ok(p) => p,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to get file permissions {e}"),
-            })
-        }
+        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
     }
     .permissions();
     perms.set_mode(0o600);
     match fs::set_permissions(path, perms).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {e}"),
-        }),
+        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
     }
 }
 
@@ -231,19 +217,13 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     use std::os::unix::fs::PermissionsExt;
     let mut perms = match fs::metadata(path).await {
         Ok(p) => p,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to get file permissions {e}"),
-            })
-        }
+        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
     }
     .permissions();
     perms.set_mode(0o600);
     match fs::set_permissions(path, perms).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {e}"),
-        }),
+        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
     }
 }
 
@@ -251,19 +231,13 @@ async fn set_file_read_write(path: &str) -> Result<(), CliError> {
 async fn set_file_read_write(path: &str) -> Result<(), CliError> {
     let mut perms = match fs::metadata(path).await {
         Ok(p) => p,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("failed to get file permissions {e}"),
-            })
-        }
+        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
     }
     .permissions();
     perms.set_readonly(false);
     match fs::set_permissions(path, perms).await {
         Ok(_) => Ok(()),
-        Err(e) => Err(CliError {
-            msg: format!("failed to set file permissions {e}"),
-        }),
+        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
     }
 }
 

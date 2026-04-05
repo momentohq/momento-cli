@@ -52,11 +52,11 @@ impl Credentials {
                             CredentialProvider::from_api_key_v2(new_api_key, original_endpoint)
                                 .map_err(Into::<CliError>::into)
                         }
-                        _ => Err(CliError {
+                        _ => Err(CliError::new(
                             // Case: --api-key is v2 API key, no endpoint found
-                            msg: "To test a v2 API key, provide an endpoint or start with a v2 profile".to_string(),
-                        })
-                    }
+                            "To test a v2 API key, provide an endpoint or start with a v2 profile",
+                        )),
+                    },
                 }
             }
             (None, Some(new_endpoint)) => match self {
@@ -70,7 +70,7 @@ impl Credentials {
                         Ok(credential_provider) => {
                             Ok(credential_provider.base_endpoint(&new_endpoint))
                         }
-                        Err(err) => Err(CliError { msg: err.message }),
+                        Err(err) => Err(CliError::new(err.message)),
                     }
                 }
             },

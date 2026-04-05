@@ -104,9 +104,7 @@ impl ResourceWithMetrics for ServerlessElastiCacheResource {
                 ]),
                 targets: SERVERLESS_CACHE_METRICS,
             }]),
-            _ => Err(CliError {
-                msg: "Invalid resource type".to_string(),
-            }),
+            _ => Err(CliError::new("Invalid resource type")),
         }
     }
 
@@ -128,9 +126,10 @@ pub(crate) async fn process_serverless_elasticache_resources(
     metrics_start_millis: i64,
     metrics_end_millis: i64,
 ) -> Result<(), CliError> {
-    let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
-        msg: "No region configured for client".to_string(),
-    })?;
+    let region = config
+        .region()
+        .map(|r| r.as_ref())
+        .ok_or(CliError::new("No region configured for client"))?;
 
     let elasticache_client = aws_sdk_elasticache::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
@@ -195,12 +194,11 @@ async fn process_resources(
                     .await?;
 
                 let wrapped_resource = Resource::ServerlessElastiCache(resource);
-                sender_clone
-                    .send(wrapped_resource)
-                    .await
-                    .map_err(|err| CliError {
-                        msg: format!("Failed to send serverless elasticache resource: {err}"),
-                    })?;
+                sender_clone.send(wrapped_resource).await.map_err(|err| {
+                    CliError::new(format!(
+                        "Failed to send serverless elasticache resource: {err}"
+                    ))
+                })?;
                 process_bar_clone.inc(1);
                 Ok::<(), CliError>(())
             }));
@@ -213,10 +211,9 @@ async fn process_resources(
                 Ok(res) => res?,
                 Err(_) => {
                     println!("failed to process serverless elasticache resources");
-                    return Err(CliError {
-                        msg: "failed to wait for all elasticache resources to collect data"
-                            .to_string(),
-                    });
+                    return Err(CliError::new(
+                        "failed to wait for all elasticache resources to collect data",
+                    ));
                 }
             }
         }
