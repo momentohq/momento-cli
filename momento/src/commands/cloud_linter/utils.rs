@@ -36,33 +36,25 @@ where
 {
     fn from(err: SdkError<E>) -> Self {
         let display_err = DisplayErrorContext(err);
-        CliError {
-            msg: format!("{display_err:?}"),
-        }
+        CliError::new(format!("{display_err:?}"))
     }
 }
 
 impl From<serde_json::Error> for CliError {
     fn from(val: serde_json::Error) -> Self {
-        CliError {
-            msg: format!("{val:?}"),
-        }
+        CliError::new(format!("{val:?}"))
     }
 }
 
 impl From<std::io::Error> for CliError {
     fn from(val: std::io::Error) -> Self {
-        CliError {
-            msg: format!("{val:?}"),
-        }
+        CliError::new(format!("{val:?}"))
     }
 }
 
 impl From<chrono::ParseError> for CliError {
     fn from(val: chrono::ParseError) -> Self {
-        CliError {
-            msg: format!("{val:?}"),
-        }
+        CliError::new(format!("{val:?}"))
     }
 }
 
@@ -73,16 +65,16 @@ pub(crate) async fn check_aws_credentials(config: &SdkConfig) -> Result<(), CliE
             .await
             .expect("Could not load AWS credentials");
         if credentials.access_key_id().is_empty() || credentials.secret_access_key().is_empty() {
-            Err(CliError {
-                msg: "Invalid AWS credentials. Please ensure that AWS credentials are properly configured.".to_string(),
-            })
+            Err(CliError::new(
+                "Invalid AWS credentials. Please ensure that AWS credentials are properly configured.".to_string(),
+            ))
         } else {
             Ok(())
         }
     } else {
-        Err(CliError {
-            msg: "No AWS credential provider found. Please ensure that AWS credentials are properly configured.".to_string(),
-        })
+        Err(CliError::new(
+            "No AWS credential provider found. Please ensure that AWS credentials are properly configured.".to_string(),
+        ))
     }
 }
 

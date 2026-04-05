@@ -14,9 +14,9 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderName, Inv
 pub fn read_wasm_file(wasm_file: String) -> Result<Vec<u8>, CliError> {
     let binary = fs::read(wasm_file).map_err(Into::<CliError>::into)?;
     if binary.is_empty() {
-        return Err(CliError {
-    msg: "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag".to_string(),
-  });
+        return Err(CliError::new(
+            "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag".to_string(),
+        ));
     }
     Ok(binary)
 }
@@ -32,9 +32,9 @@ pub fn determine_wasm_source(
       wasm_id: id_uploaded_wasm,
       version: version_uploaded_wasm,
     }),
-    _ => Err(CliError {
-      msg: "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag or a previously uploaded Wasm using the --id-uploaded-wasm and --version-uploaded-wasm flags".to_string(),
-    }),
+    _ => Err(CliError::new(
+        "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag or a previously uploaded Wasm using the --id-uploaded-wasm and --version-uploaded-wasm flags".to_string(),
+    )),
     }
 }
 
@@ -51,19 +51,15 @@ pub fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError
     }
     let headers_map = match serde_json::from_str::<HashMap<String, String>>(headers_str) {
         Ok(map) => map,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("Header {:?}: {e}", e.classify()),
-            })
-        }
+        Err(e) => return Err(CliError::new(format!("Header {:?}: {e}", e.classify()))),
     };
     let mut headers = HeaderMap::with_capacity(headers_map.len());
     for (key, value) in headers_map.iter() {
         let lower_key = key.to_lowercase();
         if lower_key == "authorization" {
-            return Err(CliError {
-                msg: "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header".to_string()
-            });
+            return Err(CliError::new(
+                "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header".to_string()
+            ));
         }
         if headers.contains_key(&lower_key) {
             // HashMap already case-sensitively ignored duplicate keys,
@@ -90,9 +86,9 @@ pub fn build_invocation_url(
         Some(path) => {
             let query_string = path.split_once('?').unwrap_or_default().1;
             if form_urlencoded::parse(query_string.as_bytes()).any(|(key, _)| key == "token") {
-                return Err(CliError {
-                    msg: "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter".to_string()
-                });
+                return Err(CliError::new(
+                    "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter".to_string()
+                ));
             }
             format!("{function_url}/{}", path.trim_start_matches("/"))
         }
@@ -102,32 +98,26 @@ pub fn build_invocation_url(
 
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
-        CliError {
-            msg: format!("Something went wrong with the CLI's reqwest dependency: {e}\nPlease try again or contact us at support@momentohq.com"),
-        }
+        CliError::new(
+            format!("Something went wrong with the CLI's reqwest dependency: {e}\nPlease try again or contact us at support@momentohq.com"),
+        )
     }
 }
 
 impl From<InvalidMethod> for CliError {
     fn from(e: InvalidMethod) -> Self {
-        CliError {
-            msg: format!("Invalid HTTP method: {e}"),
-        }
+        CliError::new(format!("Invalid HTTP method: {e}"))
     }
 }
 
 impl From<InvalidHeaderName> for CliError {
     fn from(e: InvalidHeaderName) -> Self {
-        CliError {
-            msg: format!("Header Name: {e}"),
-        }
+        CliError::new(format!("Header Name: {e}"))
     }
 }
 
 impl From<InvalidHeaderValue> for CliError {
     fn from(e: InvalidHeaderValue) -> Self {
-        CliError {
-            msg: format!("Header Value: {e}"),
-        }
+        CliError::new(format!("Header Value: {e}"))
     }
 }

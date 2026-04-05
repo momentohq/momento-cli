@@ -98,9 +98,7 @@ pub async fn invoke_function(
             }
             Err(_) => error_text,
         };
-        Err(CliError {
-            msg: format!("{status}: {error_message}"),
-        })
+        Err(CliError::new(format!("{status}: {error_message}")))
     }
 }
 

@@ -60,8 +60,9 @@ pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliErro
     }
 
     // else invalid credentials, prompt to reconfigure
-    Err(CliError{
-            msg: format!("failed to get credentials for profile {profile}, please run 'momento configure' to configure your profile")})
+    Err(CliError::new(
+        format!("failed to get credentials for profile {profile}, please run 'momento configure' to configure your profile")
+    ))
 }
 
 async fn read_credentials() -> Result<Ini, CliError> {
@@ -73,29 +74,29 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
     let path = get_config_file_path()?;
     let configs = match read_ini_file(&path).await {
         Ok(c) => c,
-        Err(e) => return Err(CliError {
-            msg: format!("failed to read credentials, please run 'momento configure' to setup credentials. Root cause: {e:?}")
-        }),
+        Err(e) => return Err(CliError::new(
+            format!("failed to read credentials, please run 'momento configure' to setup credentials. Root cause: {e:?}")
+        )),
     };
 
     let cache_result = match configs.get(profile, "cache") {
         Some(c) => c,
-        None => return Err(CliError{
-            msg: format!("failed to get cache config for profile {profile}, please run 'momento configure' to configure your profile")
-        }),
+        None => return Err(CliError::new(
+            format!("failed to get cache config for profile {profile}, please run 'momento configure' to configure your profile")
+        )),
     };
 
     let ttl_result = match configs.get(profile, "ttl") {
         Some(c) => c,
-        None => return Err(CliError{
-            msg: format!("failed to get ttl config for profile {profile}, please run 'momento configure' to configure your profile")
-        }),
+        None => return Err(CliError::new(
+            format!("failed to get ttl config for profile {profile}, please run 'momento configure' to configure your profile")
+        )),
     };
 
     Ok(Config {
         cache: cache_result,
-        ttl: ttl_result.parse::<u64>().map_err(|e| CliError {
-            msg: format!("could not parse a u64: {e:?}"),
-        })?,
+        ttl: ttl_result
+            .parse::<u64>()
+            .map_err(|e| CliError::new(format!("could not parse a u64: {e:?}")))?,
     })
 }

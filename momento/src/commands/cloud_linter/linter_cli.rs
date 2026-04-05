@@ -344,12 +344,11 @@ fn get_metric_time_range(
 }
 
 fn parse_date_string(date: &str) -> Result<NaiveDateTime, CliError> {
-    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d").map_err(|_| CliError {
-        msg: "Date must be in YYYY-MM-DD format".to_string(),
-    })?;
-    naive_date.and_hms_opt(0, 0, 0).ok_or_else(|| CliError {
-        msg: "invalid time".to_string(),
-    })
+    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d")
+        .map_err(|_| CliError::new("Date must be in YYYY-MM-DD format".to_string()))?;
+    naive_date
+        .and_hms_opt(0, 0, 0)
+        .ok_or_else(|| CliError::new("invalid time".to_string()))
 }
 
 async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {
@@ -362,14 +361,15 @@ async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {
         Path::new(".")
     };
 
-    let metadata = metadata(dir).await.map_err(|_| CliError {
-        msg: format!("Directory '{}' is not accessible", dir.display()),
-    })?;
+    let metadata = metadata(dir)
+        .await
+        .map_err(|_| CliError::new(format!("Directory '{}' is not accessible", dir.display())))?;
 
     if metadata.permissions().readonly() {
-        Err(CliError {
-            msg: format!("Directory '{}' is not writable", dir.display()),
-        })
+        Err(CliError::new(format!(
+            "Directory '{}' is not writable",
+            dir.display()
+        )))
     } else {
         Ok(())
     }

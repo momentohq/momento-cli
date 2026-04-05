@@ -178,9 +178,9 @@ impl ResourceWithMetrics for DynamoDbResource {
                     .gsi
                     .as_ref()
                     .map(|gsi| gsi.gsi_name.clone())
-                    .ok_or(CliError {
-                        msg: "Global secondary index name not found".to_string(),
-                    })?;
+                    .ok_or(CliError::new(
+                        "Global secondary index name not found".to_string(),
+                    ))?;
                 Ok(vec![MetricTarget {
                     namespace: "AWS/DynamoDB".to_string(),
                     expression: "".to_string(),
@@ -191,9 +191,7 @@ impl ResourceWithMetrics for DynamoDbResource {
                     targets: DDB_GSI_METRICS,
                 }])
             }
-            _ => Err(CliError {
-                msg: "Invalid resource type".to_string(),
-            }),
+            _ => Err(CliError::new("Invalid resource type".to_string())),
         }
     }
 
@@ -276,9 +274,9 @@ pub(crate) async fn process_ddb_resources(
                 Ok(res) => res?,
                 Err(_) => {
                     println!("failed to wait for all dynamodb tables");
-                    return Err(CliError {
-                        msg: "failed to wait for all dynamo resources to collect data".to_string(),
-                    });
+                    return Err(CliError::new(
+                        "failed to wait for all dynamo resources to collect data".to_string(),
+                    ));
                 }
             }
         }
@@ -303,9 +301,9 @@ async fn list_table_names(
                 }
             }
             Err(err) => {
-                return Err(CliError {
-                    msg: format!("Failed to list Dynamo DB table names: {err}"),
-                });
+                return Err(CliError::new(format!(
+                    "Failed to list Dynamo DB table names: {err}"
+                )));
             }
         }
     }
@@ -380,9 +378,7 @@ async fn process_table_resources(
         .config()
         .region()
         .map(|r| r.as_ref())
-        .ok_or(CliError {
-            msg: "No region configured for client".to_string(),
-        })?;
+        .ok_or(CliError::new("No region configured for client".to_string()))?;
 
     let description = rate_limit(Arc::clone(&control_plane_limiter), || async {
         ddb_client
@@ -393,9 +389,9 @@ async fn process_table_resources(
     })
     .await?;
 
-    let table = description.table.ok_or(CliError {
-        msg: "Table description not found".to_string(),
-    })?;
+    let table = description
+        .table
+        .ok_or(CliError::new("Table description not found".to_string()))?;
 
     let item_count = table.item_count.unwrap_or_default();
     let table_size_bytes = table.table_size_bytes.unwrap_or_default();
@@ -466,18 +462,18 @@ async fn process_table_resources(
                 let gsi_name = gsi
                     .index_name
                     .as_ref()
-                    .ok_or(CliError {
-                        msg: "Global secondary index name not found".to_string(),
-                    })?
+                    .ok_or(CliError::new(
+                        "Global secondary index name not found".to_string(),
+                    ))?
                     .clone();
 
-                let gsi_item_count = gsi.item_count.ok_or(CliError {
-                    msg: "Global secondary index item count not found".to_string(),
-                })?;
+                let gsi_item_count = gsi.item_count.ok_or(CliError::new(
+                    "Global secondary index item count not found".to_string(),
+                ))?;
 
-                let gsi_size_bytes = gsi.index_size_bytes.ok_or(CliError {
-                    msg: "Global secondary index size not found".to_string(),
-                })?;
+                let gsi_size_bytes = gsi.index_size_bytes.ok_or(CliError::new(
+                    "Global secondary index size not found".to_string(),
+                ))?;
 
                 let gsi_projection_type = gsi
                     .projection
@@ -538,8 +534,8 @@ async fn process_table_resources(
             sender
                 .send(Resource::DynamoDb(resource))
                 .await
-                .map_err(|err| CliError {
-                    msg: format!("Failed to stream dynamodb resource to file: {err}"),
+                .map_err(|err| {
+                    CliError::new(format!("Failed to stream dynamodb resource to file: {err}"))
                 })?;
             continue;
         }
@@ -562,8 +558,8 @@ async fn process_table_resources(
         sender
             .send(Resource::DynamoDb(resource))
             .await
-            .map_err(|err| CliError {
-                msg: format!("Failed to stream dynamodb resource to file: {err}"),
+            .map_err(|err| {
+                CliError::new(format!("Failed to stream dynamodb resource to file: {err}"))
             })?;
     }
 
