@@ -72,11 +72,7 @@ where
         }
         while let Some(finished_future) = futures.next().await {
             match finished_future {
-                Err(_e) => {
-                    return Err(CliError::new(
-                        "failed to retrieve metrics from cloudwatch".to_string(),
-                    ))
-                }
+                Err(_e) => return Err(CliError::new("failed to retrieve metrics from cloudwatch")),
                 Ok(result) => {
                     let resource_metrics = result?;
                     metrics.push(resource_metrics);
@@ -163,12 +159,10 @@ async fn query_metrics_for_target(
 
             if let Some(mdr_vec) = response.metric_data_results {
                 for mdr in mdr_vec {
-                    let name = mdr
-                        .id
-                        .ok_or_else(|| CliError::new("Metric has no id".to_string()))?;
+                    let name = mdr.id.ok_or_else(|| CliError::new("Metric has no id"))?;
                     let values = mdr
                         .values
-                        .ok_or_else(|| CliError::new("Metric has no values".to_string()))?;
+                        .ok_or_else(|| CliError::new("Metric has no values"))?;
                     metric_results.push(Metric { name, values });
                 }
             }

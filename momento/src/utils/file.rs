@@ -27,7 +27,7 @@ pub fn get_momento_config_dir() -> Result<String, CliError> {
         return Ok(val);
     }
     // If the env var isn't set we default to ~/.momento
-    let home = home_dir().ok_or_else(|| CliError::new("could not find home dir".to_string()))?;
+    let home = home_dir().ok_or_else(|| CliError::new("could not find home dir"))?;
     Ok(format!("{}/.momento", home.display()))
 }
 

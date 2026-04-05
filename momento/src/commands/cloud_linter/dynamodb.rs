@@ -178,9 +178,7 @@ impl ResourceWithMetrics for DynamoDbResource {
                     .gsi
                     .as_ref()
                     .map(|gsi| gsi.gsi_name.clone())
-                    .ok_or(CliError::new(
-                        "Global secondary index name not found".to_string(),
-                    ))?;
+                    .ok_or(CliError::new("Global secondary index name not found"))?;
                 Ok(vec![MetricTarget {
                     namespace: "AWS/DynamoDB".to_string(),
                     expression: "".to_string(),
@@ -191,7 +189,7 @@ impl ResourceWithMetrics for DynamoDbResource {
                     targets: DDB_GSI_METRICS,
                 }])
             }
-            _ => Err(CliError::new("Invalid resource type".to_string())),
+            _ => Err(CliError::new("Invalid resource type")),
         }
     }
 
@@ -275,7 +273,7 @@ pub(crate) async fn process_ddb_resources(
                 Err(_) => {
                     println!("failed to wait for all dynamodb tables");
                     return Err(CliError::new(
-                        "failed to wait for all dynamo resources to collect data".to_string(),
+                        "failed to wait for all dynamo resources to collect data",
                     ));
                 }
             }
@@ -378,7 +376,7 @@ async fn process_table_resources(
         .config()
         .region()
         .map(|r| r.as_ref())
-        .ok_or(CliError::new("No region configured for client".to_string()))?;
+        .ok_or(CliError::new("No region configured for client"))?;
 
     let description = rate_limit(Arc::clone(&control_plane_limiter), || async {
         ddb_client
@@ -391,7 +389,7 @@ async fn process_table_resources(
 
     let table = description
         .table
-        .ok_or(CliError::new("Table description not found".to_string()))?;
+        .ok_or(CliError::new("Table description not found"))?;
 
     let item_count = table.item_count.unwrap_or_default();
     let table_size_bytes = table.table_size_bytes.unwrap_or_default();
@@ -462,18 +460,16 @@ async fn process_table_resources(
                 let gsi_name = gsi
                     .index_name
                     .as_ref()
-                    .ok_or(CliError::new(
-                        "Global secondary index name not found".to_string(),
-                    ))?
+                    .ok_or(CliError::new("Global secondary index name not found"))?
                     .clone();
 
-                let gsi_item_count = gsi.item_count.ok_or(CliError::new(
-                    "Global secondary index item count not found".to_string(),
-                ))?;
+                let gsi_item_count = gsi
+                    .item_count
+                    .ok_or(CliError::new("Global secondary index item count not found"))?;
 
-                let gsi_size_bytes = gsi.index_size_bytes.ok_or(CliError::new(
-                    "Global secondary index size not found".to_string(),
-                ))?;
+                let gsi_size_bytes = gsi
+                    .index_size_bytes
+                    .ok_or(CliError::new("Global secondary index size not found"))?;
 
                 let gsi_projection_type = gsi
                     .projection

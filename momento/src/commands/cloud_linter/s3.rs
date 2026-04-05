@@ -109,7 +109,7 @@ impl ResourceWithMetrics for S3Resource {
 
         match self.resource_type {
             ResourceType::S3 => Ok(s3_metrics_targets),
-            _ => Err(CliError::new("Invalid resource type".to_string())),
+            _ => Err(CliError::new("Invalid resource type")),
         }
     }
 
@@ -134,7 +134,7 @@ pub(crate) async fn process_s3_resources(
     let region = config
         .region()
         .map(|r| r.as_ref())
-        .ok_or(CliError::new("No region configured for client".to_string()))?;
+        .ok_or(CliError::new("No region configured for client"))?;
     let s3client = aws_sdk_s3::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
 
@@ -291,7 +291,7 @@ async fn process_buckets(
             Ok(res) => res?,
             Err(_) => {
                 return Err(CliError::new(
-                    "failed to wait for all s3 resources to collect data".to_string(),
+                    "failed to wait for all s3 resources to collect data",
                 ))
             }
         }
@@ -343,7 +343,7 @@ async fn process_bucket(
     sender
         .send(Resource::S3(s3_resource))
         .await
-        .map_err(|_| CliError::new("Failed to send S3 resource".to_string()))?;
+        .map_err(|_| CliError::new("Failed to send S3 resource"))?;
 
     Ok(())
 }

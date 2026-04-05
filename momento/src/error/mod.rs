@@ -19,7 +19,7 @@ impl fmt::Display for CliError {
 }
 
 impl CliError {
-    pub fn new(msg: String) -> Self {
-        Self { msg }
+    pub fn new(msg: impl Into<String>) -> Self {
+        Self { msg: msg.into() }
     }
 }

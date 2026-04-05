@@ -54,7 +54,7 @@ impl ResourceWithMetrics for ApiGatewayResource {
         }];
         match self.resource_type {
             ResourceType::ApiGateway => Ok(targets),
-            _ => Err(CliError::new("Invalid resource type".to_string())),
+            _ => Err(CliError::new("Invalid resource type")),
         }
     }
 
@@ -79,7 +79,7 @@ pub(crate) async fn process_api_gateway_resources(
     let region = config
         .region()
         .map(|r| r.as_ref())
-        .ok_or(CliError::new("No region configured for client".to_string()))?;
+        .ok_or(CliError::new("No region configured for client"))?;
     let apig_client = aws_sdk_apigateway::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
 
@@ -172,13 +172,11 @@ async fn process_apis(
                 sender
                     .send(Resource::ApiGateway(apig_resource))
                     .await
-                    .map_err(|_| {
-                        CliError::new("Failed to send API Gateway resource".to_string())
-                    })?;
+                    .map_err(|_| CliError::new("Failed to send API Gateway resource"))?;
                 get_apis_bar.inc(1);
             }
             _ => {
-                return Err(CliError::new("Invalid resource type".to_string()));
+                return Err(CliError::new("Invalid resource type"));
             }
         }
     }

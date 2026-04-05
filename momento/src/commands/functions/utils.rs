@@ -15,7 +15,7 @@ pub fn read_wasm_file(wasm_file: String) -> Result<Vec<u8>, CliError> {
     let binary = fs::read(wasm_file).map_err(Into::<CliError>::into)?;
     if binary.is_empty() {
         return Err(CliError::new(
-            "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag".to_string(),
+            "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag",
         ));
     }
     Ok(binary)
@@ -33,7 +33,7 @@ pub fn determine_wasm_source(
       version: version_uploaded_wasm,
     }),
     _ => Err(CliError::new(
-        "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag or a previously uploaded Wasm using the --id-uploaded-wasm and --version-uploaded-wasm flags".to_string(),
+        "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag or a previously uploaded Wasm using the --id-uploaded-wasm and --version-uploaded-wasm flags",
     )),
     }
 }
@@ -58,7 +58,7 @@ pub fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError
         let lower_key = key.to_lowercase();
         if lower_key == "authorization" {
             return Err(CliError::new(
-                "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header".to_string()
+                "To use a specific Momento API key, please specify --profile or --api-key, not an authorization header",
             ));
         }
         if headers.contains_key(&lower_key) {
@@ -87,7 +87,7 @@ pub fn build_invocation_url(
             let query_string = path.split_once('?').unwrap_or_default().1;
             if form_urlencoded::parse(query_string.as_bytes()).any(|(key, _)| key == "token") {
                 return Err(CliError::new(
-                    "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter".to_string()
+                    "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter",
                 ));
             }
             format!("{function_url}/{}", path.trim_start_matches("/"))

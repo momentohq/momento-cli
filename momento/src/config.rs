@@ -54,8 +54,7 @@ impl Credentials {
                         }
                         _ => Err(CliError::new(
                             // Case: --api-key is v2 API key, no endpoint found
-                            "To test a v2 API key, provide an endpoint or start with a v2 profile"
-                                .to_string(),
+                            "To test a v2 API key, provide an endpoint or start with a v2 profile",
                         )),
                     },
                 }

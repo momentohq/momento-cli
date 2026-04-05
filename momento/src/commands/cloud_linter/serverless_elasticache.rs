@@ -104,7 +104,7 @@ impl ResourceWithMetrics for ServerlessElastiCacheResource {
                 ]),
                 targets: SERVERLESS_CACHE_METRICS,
             }]),
-            _ => Err(CliError::new("Invalid resource type".to_string())),
+            _ => Err(CliError::new("Invalid resource type")),
         }
     }
 
@@ -129,7 +129,7 @@ pub(crate) async fn process_serverless_elasticache_resources(
     let region = config
         .region()
         .map(|r| r.as_ref())
-        .ok_or(CliError::new("No region configured for client".to_string()))?;
+        .ok_or(CliError::new("No region configured for client"))?;
 
     let elasticache_client = aws_sdk_elasticache::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
@@ -212,7 +212,7 @@ async fn process_resources(
                 Err(_) => {
                     println!("failed to process serverless elasticache resources");
                     return Err(CliError::new(
-                        "failed to wait for all elasticache resources to collect data".to_string(),
+                        "failed to wait for all elasticache resources to collect data",
                     ));
                 }
             }

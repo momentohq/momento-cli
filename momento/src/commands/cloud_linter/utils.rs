@@ -66,14 +66,14 @@ pub(crate) async fn check_aws_credentials(config: &SdkConfig) -> Result<(), CliE
             .expect("Could not load AWS credentials");
         if credentials.access_key_id().is_empty() || credentials.secret_access_key().is_empty() {
             Err(CliError::new(
-                "Invalid AWS credentials. Please ensure that AWS credentials are properly configured.".to_string(),
+                "Invalid AWS credentials. Please ensure that AWS credentials are properly configured.",
             ))
         } else {
             Ok(())
         }
     } else {
         Err(CliError::new(
-            "No AWS credential provider found. Please ensure that AWS credentials are properly configured.".to_string(),
+            "No AWS credential provider found. Please ensure that AWS credentials are properly configured.",
         ))
     }
 }

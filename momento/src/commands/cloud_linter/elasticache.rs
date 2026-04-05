@@ -102,7 +102,7 @@ impl ResourceWithMetrics for ElastiCacheResource {
                 ]),
                 targets: CACHE_METRICS,
             }]),
-            _ => Err(CliError::new("Invalid resource type".to_string())),
+            _ => Err(CliError::new("Invalid resource type")),
         }
     }
 
@@ -127,7 +127,7 @@ pub(crate) async fn process_elasticache_resources(
     let region = config
         .region()
         .map(|r| r.as_ref())
-        .ok_or(CliError::new("No region configured for client".to_string()))?;
+        .ok_or(CliError::new("No region configured for client"))?;
 
     let elasticache_client = aws_sdk_elasticache::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
@@ -215,7 +215,7 @@ async fn process_resources(
                 Err(_) => {
                     println!("failed to process elasticache resources");
                     return Err(CliError::new(
-                        "failed to wait for all elasticache resources to collect data".to_string(),
+                        "failed to wait for all elasticache resources to collect data",
                     ));
                 }
             }
@@ -273,16 +273,16 @@ fn convert_to_resources(
     let cache_cluster_id = cluster
         .cache_cluster_id
         .ok_or(CliError::new("ElastiCache cluster has no ID".to_string()))?;
-    let cache_node_type = cluster.cache_node_type.ok_or(CliError::new(
-        "ElastiCache cluster has no node type".to_string(),
-    ))?;
+    let cache_node_type = cluster
+        .cache_node_type
+        .ok_or(CliError::new("ElastiCache cluster has no node type"))?;
     let preferred_az = cluster.preferred_availability_zone.ok_or(CliError::new(
-        "ElastiCache cluster has no preferred availability zone".to_string(),
+        "ElastiCache cluster has no preferred availability zone",
     ))?;
 
-    let engine = cluster.engine.ok_or(CliError::new(
-        "ElastiCache cluster has no engine type".to_string(),
-    ))?;
+    let engine = cluster
+        .engine
+        .ok_or(CliError::new("ElastiCache cluster has no engine type"))?;
     match engine.as_str() {
         "redis" => {
             if resource_filter.is_some()
@@ -340,7 +340,7 @@ fn convert_to_resources(
                 for node in cache_nodes {
                     let cache_node_id = node
                         .cache_node_id
-                        .ok_or(CliError::new("Cache node has no ID".to_string()))?;
+                        .ok_or(CliError::new("Cache node has no ID"))?;
                     let resource = ElastiCacheResource {
                         resource_type: ResourceType::ElastiCacheMemcachedNode,
                         region: region.to_string(),

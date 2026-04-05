@@ -345,10 +345,10 @@ fn get_metric_time_range(
 
 fn parse_date_string(date: &str) -> Result<NaiveDateTime, CliError> {
     let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d")
-        .map_err(|_| CliError::new("Date must be in YYYY-MM-DD format".to_string()))?;
+        .map_err(|_| CliError::new("Date must be in YYYY-MM-DD format"))?;
     naive_date
         .and_hms_opt(0, 0, 0)
-        .ok_or_else(|| CliError::new("invalid time".to_string()))
+        .ok_or_else(|| CliError::new("invalid time"))
 }
 
 async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {
