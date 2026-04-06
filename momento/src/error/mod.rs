@@ -17,3 +17,9 @@ impl fmt::Display for CliError {
         write!(f, "{}: {}", "ERROR".red().bold(), self.msg.red())
     }
 }
+
+impl CliError {
+    pub fn new(msg: impl Into<String>) -> Self {
+        Self { msg: msg.into() }
+    }
+}

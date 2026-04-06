@@ -109,9 +109,7 @@ impl ResourceWithMetrics for S3Resource {
 
         match self.resource_type {
             ResourceType::S3 => Ok(s3_metrics_targets),
-            _ => Err(CliError {
-                msg: "Invalid resource type".to_string(),
-            }),
+            _ => Err(CliError::new("Invalid resource type")),
         }
     }
 
@@ -133,9 +131,10 @@ pub(crate) async fn process_s3_resources(
     metrics_start_millis: i64,
     metrics_end_millis: i64,
 ) -> Result<(), CliError> {
-    let region = config.region().map(|r| r.as_ref()).ok_or(CliError {
-        msg: "No region configured for client".to_string(),
-    })?;
+    let region = config
+        .region()
+        .map(|r| r.as_ref())
+        .ok_or(CliError::new("No region configured for client"))?;
     let s3client = aws_sdk_s3::Client::new(config);
     let metrics_client = aws_sdk_cloudwatch::Client::new(config);
 
@@ -202,9 +201,9 @@ async fn list_bucket_metrics_configs(
                     log::debug!("skipping redirected bucket {}", bucket);
                     break;
                 }
-                return Err(CliError {
-                    msg: format!("Failed to get bucket metrics configuration: {err}"),
-                });
+                return Err(CliError::new(format!(
+                    "Failed to get bucket metrics configuration: {err}"
+                )));
             }
         }
     }
@@ -291,9 +290,9 @@ async fn process_buckets(
             // bubble up any cli errors that we came across
             Ok(res) => res?,
             Err(_) => {
-                return Err(CliError {
-                    msg: "failed to wait for all s3 resources to collect data".to_string(),
-                })
+                return Err(CliError::new(
+                    "failed to wait for all s3 resources to collect data",
+                ))
             }
         }
     }
@@ -344,9 +343,7 @@ async fn process_bucket(
     sender
         .send(Resource::S3(s3_resource))
         .await
-        .map_err(|_| CliError {
-            msg: "Failed to send S3 resource".to_string(),
-        })?;
+        .map_err(|_| CliError::new("Failed to send S3 resource"))?;
 
     Ok(())
 }
