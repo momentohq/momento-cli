@@ -61,8 +61,6 @@ pub async fn invoke_function(
     let headers = build_invocation_headers(options.headers.unwrap_or_default().as_str())?;
 
     info!("Invoking function. Name: {name}, Cache Namespace: {cache_name}");
-    let data = options.data.unwrap_or_default();
-    info!("with payload, size {}:\n{data}", data.len());
     if !headers.is_empty() {
         info!("with headers:\n{headers:#?}");
     }
@@ -75,11 +73,18 @@ pub async fn invoke_function(
     let req_client = reqwest::Client::builder().build()?;
     let req_builder = req_client
         .request(Method::from_str(&method)?, &request_url)
-        .body(data)
         .header("authorization", &auth_token)
         .headers(headers);
-    let response = req_builder.send().await?;
+    let req_builder = if let Some(data) = options.data {
+        // Send payload if and only if the CLI user provided it,
+        // i.e. data isn't None (and may be empty "")
+        info!("with payload, size {}:\n{data}", data.len());
+        req_builder.body(data)
+    } else {
+        req_builder
+    };
 
+    let response = req_builder.send().await?;
     let status = response.status();
     if status.is_success() {
         info!("Headers sent back by {name}:\n{:#?}", response.headers());
