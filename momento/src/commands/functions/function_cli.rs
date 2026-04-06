@@ -71,20 +71,18 @@ pub async fn invoke_function(
     info!("with request method: {method}");
 
     let req_client = reqwest::Client::builder().build()?;
-    let req_builder = req_client
+    let mut req_builder = req_client
         .request(Method::from_str(&method)?, &request_url)
         .header("authorization", &auth_token)
         .headers(headers);
-    let req_builder = if let Some(data) = options.data {
+    if let Some(data) = options.data {
         // Send payload if and only if the CLI user provided it,
         // i.e. data isn't None (and may be empty "")
         info!("with payload, size {}:\n{data}", data.len());
-        req_builder.body(data)
-    } else {
-        req_builder
+        req_builder = req_builder.body(data);
     };
-
     let response = req_builder.send().await?;
+
     let status = response.status();
     if status.is_success() {
         info!("Headers sent back by {name}:\n{:#?}", response.headers());
