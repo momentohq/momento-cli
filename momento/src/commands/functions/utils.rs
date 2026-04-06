@@ -51,7 +51,14 @@ pub fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError
     }
     let headers_map = match serde_json::from_str::<HashMap<String, String>>(headers_str) {
         Ok(map) => map,
-        Err(e) => return Err(CliError::new(format!("Header {:?}: {e}", e.classify()))),
+        Err(e) => {
+            return Err(
+                CliError::new(format!("Header {:?}: {e}", e.classify())).with_details(format!(
+                    "serde_json {:?} error while deserializing headers: {e:#?}",
+                    e.classify()
+                )),
+            )
+        }
     };
     let mut headers = HeaderMap::with_capacity(headers_map.len());
     for (key, value) in headers_map.iter() {
@@ -98,9 +105,7 @@ pub fn build_invocation_url(
 
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
-        CliError::new(
-            format!("Something went wrong with the CLI's reqwest dependency: {e}\nPlease try again or contact us at support@momentohq.com"),
-        )
+        CliError::new(format!("{e} (reqwest error)")).with_details(format!("{e:#?}"))
     }
 }
 
@@ -113,11 +118,13 @@ impl From<InvalidMethod> for CliError {
 impl From<InvalidHeaderName> for CliError {
     fn from(e: InvalidHeaderName) -> Self {
         CliError::new(format!("Header Name: {e}"))
+            .with_details(format!("reqwest {e:#?} error while parsing headers: {e}"))
     }
 }
 
 impl From<InvalidHeaderValue> for CliError {
     fn from(e: InvalidHeaderValue) -> Self {
         CliError::new(format!("Header Value: {e}"))
+            .with_details(format!("reqwest {e:#?} error while parsing headers: {e}"))
     }
 }
