@@ -75,13 +75,13 @@ pub async fn invoke_function(
     info!("with request method: {method}");
 
     let req_client = reqwest::Client::builder().build()?;
-    let response = req_client
+    let req_builder = req_client
         .request(Method::from_str(&method)?, &request_url)
         .body(data)
         .header("authorization", &auth_token)
-        .headers(headers)
-        .send()
-        .await?;
+        .headers(headers);
+    let response = req_builder.send().await?;
+
     let status = response.status();
     if status.is_success() {
         info!("Headers sent back by {name}:\n{:#?}", response.headers());
