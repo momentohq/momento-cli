@@ -59,12 +59,10 @@ pub async fn invoke_function(
     options: InvocationOptions,
 ) -> Result<(), CliError> {
     let headers = build_invocation_headers(options.headers.unwrap_or_default().as_str())?;
-    let data = options.data.unwrap_or_default();
 
     info!("Invoking function. Name: {name}, Cache Namespace: {cache_name}");
-    if !data.is_empty() {
-        info!("with payload, size {}:\n{data}", data.len());
-    };
+    let data = options.data.unwrap_or_default();
+    info!("with payload, size {}:\n{data}", data.len());
     if !headers.is_empty() {
         info!("with headers:\n{headers:#?}");
     }
