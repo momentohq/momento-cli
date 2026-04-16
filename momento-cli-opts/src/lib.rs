@@ -189,6 +189,11 @@ pub enum FunctionCommand {
     #[command(
     about = "Update a Momento Function's configuration",
     group(
+    clap::ArgGroup::new("function-specifier")
+    .required(true)
+    .args(["function_name", "function_id"]),
+    ),
+    group(
     clap::ArgGroup::new("version")
     .args(["pin_version", "use_latest_version"]),
     ),
@@ -201,13 +206,20 @@ pub enum FunctionCommand {
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
+
         #[arg(
             long = "name",
-            short,
+            short = 'n',
             help = "Name of the function you want to update",
             value_name = "FUNCTION"
         )]
-        name: String,
+        function_name: Option<String>,
+        #[arg(
+            long = "id",
+            help = "ID of the function you want to update",
+            value_name = "FUNCTION"
+        )]
+        function_id: Option<String>,
 
         #[arg(
             long = "pin-version",

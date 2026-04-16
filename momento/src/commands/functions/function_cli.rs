@@ -53,13 +53,22 @@ pub async fn put_function(
 pub async fn put_function_config(
     client: FunctionClient,
     cache_name: String,
-    name: String,
+    function_name: Option<String>,
+    function_id: Option<String>,
     new_version: Option<CurrentFunctionVersion>,
 ) -> Result<(), CliError> {
-    let mut request = PutFunctionConfigRequest::from_function_name(&cache_name, &name);
+    let mut request = if let Some(name) = function_name {
+        PutFunctionConfigRequest::from_function_name(&cache_name, &name)
+    } else if let Some(id) = function_id {
+        PutFunctionConfigRequest::from_function_id(&cache_name, &id)
+    } else {
+        return Err(CliError::new("Function name or ID must be specified"));
+    };
+
     if let Some(new_version) = new_version {
         request = request.current_version(new_version);
     }
+
     let response = client.send(request).await.map_err(Into::<CliError>::into)?;
     console_data!(
         "Function config updated! Name: {}, ID: {}, Latest Version: {}, Current Version: {}",

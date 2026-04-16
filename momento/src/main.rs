@@ -261,7 +261,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                     momento_cli_opts::FunctionCommand::PutFunctionConfig {
                         cache_name,
-                        name,
+                        function_name,
+                        function_id,
                         pin_version,
                         use_latest_version,
                     } => {
@@ -271,7 +272,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         commands::functions::function_cli::put_function_config(
                             client,
                             cache_name,
-                            name,
+                            function_name,
+                            function_id,
                             new_version,
                         )
                         .await?
