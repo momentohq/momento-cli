@@ -195,6 +195,7 @@ pub enum FunctionCommand {
     ),
     group(
     clap::ArgGroup::new("version")
+    .required(true)
     .args(["pin_version", "use_latest_version"]),
     ),
     )]
