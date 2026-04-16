@@ -1,7 +1,7 @@
 use momento::{
     functions::{
-        ListFunctionVersionsRequest, ListFunctionsRequest, ListWasmsRequest, PutFunctionRequest,
-        PutWasmRequest, WasmSource,
+        CurrentFunctionVersion, ListFunctionVersionsRequest, ListFunctionsRequest,
+        ListWasmsRequest, PutFunctionConfigRequest, PutFunctionRequest, PutWasmRequest, WasmSource,
     },
     FunctionClient,
 };
@@ -46,6 +46,27 @@ pub async fn put_function(
         response.name(),
         response.function_id(),
         response.version()
+    );
+    Ok(())
+}
+
+pub async fn put_function_config(
+    client: FunctionClient,
+    cache_name: String,
+    name: String,
+    new_version: Option<CurrentFunctionVersion>,
+) -> Result<(), CliError> {
+    let mut request = PutFunctionConfigRequest::from_function_name(&cache_name, &name);
+    if let Some(new_version) = new_version {
+        request = request.current_version(new_version);
+    }
+    let response = client.send(request).await.map_err(Into::<CliError>::into)?;
+    console_data!(
+        "Function config updated! Name: {}, ID: {}, Latest Version: {}, Current Version: {}",
+        response.name(),
+        response.function_id(),
+        response.latest_version(),
+        response.version(),
     );
     Ok(())
 }

@@ -14,7 +14,9 @@ use utils::{
 };
 
 use crate::{
-    commands::functions::utils::{determine_wasm_source, InvocationOptions},
+    commands::functions::utils::{
+        determine_current_function_version, determine_wasm_source, InvocationOptions,
+    },
     utils::console::console_info,
 };
 
@@ -254,6 +256,23 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             wasm_source,
                             description,
                             environment_variables,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::FunctionCommand::PutFunctionConfig {
+                        cache_name,
+                        name,
+                        pin_version,
+                        use_latest_version,
+                    } => {
+                        let cache_name = cache_name.unwrap_or(config.cache);
+                        let new_version =
+                            determine_current_function_version(pin_version, use_latest_version);
+                        commands::functions::function_cli::put_function_config(
+                            client,
+                            cache_name,
+                            name,
+                            new_version,
                         )
                         .await?
                     }
