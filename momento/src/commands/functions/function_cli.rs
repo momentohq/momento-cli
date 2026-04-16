@@ -45,7 +45,7 @@ pub async fn put_function(
     let current_version = response.version();
     if uploaded_version == current_version {
         console_data!(
-            "Function uploaded or updated! Name: {}, ID: {}, Latest Version: {}",
+            "Function uploaded or updated! Name: {}, ID: {}, Version: {}",
             response.name(),
             response.function_id(),
             uploaded_version,
