@@ -41,12 +41,24 @@ pub async fn put_function(
     }
     request = request.environment(environment_variables);
     let response = client.send(request).await.map_err(Into::<CliError>::into)?;
-    console_data!(
-        "Function uploaded or updated! Name: {}, ID: {}, Version: {}",
+    let uploaded_version = response.latest_version();
+    let current_version = response.version();
+    if uploaded_version == current_version {
+        console_data!(
+            "Function uploaded or updated! Name: {}, ID: {}, Latest Version: {}",
+            response.name(),
+            response.function_id(),
+            uploaded_version,
+        );
+    } else {
+        console_data!(
+        "Function version uploaded but not in use. Name: {}, ID: {}, Latest Version: {}, Current Version: {}",
         response.name(),
         response.function_id(),
-        response.version()
+        uploaded_version,
+        current_version,
     );
+    }
     Ok(())
 }
 
@@ -143,9 +155,10 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
         console_data!("Functions in cache namespace: {cache_name}");
         functions_list.iter().for_each(|function| {
             console_data!(
-                "Name: {}, ID: {}, Version: {}, Description: {}, Last Updated: {}",
+                "Name: {}, ID: {}, Latest Version: {}, Current Version: {}, Description: {}, Last Uploaded: {}",
                 function.name(),
                 function.function_id(),
+                function.latest_version(),
                 function.version(),
                 function.description(),
                 function.last_updated_at(),
