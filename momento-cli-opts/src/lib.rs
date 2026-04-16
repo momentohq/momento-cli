@@ -217,6 +217,7 @@ pub enum FunctionCommand {
         function_name: Option<String>,
         #[arg(
             long = "id",
+            short = 'i',
             help = "ID of the function you want to update",
             value_name = "FUNCTION"
         )]
