@@ -158,7 +158,7 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
             let description = if function.latest_version() == function.version()
                 && !function.description().is_empty()
             {
-                format!(", Description: {}", function.description())
+                format!(", Description: \"{}\"", function.description())
             } else {
                 "".to_string()
             };
@@ -190,7 +190,7 @@ pub async fn list_function_versions(
         console_data!("Versions for function: {function_id}");
         function_versions_list.iter().for_each(|version| {
             console_data!(
-                "\nFunction Version: {}, Description: {}, Wasm ID: {}, Wasm Version: {}, Environment Variables: {:#?}",
+                "\nFunction Version: {}, Description: \"{}\", Wasm ID: {}, Wasm Version: {}, Environment Variables: {:#?}",
                 version.version_id().version(),
                 version.description(),
                 version.wasm_version_id().id(),
