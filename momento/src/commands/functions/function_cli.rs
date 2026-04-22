@@ -154,13 +154,18 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
     } else {
         console_data!("Functions in cache namespace: {cache_name}");
         functions_list.iter().for_each(|function| {
+            let description = if function.latest_version() == function.version() && !function.description().is_empty() {
+                function.description()
+            } else {
+                "N/A (List versions to see description)"
+            };
             console_data!(
                 "Name: {}, ID: {}, Latest Version: {}, Current Version: {}, Description: {}, Last Uploaded: {}",
                 function.name(),
                 function.function_id(),
                 function.latest_version(),
                 function.version(),
-                function.description(),
+                description, // TODO remove the Function description when we have fully migrated to FunctionVersion descriptions
                 function.last_updated_at(),
             )
         });
@@ -182,8 +187,9 @@ pub async fn list_function_versions(
         console_data!("Versions for function: {function_id}");
         function_versions_list.iter().for_each(|version| {
             console_data!(
-                "Function Version: {}, Wasm ID: {}, Wasm Version: {}, Environment Variables: {:#?}",
+                "Function Version: {}, Description: {}, Wasm ID: {}, Wasm Version: {}, Environment Variables: {:#?}",
                 version.version_id().version(),
+                version.description(),
                 version.wasm_version_id().id(),
                 version.wasm_version_id().version(),
                 version.environment()
