@@ -43,7 +43,7 @@ features = [ "macros",]
 path = "../momento-cli-opts"
 
 [dependencies.momento]
-path = "../../client-sdk-rust"
+version = "0.64.0"
 
 [dependencies.futures]
 version = "0.3.28"
