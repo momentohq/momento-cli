@@ -153,14 +153,15 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
         console_data!("No functions found in cache namespace: {cache_name}");
     } else {
         console_data!("Functions in cache namespace: {cache_name}");
+        console_data!("To see all your descriptions, list-function-versions instead."); // TODO remove this note when we have fully migrated to FunctionVersion descriptions
         functions_list.iter().for_each(|function| {
             let description = if function.latest_version() == function.version() && !function.description().is_empty() {
-                function.description()
+                format!(", Description: {}", function.description())
             } else {
-                "N/A (List versions to see description)"
+                "".to_string()
             };
             console_data!(
-                "Name: {}, ID: {}, Latest Version: {}, Current Version: {}, Description: {}, Last Uploaded: {}",
+                "- Name: {}, ID: {}, Latest Version: {}, Current Version: {}{}, Last Uploaded: {}",
                 function.name(),
                 function.function_id(),
                 function.latest_version(),
