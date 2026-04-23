@@ -155,7 +155,7 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
         console_data!("Functions in cache namespace: {cache_name}");
         functions_list.iter().for_each(|function| {
             console_data!(
-                "Name: {}, ID: {}, Latest Version: {}, Current Version: {}, Description: {}, Last Uploaded: {}",
+                "\nName: {}, ID: {}, Latest Version: {}, Current Version: {}, Description: \"{}\", Last Uploaded: {}",
                 function.name(),
                 function.function_id(),
                 function.latest_version(),
@@ -182,8 +182,9 @@ pub async fn list_function_versions(
         console_data!("Versions for function: {function_id}");
         function_versions_list.iter().for_each(|version| {
             console_data!(
-                "Function Version: {}, Wasm ID: {}, Wasm Version: {}, Environment Variables: {:#?}",
+                "\nFunction Version: {}, Description: \"{}\", Wasm ID: {}, Wasm Version: {}, Environment Variables: {:#?}",
                 version.version_id().version(),
+                version.description(),
                 version.wasm_version_id().id(),
                 version.wasm_version_id().version(),
                 version.environment()
