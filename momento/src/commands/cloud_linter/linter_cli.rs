@@ -6,7 +6,7 @@ use std::time::Duration;
 use crate::commands::cloud_linter::api_gateway::process_api_gateway_resources;
 use aws_config::retry::RetryConfig;
 use aws_config::{BehaviorVersion, Region};
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use chrono::{NaiveDate, Utc};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use governor::{Quota, RateLimiter};
@@ -325,27 +325,26 @@ fn get_metric_time_range(
     start_date: Option<NaiveDate>,
     end_date: Option<NaiveDate>,
 ) -> Result<(i64, i64), CliError> {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let thirty_days = chrono::Duration::days(30).num_milliseconds();
 
     let processed_end_date = end_date
-        .map(convert_to_date_time)
+        .map(convert_to_timestamp_millis)
         .transpose()?
-        .unwrap_or(now)
-        .and_utc()
-        .timestamp_millis();
+        .unwrap_or(now.timestamp_millis());
     let processed_start_date = start_date
-        .map(convert_to_date_time)
+        .map(convert_to_timestamp_millis)
         .transpose()?
-        .map(|date| date.and_utc().timestamp_millis())
         .unwrap_or_else(|| processed_end_date - thirty_days);
 
     Ok((processed_start_date, processed_end_date))
 }
 
-fn convert_to_date_time(date: NaiveDate) -> Result<NaiveDateTime, CliError> {
+fn convert_to_timestamp_millis(date: NaiveDate) -> Result<i64, CliError> {
     date.and_hms_opt(0, 0, 0)
-        .ok_or_else(|| CliError::new("invalid time"))
+        .map_or(Err(CliError::new("invalid time")), |dt| {
+            Ok(dt.and_utc().timestamp_millis())
+        })
 }
 
 async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {
