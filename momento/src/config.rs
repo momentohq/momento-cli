@@ -34,9 +34,15 @@ impl Credentials {
                         Ok(credential_provider.base_endpoint(&new_endpoint))
                     }
                     Err(_) => {
-                        // Case: --api-key is v2 API key, --endpoint provided
-                        CredentialProvider::from_api_key_v2(new_api_key, new_endpoint)
-                            .map_err(Into::<CliError>::into)
+                        // Case: --api-key is not a valid disposable token, --endpoint provided
+                        CredentialProvider::from_api_key_v2(new_api_key, new_endpoint).map_err(
+                            |e| {
+                                CliError::new(
+                                    "If you're testing a disposable token or v2 API key, make sure it is correctly formatted.",
+                                )
+                                .with_details(format!("{e:#?}"))
+                            },
+                        )
                     }
                 }
             }
@@ -46,16 +52,22 @@ impl Credentials {
                         // Case: --api-key is disposable token, defaulting to --profile's endpoint
                         Ok(credential_provider)
                     }
-                    Err(_) => match self {
+                    Err(e) => match self {
                         Credentials::ApiKeyV2(_, original_endpoint) => {
-                            // Case: --api-key is v2 API key, defaulting to --profile's endpoint
+                            // Case: --api-key is not a valid disposable token, defaulting to --profile's endpoint
                             CredentialProvider::from_api_key_v2(new_api_key, original_endpoint)
-                                .map_err(Into::<CliError>::into)
+                                .map_err(|e| {
+                                    CliError::new(
+                                        "If you're testing a disposable token or v2 API key, make sure it is correctly formatted.",
+                                    )
+                                    .with_details(format!("{e:#?}"))
+                                })
                         }
                         _ => Err(CliError::new(
-                            // Case: --api-key is v2 API key, no endpoint found
-                            "To test a v2 API key, provide an endpoint or start with a v2 profile",
-                        )),
+                            // Case: --api-key is not a valid disposable token, no endpoint found
+                            "If you're testing a v2 API key, provide an endpoint or start with a v2 profile. If you're testing a disposable token, make sure it is correctly formatted.",
+                        )
+                        .with_details(format!("{e:#?}"))),
                     },
                 }
             }
