@@ -332,11 +332,12 @@ fn get_metric_time_range(
         .map(convert_to_date_time)
         .transpose()?
         .unwrap_or(now)
+        .and_utc()
         .timestamp_millis();
     let processed_start_date = start_date
         .map(convert_to_date_time)
         .transpose()?
-        .map(|date| date.timestamp_millis())
+        .map(|date| date.and_utc().timestamp_millis())
         .unwrap_or_else(|| processed_end_date - thirty_days);
 
     Ok((processed_start_date, processed_end_date))
