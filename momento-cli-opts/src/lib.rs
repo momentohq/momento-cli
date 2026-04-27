@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use clap::builder::NonEmptyStringValueParser;
 use clap::CommandFactory;
 use clap::Parser;
 
@@ -25,6 +26,7 @@ pub struct Momento {
         short,
         default_value = "default",
         global = true,
+        value_parser = NonEmptyStringValueParser::new(),
         help = "User profile"
     )]
     pub profile: String,
@@ -46,6 +48,7 @@ pub enum Subcommand {
         #[arg(
             long,
             global = true,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
@@ -54,6 +57,7 @@ pub enum Subcommand {
             long,
             short,
             global = true,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
@@ -75,6 +79,7 @@ To delete a topic, stop subscribing to it."
         #[arg(
             long,
             global = true,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
@@ -83,6 +88,7 @@ To delete a topic, stop subscribing to it."
             long,
             short,
             global = true,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
@@ -143,6 +149,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache you want to use as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
@@ -150,6 +157,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "name",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the function you want to create or update",
             value_name = "FUNCTION"
         )]
@@ -157,6 +165,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "wasm-file",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = ".wasm file compiled with wasm32-wasip2",
             value_name = "WASM"
         )]
@@ -164,6 +173,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "id-uploaded-wasm",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "ID of a Wasm binary previously uploaded to Momento Functions",
             value_name = "WASM"
         )]
@@ -238,11 +248,17 @@ pub enum FunctionCommand {
     },
     #[command(about = "Create or update a Wasm source that can be used in a Momento Function")]
     PutWasm {
-        #[arg(long = "name", short, help = "Wasm source name")]
+        #[arg(
+            long = "name",
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Wasm source name"
+        )]
         name: String,
         #[arg(
             long = "wasm-file",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = ".wasm file compiled with wasm32-wasip2",
             value_name = "WASM"
         )]
@@ -255,6 +271,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache used as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
@@ -263,6 +280,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "name",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the function you want to invoke",
             value_name = "FUNCTION"
         )]
@@ -286,6 +304,7 @@ pub enum FunctionCommand {
             alias = "request",
             short = 'X',
             default_value = "POST",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "HTTP request method to invoke your function with"
         )]
         method: String,
@@ -302,6 +321,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache you want to check [default: your profile's default cache]",
             value_name = "CACHE"
         )]
@@ -309,7 +329,12 @@ pub enum FunctionCommand {
     },
     #[command(about = "List all versions of a Momento Function")]
     ListFunctionVersions {
-        #[arg(long = "id", short, help = "Function ID")]
+        #[arg(
+            long = "id",
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Function ID"
+        )]
         function_id: String,
     },
     #[command(about = "List all Wasm sources")]
@@ -390,6 +415,7 @@ https://github.com/momentohq/functions/"
         #[arg(
             long,
             global = true,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit Momento API key to use [default: your profile's API key]"
         )]
         api_key: Option<String>,
@@ -398,6 +424,7 @@ https://github.com/momentohq/functions/"
             long,
             short,
             global = true,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
@@ -449,14 +476,23 @@ pub enum CacheCommand {
     )]
     Create {
         #[arg(
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache you want to create. Must be at least 3 characters and unique within your account.",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
 
-        #[arg(long = "cache", value_name = "CACHE")]
+        #[arg(
+            long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
         cache_name_flag: Option<String>,
-        #[arg(long = "name", value_name = "CACHE")]
+        #[arg(
+            long = "name",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
         cache_name_flag_for_backward_compatibility: Option<String>,
     },
 
@@ -469,12 +505,24 @@ pub enum CacheCommand {
     ),
     )]
     Delete {
-        #[arg(help = "Name of the cache you want to delete", value_name = "CACHE")]
+        #[arg(
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the cache you want to delete",
+            value_name = "CACHE"
+        )]
         cache_name: Option<String>,
 
-        #[arg(long = "cache", value_name = "CACHE")]
+        #[arg(
+            long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
         cache_name_flag: Option<String>,
-        #[arg(long = "name", value_name = "CACHE")]
+        #[arg(
+            long = "name",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
         cache_name_flag_for_backward_compatibility: Option<String>,
     },
 
@@ -487,10 +535,18 @@ clap::ArgGroup::new("cache-name")
 .required(true)
 .args(["cache_name", "cache_name_flag"])))]
     Flush {
-        #[arg(help = "Name of the cache you want to flush", value_name = "CACHE")]
+        #[arg(
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the cache you want to flush",
+            value_name = "CACHE"
+        )]
         cache_name: Option<String>,
 
-        #[arg(long = "cache", value_name = "CACHE")]
+        #[arg(
+            long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
         cache_name_flag: Option<String>,
     },
 
@@ -514,11 +570,16 @@ clap::ArgGroup::new("cache-name")
     Set {
         #[arg(
             long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
-        #[arg(long = "name", value_name = "CACHE")]
+        #[arg(
+            long = "name",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
         cache_name_flag_for_backward_compatibility: Option<String>,
 
         // TODO: Add support for non-string key-value
@@ -554,11 +615,16 @@ clap::ArgGroup::new("cache-name")
     Get {
         #[arg(
             long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
-        #[arg(long = "name", value_name = "CACHE")]
+        #[arg(
+            long = "name",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
         cache_name_flag_for_backward_compatibility: Option<String>,
 
         // TODO: Add support for non-string key-value
@@ -583,11 +649,16 @@ clap::ArgGroup::new("cache-name")
     DeleteItem {
         #[arg(
             long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache you want to use [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
-        #[arg(long = "name", value_name = "CACHE")]
+        #[arg(
+            long = "name",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
         cache_name_flag_for_backward_compatibility: Option<String>,
 
         // TODO: Add support for non-string key-value
@@ -605,6 +676,7 @@ pub enum TopicCommand {
     Publish {
         #[arg(
             long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache you want to use as your topic namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
@@ -621,6 +693,7 @@ pub enum TopicCommand {
     Subscribe {
         #[arg(
             long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache you want to use as your topic namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
