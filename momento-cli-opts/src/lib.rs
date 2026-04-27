@@ -213,6 +213,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "cache-name",
             short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the cache used as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
@@ -221,6 +222,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "name",
             short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the function you want to update",
             value_name = "FUNCTION"
         )]
@@ -228,6 +230,7 @@ pub enum FunctionCommand {
         #[arg(
             long = "id",
             short = 'i',
+            value_parser = NonEmptyStringValueParser::new(),
             help = "ID of the function you want to update",
             value_name = "FUNCTION"
         )]
