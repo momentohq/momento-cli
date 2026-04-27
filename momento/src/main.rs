@@ -336,8 +336,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
     Ok(())
 }
 
-/// todo: fix CliError to either not exist anymore or actually support sources
-/// todo: pick output strings more intentionally
 impl From<MomentoError> for CliError {
     fn from(val: MomentoError) -> Self {
         CliError::new(match &val.inner_error {
