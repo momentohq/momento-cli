@@ -343,8 +343,13 @@ impl From<MomentoError> for CliError {
         CliError::new(match &val.inner_error {
             None => format!("{} (SDK {:?})", val.message, val.error_code),
             Some(error_source) => format!(
-                "{} (SDK {:?} from: {})",
-                val.message, val.error_code, error_source
+                "{} (SDK {:?} from: {}{})",
+                val.message,
+                val.error_code,
+                error_source,
+                val.details()
+                    .map(|details| format!(": {}", details.message))
+                    .unwrap_or_default()
             ),
         })
         .with_details(format!("{val:#?}"))
