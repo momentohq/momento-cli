@@ -196,6 +196,56 @@ pub enum FunctionCommand {
         )]
         environment_variables: Vec<(String, String)>,
     },
+    #[command(
+    about = "Update a Momento Function's configuration",
+    group(
+    clap::ArgGroup::new("function-specifier")
+    .required(true)
+    .args(["function_name", "function_id"]),
+    ),
+    group(
+    clap::ArgGroup::new("version")
+    .required(true)
+    .args(["pin_version", "use_latest_version"]),
+    ),
+    )]
+    PutFunctionConfig {
+        #[arg(
+            long = "cache-name",
+            short,
+            help = "Name of the cache used as your function namespace [default: your profile's default cache]",
+            value_name = "CACHE"
+        )]
+        cache_name: Option<String>,
+
+        #[arg(
+            long = "name",
+            short = 'n',
+            help = "Name of the function you want to update",
+            value_name = "FUNCTION"
+        )]
+        function_name: Option<String>,
+        #[arg(
+            long = "id",
+            short = 'i',
+            help = "ID of the function you want to update",
+            value_name = "FUNCTION"
+        )]
+        function_id: Option<String>,
+
+        #[arg(
+            long = "pin-version",
+            help = "Always invoke this specific version of the function. Example: --pin-version 42",
+            value_name = "VERSION"
+        )]
+        pin_version: Option<u32>,
+        #[arg(
+            long = "use-latest-version",
+            help = "Always invoke the latest available version of the function",
+            default_value_t = false
+        )]
+        use_latest_version: bool,
+    },
     #[command(about = "Create or update a Wasm source that can be used in a Momento Function")]
     PutWasm {
         #[arg(
@@ -222,7 +272,7 @@ pub enum FunctionCommand {
             long = "cache-name",
             short,
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the cache you want to use as your function namespace [default: your profile's default cache]",
+            help = "Name of the cache used as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,

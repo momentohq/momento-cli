@@ -4,7 +4,7 @@ path = "src/main.rs"
 
 [package]
 name = "momento-cli"
-version = "0.53.0"
+version = "0.55.0"
 edition = "2021"
 
 [dependencies]
@@ -43,7 +43,7 @@ features = [ "macros",]
 path = "../momento-cli-opts"
 
 [dependencies.momento]
-version = "0.61.0"
+version = "0.64.1"
 
 [dependencies.futures]
 version = "0.3.28"
