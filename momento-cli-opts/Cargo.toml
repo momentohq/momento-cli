@@ -3,6 +3,9 @@ name = "momento-cli-opts"
 version = "0.55.0"
 edition = "2021"
 
+[dependencies]
+chrono = "0.4.44"
+
 [dependencies.clap]
 version = "4.1"
 features = [ "derive",]

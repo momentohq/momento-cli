@@ -4,6 +4,10 @@ use clap::builder::NonEmptyStringValueParser;
 use clap::CommandFactory;
 use clap::Parser;
 
+mod utils;
+use chrono::NaiveDate;
+use utils::DateValueParser;
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
     Browser,
@@ -395,14 +399,16 @@ to help find opportunities for optimizations with Momento.
         metric_collection_rate: u32,
         #[arg(
             long = "start-date",
+            value_parser = DateValueParser,
             help = "The inclusive UTC start date of the metric collection period (YYYY-MM-DD) [default: end date - 30 days]"
         )]
-        metric_start_date: Option<String>,
+        metric_start_date: Option<NaiveDate>,
         #[arg(
             long = "end-date",
+            value_parser = DateValueParser,
             help = "The inclusive UTC end date of the metric collection period (YYYY-MM-DD) [default: the current date]"
         )]
-        metric_end_date: Option<String>,
+        metric_end_date: Option<NaiveDate>,
     },
     #[command(
         about = "**PREVIEW** Interact with your Momento Functions",
