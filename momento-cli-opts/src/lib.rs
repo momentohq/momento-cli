@@ -6,7 +6,7 @@ use clap::Parser;
 
 mod utils;
 use chrono::NaiveDate;
-use utils::DateValueParser;
+use utils::parse_date;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
@@ -399,13 +399,13 @@ to help find opportunities for optimizations with Momento.
         metric_collection_rate: u32,
         #[arg(
             long = "start-date",
-            value_parser = DateValueParser,
+            value_parser = parse_date,
             help = "The inclusive UTC start date of the metric collection period (YYYY-MM-DD) [default: end date - 30 days]"
         )]
         metric_start_date: Option<NaiveDate>,
         #[arg(
             long = "end-date",
-            value_parser = DateValueParser,
+            value_parser = parse_date,
             help = "The inclusive UTC end date of the metric collection period (YYYY-MM-DD) [default: the current date]"
         )]
         metric_end_date: Option<NaiveDate>,
