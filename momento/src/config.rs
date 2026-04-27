@@ -70,7 +70,7 @@ impl Credentials {
                         Ok(credential_provider) => {
                             Ok(credential_provider.base_endpoint(&new_endpoint))
                         }
-                        Err(err) => Err(CliError::new(err.message)),
+                        Err(e) => Err(e.into()),
                     }
                 }
             },
