@@ -330,21 +330,19 @@ fn get_metric_time_range(
 
     let processed_end_date = end_date
         .map(convert_to_timestamp_millis)
-        .transpose()?
         .unwrap_or(now.timestamp_millis());
     let processed_start_date = start_date
         .map(convert_to_timestamp_millis)
-        .transpose()?
         .unwrap_or_else(|| processed_end_date - thirty_days);
 
     Ok((processed_start_date, processed_end_date))
 }
 
-fn convert_to_timestamp_millis(date: NaiveDate) -> Result<i64, CliError> {
+fn convert_to_timestamp_millis(date: NaiveDate) -> i64 {
     date.and_hms_opt(0, 0, 0)
-        .map_or(Err(CliError::new("invalid time")), |dt| {
-            Ok(dt.and_utc().timestamp_millis())
-        })
+        .expect("midnight is always a valid time")
+        .and_utc()
+        .timestamp_millis()
 }
 
 async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {
