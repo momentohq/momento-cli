@@ -57,19 +57,29 @@ pub async fn configure_momento(
     )
     .await?;
 
+    console_info!("");
+
     let credential_provider = credentials.override_and_authenticate(None, None)?;
+    console_info!("{profile_name} successfully created or updated");
+
     let client = get_cache_client(credential_provider).await?;
     match create_cache(client.clone(), config.cache.clone()).await {
         Ok(_) => console_info!(
-            "{} successfully created as the default with default TTL of {}s",
+            "{} successfully created as the default cache with default TTL of {}s",
             config.cache.clone(),
             config.ttl
         ),
         Err(e) => {
+            console_info!(
+                "{} successfully set as the default cache with default TTL of {}s",
+                config.cache.clone(),
+                config.ttl
+            );
             if e.msg.contains("already exists") {
                 // Nothing to do here; the cache already exists but users won't find that particularly
                 // interesting.
             } else {
+                // Check if cache exists
                 match client.list_caches().await {
                     Ok(response) => {
                         if response
@@ -77,11 +87,6 @@ pub async fn configure_momento(
                             .iter()
                             .all(|cache| cache.name != config.cache.clone())
                         {
-                            console_info!(
-                                "{} successfully set as your default cache with default TTL of {}s",
-                                config.cache.clone(),
-                                config.ttl
-                            );
                             return Err(CliError::new(
                                 if e.msg.contains("Insufficient permissions") {
                                     format!("{} couldn't be created, due to insufficient API key permissions. Please create it with another API key.", config.cache.clone())
@@ -92,11 +97,6 @@ pub async fn configure_momento(
                         }
                     }
                     Err(_) => {
-                        console_info!(
-                            "{} successfully set as your default cache with default TTL of {}s",
-                            config.cache.clone(),
-                            config.ttl
-                        );
                         return Err(CliError::new(
                             if e.msg.contains("Insufficient permissions") {
                                 format!("{} couldn't be created, due to insufficient API key permissions. If you haven't yet, please create it with another API key.", config.cache.clone())
