@@ -59,7 +59,7 @@ pub async fn configure_momento(
 
     let credential_provider = credentials.override_and_authenticate(None, None)?;
     let client = get_cache_client(credential_provider).await?;
-    match create_cache(client, config.cache.clone()).await {
+    match create_cache(client.clone(), config.cache.clone()).await {
         Ok(_) => console_info!(
             "{} successfully created as the default with default TTL of {}s",
             config.cache.clone(),
@@ -69,17 +69,43 @@ pub async fn configure_momento(
             if e.msg.contains("already exists") {
                 // Nothing to do here; the cache already exists but users won't find that particularly
                 // interesting.
-            } else if e.msg.contains("Insufficient permissions") {
-                console_info!(
-                    "{} successfully set as your default cache with default TTL of {}s",
-                    config.cache.clone(),
-                    config.ttl
-                );
-                return Err(CliError::new(
-                    format!("{} couldn't be created, due to insufficient API key permissions. Please create it with another API key.", config.cache.clone())
-                ).with_details(e.details().unwrap_or(format!("{e:#?}"))));
             } else {
-                return Err(e);
+                match client.list_caches().await {
+                    Ok(response) => {
+                        if response
+                            .caches
+                            .iter()
+                            .all(|cache| cache.name != config.cache.clone())
+                        {
+                            console_info!(
+                                "{} successfully set as your default cache with default TTL of {}s",
+                                config.cache.clone(),
+                                config.ttl
+                            );
+                            return Err(CliError::new(
+                                if e.msg.contains("Insufficient permissions") {
+                                    format!("{} couldn't be created, due to insufficient API key permissions. Please create it with another API key.", config.cache.clone())
+                                } else {
+                                    format!("{} couldn't be created:  {}", config.cache.clone(), e.msg)
+                                }
+                            ).with_details(e.details().unwrap_or(format!("{e:#?}"))));
+                        }
+                    }
+                    Err(_) => {
+                        console_info!(
+                            "{} successfully set as your default cache with default TTL of {}s",
+                            config.cache.clone(),
+                            config.ttl
+                        );
+                        return Err(CliError::new(
+                            if e.msg.contains("Insufficient permissions") {
+                                format!("{} couldn't be created, due to insufficient API key permissions. If you haven't yet, please create it with another API key.", config.cache.clone())
+                            } else {
+                                format!("{} couldn't be created:  {}", config.cache.clone(), e.msg)
+                            }
+                        ).with_details(e.details().unwrap_or(format!("{e:#?}"))));
+                    }
+                }
             }
         }
     };
