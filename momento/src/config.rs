@@ -163,11 +163,11 @@ mod tests {
 
     #[test]
     fn test_happy_path_v2_profile_with_v1_override_and_endpoint_override() {
-        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), TEST_ENDPOINT.to_string());
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), "old_endpoint".to_string());
         let credential_provider = creds
             .override_and_authenticate(
                 Some(TEST_V1_API_KEY.to_string()),
-                Some("override_endpoint".to_string()),
+                Some(TEST_ENDPOINT.to_string()),
             )
             .expect("should accept valid v1 API key");
 
@@ -176,7 +176,7 @@ mod tests {
             credential_provider.auth_token()
         );
         assert_eq!(
-            "https://api.cache.override_endpoint",
+            "https://api.cache.test_endpoint",
             credential_provider.cache_http_endpoint()
         );
     }
@@ -240,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_v2_profile_with_invalid_override_and_endpoint_override() {
-        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), TEST_ENDPOINT.to_string());
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), "old_endpoint".to_string());
         let result = creds.override_and_authenticate(
             Some("wfheofhriugheifweif".to_string()),
             Some(TEST_ENDPOINT.to_string()),
@@ -386,7 +386,7 @@ mod tests {
         let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), "old_endpoint".to_string());
         let credential_provider = creds
             .override_and_authenticate(None, Some(TEST_ENDPOINT.to_string()))
-            .expect("should accept valid v2 profile and override endpoint");
+            .expect("should accept valid v2 profile");
 
         assert_eq!(TEST_V2_API_KEY, credential_provider.auth_token());
         assert_eq!(
@@ -431,7 +431,7 @@ mod tests {
         let creds = Credentials::DisposableToken(TEST_V1_API_KEY.to_string());
         let credential_provider = creds
             .override_and_authenticate(None, Some(TEST_ENDPOINT.to_string()))
-            .expect("should accept valid v1 profile and override endpoint");
+            .expect("should accept valid v1 profile");
 
         assert_eq!(
             "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IHN1YmplY3QiLCJ2ZXIiOjEsInAiOiIifQ.hg2wMbWe-wesQVtA7wuJcRULjRphXLQwQTVYfQL3L7c",
