@@ -38,7 +38,7 @@ impl Credentials {
                         CredentialProvider::from_api_key_v2(new_api_key, new_endpoint).map_err(
                             |v2_err| {
                                 CliError::new(
-                                    "If you're testing a disposable token or v2 API key, make sure it is correctly formatted.",
+                                    "Could not parse --api-key as a disposable token or v2 API key. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key.",
                                 )
                                 .with_details(format!("SDK error while parsing as disposable token: {disposable_err:#?}\nSDK error while parsing as v2 API key: {v2_err:#?}"))
                             },
@@ -58,14 +58,14 @@ impl Credentials {
                             CredentialProvider::from_api_key_v2(new_api_key, original_endpoint)
                                 .map_err(|v2_err| {
                                     CliError::new(
-                                        "If you're testing a disposable token or v2 API key, make sure it is correctly formatted.",
+                                        "Could not parse --api-key as a disposable token or v2 API key. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key.",
                                     )
                                     .with_details(format!("SDK error while parsing as disposable token: {disposable_err:#?}\nSDK error while parsing as v2 API key: {v2_err:#?}"))
                                 })
                         }
                         _ => Err(CliError::new(
                             // Case: --api-key is not a valid disposable token, no endpoint found
-                            "If you're testing a v2 API key, provide an endpoint or start with a v2 profile. If you're testing a disposable token, make sure it is correctly formatted.",
+                            "If you're testing a v2 API key, provide an endpoint or start with a v2 profile. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key.",
                         )
                         .with_details(format!("SDK error while parsing as disposable token: {disposable_err:#?}"))),
                     },
