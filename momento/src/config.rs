@@ -55,6 +55,11 @@ impl Credentials {
                     Err(disposable_err) => match self {
                         Credentials::ApiKeyV2(_, original_endpoint) => {
                             // Case: --api-key is not a valid disposable token, defaulting to --profile's endpoint
+                            if original_endpoint.is_empty() {
+                                return Err(CliError::new(
+                                    "--profile's endpoint is empty. Consider rerunning 'momento configure'."
+                                ));
+                            };
                             CredentialProvider::from_api_key_v2(new_api_key, original_endpoint)
                                 .map_err(|v2_err| {
                                     CliError::new(
@@ -74,27 +79,65 @@ impl Credentials {
             (None, Some(new_endpoint)) => match self {
                 // Case: defaulting to --profile's API key, overriding endpoint
                 Credentials::ApiKeyV2(original_api_key, _) => {
-                    CredentialProvider::from_api_key_v2(original_api_key, new_endpoint)
-                        .map_err(|v2_err| v2_err.into())
+                    if original_api_key.is_empty() {
+                        return Err(CliError::new(
+                            "--profile's v2 API key is empty. Consider rerunning 'momento configure'."
+                        ));
+                    };
+                    CredentialProvider::from_api_key_v2(original_api_key, new_endpoint).map_err(
+                        |v2_err| {
+                            CliError::new("Could not parse --profile's v2 API key. Consider regenerating it and rerunning 'momento configure'.").with_details(
+                                format!("SDK error while parsing as v2 API key: {v2_err:#?}"),
+                            )
+                        },
+                    )
                 }
                 Credentials::DisposableToken(original_api_key) => {
                     match CredentialProvider::from_disposable_token(original_api_key) {
                         Ok(credential_provider) => {
                             Ok(credential_provider.base_endpoint(&new_endpoint))
                         }
-                        Err(disposable_err) => Err(disposable_err.into()),
+                        Err(disposable_err) => Err(
+                            CliError::new(
+                                "Could not parse --profile's token. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key, and consider rerunning 'momento configure'."
+                            ).with_details(format!("SDK error while parsing as disposable token: {disposable_err:#?}"))
+                        ),
                     }
                 }
             },
             (None, None) => match self {
                 // Case: defaulting to --profile's API key and endpoint
                 Credentials::ApiKeyV2(original_api_key, original_endpoint) => {
+                    if original_api_key.is_empty() {
+                        return Err(CliError::new(
+                            "--profile's v2 API key is empty. Consider rerunning 'momento configure'."
+                        ));
+                    };
+                    if original_endpoint.is_empty() {
+                        return Err(CliError::new(
+                            "--profile's endpoint is empty. Consider rerunning 'momento configure'."
+                        ));
+                    };
                     CredentialProvider::from_api_key_v2(original_api_key, original_endpoint)
-                        .map_err(|v2_err| v2_err.into())
+                        .map_err(|v2_err| {
+                            CliError::new(
+                                "Could not parse --profile's v2 API key. Consider regenerating it and rerunning 'momento configure'."
+                            ).with_details(format!("SDK error while parsing as v2 API key: {v2_err:#?}"))
+                        })
                 }
                 Credentials::DisposableToken(original_api_key) => {
-                    CredentialProvider::from_disposable_token(original_api_key)
-                        .map_err(|disposable_err| disposable_err.into())
+                    if original_api_key.is_empty() {
+                        return Err(CliError::new(
+                            "--profile's token is empty. Consider rerunning 'momento configure'."
+                        ));
+                    };
+                    CredentialProvider::from_disposable_token(original_api_key).map_err(
+                        |disposable_err| {
+                            CliError::new(
+                                "Could not parse --profile's token. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key, and consider rerunning 'momento configure'."
+                            ).with_details(format!("SDK error while parsing as disposable token: {disposable_err:#?}"))
+                        },
+                    )
                 }
             },
         }
