@@ -162,22 +162,115 @@ mod tests {
     // Overriding both API key and endpoint:
 
     #[test]
-    fn test_happy_path_v2_profile_with_v1_override_and_endpoint_override() {}
+    fn test_happy_path_v2_profile_with_v1_override_and_endpoint_override() {
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), TEST_ENDPOINT.to_string());
+        let credential_provider = creds
+            .override_and_authenticate(
+                Some(TEST_V1_API_KEY.to_string()),
+                Some("override_endpoint".to_string()),
+            )
+            .expect("should accept valid v1 API key");
+
+        assert_eq!(
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IHN1YmplY3QiLCJ2ZXIiOjEsInAiOiIifQ.hg2wMbWe-wesQVtA7wuJcRULjRphXLQwQTVYfQL3L7c",
+            credential_provider.auth_token()
+        );
+        assert_eq!(
+            "https://api.cache.override_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
 
     #[test]
-    fn test_happy_path_v1_profile_with_v1_override_and_endpoint_override() {}
+    fn test_happy_path_v1_profile_with_v1_override_and_endpoint_override() {
+        let creds = Credentials::DisposableToken("wfheofhriugheifweif".to_string());
+        let credential_provider = creds
+            .override_and_authenticate(
+                Some(TEST_V1_API_KEY.to_string()),
+                Some(TEST_ENDPOINT.to_string()),
+            )
+            .expect("should accept valid v1 API key");
+
+        assert_eq!(
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IHN1YmplY3QiLCJ2ZXIiOjEsInAiOiIifQ.hg2wMbWe-wesQVtA7wuJcRULjRphXLQwQTVYfQL3L7c",
+            credential_provider.auth_token()
+        );
+        assert_eq!(
+            "https://api.cache.test_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
 
     #[test]
-    fn test_happy_path_v2_profile_with_v2_override_and_endpoint_override() {}
+    fn test_happy_path_v2_profile_with_v2_override_and_endpoint_override() {
+        let creds = Credentials::ApiKeyV2(
+            "wfheofhriugheifweif".to_string(),
+            "old_endpoint".to_string(),
+        );
+        let credential_provider = creds
+            .override_and_authenticate(
+                Some(TEST_V2_API_KEY.to_string()),
+                Some(TEST_ENDPOINT.to_string()),
+            )
+            .expect("should accept valid v2 API key");
+
+        assert_eq!(TEST_V2_API_KEY, credential_provider.auth_token());
+        assert_eq!(
+            "https://api.cache.test_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
 
     #[test]
-    fn test_happy_path_v1_profile_with_v2_override_and_endpoint_override() {}
+    fn test_happy_path_v1_profile_with_v2_override_and_endpoint_override() {
+        let creds = Credentials::DisposableToken(TEST_V1_API_KEY.to_string());
+        let credential_provider = creds
+            .override_and_authenticate(
+                Some(TEST_V2_API_KEY.to_string()),
+                Some(TEST_ENDPOINT.to_string()),
+            )
+            .expect("should accept valid v2 API key");
+
+        assert_eq!(TEST_V2_API_KEY, credential_provider.auth_token());
+        assert_eq!(
+            "https://api.cache.test_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
 
     #[test]
-    fn test_v2_profile_with_invalid_override_and_endpoint_override() {}
+    fn test_v2_profile_with_invalid_override_and_endpoint_override() {
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), TEST_ENDPOINT.to_string());
+        let result = creds.override_and_authenticate(
+            Some("wfheofhriugheifweif".to_string()),
+            Some(TEST_ENDPOINT.to_string()),
+        );
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "Could not parse --api-key as a disposable token or v2 API key. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key.",
+            error_message
+        );
+    }
 
     #[test]
-    fn test_v1_profile_with_invalid_override_and_endpoint_override() {}
+    fn test_v1_profile_with_invalid_override_and_endpoint_override() {
+        let creds = Credentials::DisposableToken(TEST_V1_API_KEY.to_string());
+        let result = creds.override_and_authenticate(
+            Some("wfheofhriugheifweif".to_string()),
+            Some(TEST_ENDPOINT.to_string()),
+        );
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "Could not parse --api-key as a disposable token or v2 API key. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key.",
+            error_message
+        );
+    }
 
     // Overriding only API key:
 
@@ -259,7 +352,18 @@ mod tests {
     }
 
     #[test]
-    fn test_v1_profile_with_invalid_override() {}
+    fn test_v1_profile_with_invalid_override() {
+        let creds = Credentials::DisposableToken(TEST_V1_API_KEY.to_string());
+        let result = creds.override_and_authenticate(Some("wfheofhriugheifweif".to_string()), None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "If you're testing a v2 API key, provide an endpoint or start with a v2 profile. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key.",
+            error_message
+        );
+    }
 
     #[test]
     fn test_v1_profile_with_v2_override_and_missing_endpoint_override() {
@@ -278,7 +382,18 @@ mod tests {
     // Overriding only endpoint:
 
     #[test]
-    fn test_happy_path_v2_profile_with_endpoint_override() {}
+    fn test_happy_path_v2_profile_with_endpoint_override() {
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), "old_endpoint".to_string());
+        let credential_provider = creds
+            .override_and_authenticate(None, Some(TEST_ENDPOINT.to_string()))
+            .expect("should accept valid v2 profile and override endpoint");
+
+        assert_eq!(TEST_V2_API_KEY, credential_provider.auth_token());
+        assert_eq!(
+            "https://api.cache.test_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
 
     #[test]
     fn test_v2_profile_with_endpoint_override_and_empty_profile_api_key() {
@@ -295,16 +410,66 @@ mod tests {
     }
 
     #[test]
-    fn test_v2_profile_with_endpoint_override_and_invalid_profile_api_key() {}
+    fn test_v2_profile_with_endpoint_override_and_invalid_profile_api_key() {
+        let creds = Credentials::ApiKeyV2(
+            "wfheofhriugheifweif".to_string(),
+            "old_endpoint".to_string(),
+        );
+        let result = creds.override_and_authenticate(None, Some(TEST_ENDPOINT.to_string()));
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "Could not parse --profile's v2 API key. Consider regenerating it and rerunning 'momento configure'.",
+            error_message
+        );
+    }
 
     #[test]
-    fn test_happy_path_v1_profile_with_endpoint_override() {}
+    fn test_happy_path_v1_profile_with_endpoint_override() {
+        let creds = Credentials::DisposableToken(TEST_V1_API_KEY.to_string());
+        let credential_provider = creds
+            .override_and_authenticate(None, Some(TEST_ENDPOINT.to_string()))
+            .expect("should accept valid v1 profile and override endpoint");
+
+        assert_eq!(
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IHN1YmplY3QiLCJ2ZXIiOjEsInAiOiIifQ.hg2wMbWe-wesQVtA7wuJcRULjRphXLQwQTVYfQL3L7c",
+            credential_provider.auth_token()
+        );
+        assert_eq!(
+            "https://api.cache.test_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
 
     #[test]
-    fn test_v1_profile_with_endpoint_override_and_empty_profile_api_key() {}
+    fn test_v1_profile_with_endpoint_override_and_empty_profile_api_key() {
+        let creds = Credentials::DisposableToken("".to_string());
+        let result = creds.override_and_authenticate(None, Some(TEST_ENDPOINT.to_string()));
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "--profile's token is empty. Consider rerunning 'momento configure'.",
+            error_message
+        );
+    }
 
     #[test]
-    fn test_v1_profile_with_endpoint_override_and_invalid_profile_api_key() {}
+    fn test_v1_profile_with_endpoint_override_and_invalid_profile_api_key() {
+        let creds = Credentials::DisposableToken("wfheofhriugheifweif".to_string());
+        let result = creds.override_and_authenticate(None, Some(TEST_ENDPOINT.to_string()));
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "Could not parse --profile's token. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key, and consider rerunning 'momento configure'.",
+            error_message
+        );
+    }
 
     // Using profile as-is with no overrides:
 
@@ -340,10 +505,32 @@ mod tests {
     }
 
     #[test]
-    fn test_v2_profile_with_empty_profile_api_key() {}
+    fn test_v2_profile_with_empty_profile_api_key() {
+        let creds = Credentials::ApiKeyV2("".to_string(), TEST_ENDPOINT.to_string());
+        let result = creds.override_and_authenticate(None, None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "--profile's v2 API key is empty. Consider rerunning 'momento configure'.",
+            error_message
+        );
+    }
 
     #[test]
-    fn test_v2_profile_with_empty_profile_endpoint() {}
+    fn test_v2_profile_with_empty_profile_endpoint() {
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), "".to_string());
+        let result = creds.override_and_authenticate(None, None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "--profile's endpoint is empty. Consider rerunning 'momento configure'.",
+            error_message
+        );
+    }
 
     #[test]
     fn test_v2_profile_with_invalid_profile_api_key() {
@@ -361,8 +548,30 @@ mod tests {
     }
 
     #[test]
-    fn test_v1_profile_with_empty_profile_api_key() {}
+    fn test_v1_profile_with_empty_profile_api_key() {
+        let creds = Credentials::DisposableToken("".to_string());
+        let result = creds.override_and_authenticate(None, None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "--profile's token is empty. Consider rerunning 'momento configure'.",
+            error_message
+        );
+    }
 
     #[test]
-    fn test_v1_profile_with_invalid_profile_api_key() {}
+    fn test_v1_profile_with_invalid_profile_api_key() {
+        let creds = Credentials::DisposableToken("wfheofhriugheifweif".to_string());
+        let result = creds.override_and_authenticate(None, None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "Could not parse --profile's token. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key, and consider rerunning 'momento configure'.",
+            error_message
+        );
+    }
 }
