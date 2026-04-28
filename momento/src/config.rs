@@ -33,14 +33,14 @@ impl Credentials {
                         // Case: --api-key is disposable token, --endpoint provided
                         Ok(credential_provider.base_endpoint(&new_endpoint))
                     }
-                    Err(_) => {
+                    Err(disposable_err) => {
                         // Case: --api-key is not a valid disposable token, --endpoint provided
                         CredentialProvider::from_api_key_v2(new_api_key, new_endpoint).map_err(
-                            |e| {
+                            |v2_err| {
                                 CliError::new(
                                     "If you're testing a disposable token or v2 API key, make sure it is correctly formatted.",
                                 )
-                                .with_details(format!("{e:#?}"))
+                                .with_details(format!("SDK error while parsing as disposable token: {disposable_err:#?}\nSDK error while parsing as v2 API key: {v2_err:#?}"))
                             },
                         )
                     }
@@ -52,22 +52,22 @@ impl Credentials {
                         // Case: --api-key is disposable token, defaulting to --profile's endpoint
                         Ok(credential_provider)
                     }
-                    Err(e) => match self {
+                    Err(disposable_err) => match self {
                         Credentials::ApiKeyV2(_, original_endpoint) => {
                             // Case: --api-key is not a valid disposable token, defaulting to --profile's endpoint
                             CredentialProvider::from_api_key_v2(new_api_key, original_endpoint)
-                                .map_err(|e| {
+                                .map_err(|v2_err| {
                                     CliError::new(
                                         "If you're testing a disposable token or v2 API key, make sure it is correctly formatted.",
                                     )
-                                    .with_details(format!("{e:#?}"))
+                                    .with_details(format!("SDK error while parsing as disposable token: {disposable_err:#?}\nSDK error while parsing as v2 API key: {v2_err:#?}"))
                                 })
                         }
                         _ => Err(CliError::new(
                             // Case: --api-key is not a valid disposable token, no endpoint found
                             "If you're testing a v2 API key, provide an endpoint or start with a v2 profile. If you're testing a disposable token, make sure it is correctly formatted.",
                         )
-                        .with_details(format!("{e:#?}"))),
+                        .with_details(format!("SDK error while parsing as disposable token: {disposable_err:#?}"))),
                     },
                 }
             }
@@ -75,14 +75,14 @@ impl Credentials {
                 // Case: defaulting to --profile's API key, overriding endpoint
                 Credentials::ApiKeyV2(original_api_key, _) => {
                     CredentialProvider::from_api_key_v2(original_api_key, new_endpoint)
-                        .map_err(Into::<CliError>::into)
+                        .map_err(|v2_err| v2_err.into())
                 }
                 Credentials::DisposableToken(original_api_key) => {
                     match CredentialProvider::from_disposable_token(original_api_key) {
                         Ok(credential_provider) => {
                             Ok(credential_provider.base_endpoint(&new_endpoint))
                         }
-                        Err(e) => Err(e.into()),
+                        Err(disposable_err) => Err(disposable_err.into()),
                     }
                 }
             },
@@ -90,11 +90,11 @@ impl Credentials {
                 // Case: defaulting to --profile's API key and endpoint
                 Credentials::ApiKeyV2(original_api_key, original_endpoint) => {
                     CredentialProvider::from_api_key_v2(original_api_key, original_endpoint)
-                        .map_err(Into::<CliError>::into)
+                        .map_err(|v2_err| v2_err.into())
                 }
                 Credentials::DisposableToken(original_api_key) => {
                     CredentialProvider::from_disposable_token(original_api_key)
-                        .map_err(Into::<CliError>::into)
+                        .map_err(|disposable_err| disposable_err.into())
                 }
             },
         }
