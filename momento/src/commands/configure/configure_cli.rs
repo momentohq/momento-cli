@@ -69,6 +69,15 @@ pub async fn configure_momento(
             if e.msg.contains("already exists") {
                 // Nothing to do here; the cache already exists but users won't find that particularly
                 // interesting.
+            } else if e.msg.contains("Insufficient permissions") {
+                console_info!(
+                    "{} successfully set as your default cache with default TTL of {}s",
+                    config.cache.clone(),
+                    config.ttl
+                );
+                return Err(CliError::new(
+                    format!("{} couldn't be created, due to insufficient API key permissions. Please create it with another API key.", config.cache.clone())
+                ).with_details(e.details().unwrap_or(format!("{e:#?}"))));
             } else {
                 return Err(e);
             }

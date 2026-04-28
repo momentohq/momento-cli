@@ -38,4 +38,8 @@ impl CliError {
         self.detailed_msg = Some(detailed_msg.into());
         self
     }
+
+    pub fn details(&self) -> Option<String> {
+        self.detailed_msg.clone()
+    }
 }
