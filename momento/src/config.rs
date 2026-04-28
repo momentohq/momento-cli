@@ -150,3 +150,219 @@ impl Credentials {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TEST_V1_API_KEY: &str = "eyJlbmRwb2ludCI6Im1vbWVudG9fZW5kcG9pbnQiLCJhcGlfa2V5IjoiZXlKaGJHY2lPaUpJVXpJMU5pSjkuZXlKemRXSWlPaUowWlhOMElITjFZbXBsWTNRaUxDSjJaWElpT2pFc0luQWlPaUlpZlEuaGcyd01iV2Utd2VzUVZ0QTd3dUpjUlVMalJwaFhMUXdRVFZZZlFMM0w3YyJ9Cg==";
+    const TEST_V2_API_KEY: &str = "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ0IjoiZyIsImp0aSI6InNvbWUtaWQifQ.GMr9nA6HE0ttB6llXct_2Sg5-fOKGFbJCdACZFgNbN1fhT6OPg_hVc8ThGzBrWC_RlsBpLA1nzqK3SOJDXYxAw";
+    const TEST_ENDPOINT: &str = "test_endpoint";
+
+    // Overriding both API key and endpoint:
+
+    #[test]
+    fn test_happy_path_v2_profile_with_v1_override_and_endpoint_override() {}
+
+    #[test]
+    fn test_happy_path_v1_profile_with_v1_override_and_endpoint_override() {}
+
+    #[test]
+    fn test_happy_path_v2_profile_with_v2_override_and_endpoint_override() {}
+
+    #[test]
+    fn test_happy_path_v1_profile_with_v2_override_and_endpoint_override() {}
+
+    #[test]
+    fn test_v2_profile_with_invalid_override_and_endpoint_override() {}
+
+    #[test]
+    fn test_v1_profile_with_invalid_override_and_endpoint_override() {}
+
+    // Overriding only API key:
+
+    #[test]
+    fn test_happy_path_v2_profile_with_v1_override() {
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), TEST_ENDPOINT.to_string());
+        let credential_provider = creds
+            .override_and_authenticate(Some(TEST_V1_API_KEY.to_string()), None)
+            .expect("should accept valid v1 API key");
+
+        assert_eq!(
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IHN1YmplY3QiLCJ2ZXIiOjEsInAiOiIifQ.hg2wMbWe-wesQVtA7wuJcRULjRphXLQwQTVYfQL3L7c",
+            credential_provider.auth_token()
+        );
+        assert_eq!(
+            "https://api.cache.momento_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
+
+    #[test]
+    fn test_happy_path_v1_profile_with_v1_override() {
+        let creds = Credentials::DisposableToken("wfheofhriugheifweif".to_string());
+        let credential_provider = creds
+            .override_and_authenticate(Some(TEST_V1_API_KEY.to_string()), None)
+            .expect("should accept valid v1 API key");
+
+        assert_eq!(
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IHN1YmplY3QiLCJ2ZXIiOjEsInAiOiIifQ.hg2wMbWe-wesQVtA7wuJcRULjRphXLQwQTVYfQL3L7c",
+            credential_provider.auth_token()
+        );
+        assert_eq!(
+            "https://api.cache.momento_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
+
+    #[test]
+    fn test_happy_path_v2_profile_with_v2_override() {
+        let creds =
+            Credentials::ApiKeyV2("wfheofhriugheifweif".to_string(), TEST_ENDPOINT.to_string());
+        let credential_provider = creds
+            .override_and_authenticate(Some(TEST_V2_API_KEY.to_string()), None)
+            .expect("should accept valid v2 API key");
+
+        assert_eq!(TEST_V2_API_KEY, credential_provider.auth_token());
+        assert_eq!(
+            "https://api.cache.test_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
+
+    #[test]
+    fn test_v2_profile_with_v2_override_and_empty_profile_endpoint() {
+        let creds = Credentials::ApiKeyV2("wfheofhriugheifweif".to_string(), "".to_string());
+        let result = creds.override_and_authenticate(Some(TEST_V2_API_KEY.to_string()), None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "--profile's endpoint is empty. Consider rerunning 'momento configure'.",
+            error_message
+        );
+    }
+
+    #[test]
+    fn test_v2_profile_with_invalid_override() {
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), TEST_ENDPOINT.to_string());
+        let result = creds.override_and_authenticate(Some("wfheofhriugheifweif".to_string()), None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "Could not parse --api-key as a disposable token or v2 API key. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key.",
+            error_message
+        );
+    }
+
+    #[test]
+    fn test_v1_profile_with_invalid_override() {}
+
+    #[test]
+    fn test_v1_profile_with_v2_override_and_missing_endpoint_override() {
+        let creds = Credentials::DisposableToken("wfheofhriugheifweif".to_string());
+        let result = creds.override_and_authenticate(Some(TEST_V2_API_KEY.to_string()), None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "If you're testing a v2 API key, provide an endpoint or start with a v2 profile. If you vended a disposable token, make sure it's base64 encoded with an endpoint and api_key.",
+            error_message
+        );
+    }
+
+    // Overriding only endpoint:
+
+    #[test]
+    fn test_happy_path_v2_profile_with_endpoint_override() {}
+
+    #[test]
+    fn test_v2_profile_with_endpoint_override_and_empty_profile_api_key() {
+        let creds = Credentials::ApiKeyV2("".to_string(), "old_endpoint".to_string());
+        let result = creds.override_and_authenticate(None, Some(TEST_ENDPOINT.to_string()));
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "--profile's v2 API key is empty. Consider rerunning 'momento configure'.",
+            error_message
+        );
+    }
+
+    #[test]
+    fn test_v2_profile_with_endpoint_override_and_invalid_profile_api_key() {}
+
+    #[test]
+    fn test_happy_path_v1_profile_with_endpoint_override() {}
+
+    #[test]
+    fn test_v1_profile_with_endpoint_override_and_empty_profile_api_key() {}
+
+    #[test]
+    fn test_v1_profile_with_endpoint_override_and_invalid_profile_api_key() {}
+
+    // Using profile as-is with no overrides:
+
+    #[test]
+    fn test_happy_path_v2_profile() {
+        let creds = Credentials::ApiKeyV2(TEST_V2_API_KEY.to_string(), TEST_ENDPOINT.to_string());
+        let credential_provider = creds
+            .override_and_authenticate(None, None)
+            .expect("should accept valid v2 profile");
+
+        assert_eq!(TEST_V2_API_KEY, credential_provider.auth_token());
+        assert_eq!(
+            "https://api.cache.test_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
+
+    #[test]
+    fn test_happy_path_v1_profile() {
+        let creds = Credentials::DisposableToken(TEST_V1_API_KEY.to_string());
+        let credential_provider = creds
+            .override_and_authenticate(None, None)
+            .expect("should accept valid v1 profile");
+
+        assert_eq!(
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IHN1YmplY3QiLCJ2ZXIiOjEsInAiOiIifQ.hg2wMbWe-wesQVtA7wuJcRULjRphXLQwQTVYfQL3L7c",
+            credential_provider.auth_token()
+        );
+        assert_eq!(
+            "https://api.cache.momento_endpoint",
+            credential_provider.cache_http_endpoint()
+        );
+    }
+
+    #[test]
+    fn test_v2_profile_with_empty_profile_api_key() {}
+
+    #[test]
+    fn test_v2_profile_with_empty_profile_endpoint() {}
+
+    #[test]
+    fn test_v2_profile_with_invalid_profile_api_key() {
+        let creds =
+            Credentials::ApiKeyV2("wfheofhriugheifweif".to_string(), TEST_ENDPOINT.to_string());
+        let result = creds.override_and_authenticate(None, None);
+
+        let CliError {
+            msg: error_message, ..
+        } = result.expect_err("should fail");
+        assert_eq!(
+            "Could not parse --profile's v2 API key. Consider regenerating it and rerunning 'momento configure'.",
+            error_message
+        );
+    }
+
+    #[test]
+    fn test_v1_profile_with_empty_profile_api_key() {}
+
+    #[test]
+    fn test_v1_profile_with_invalid_profile_api_key() {}
+}
