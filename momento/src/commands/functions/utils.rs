@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::str::FromStr; // to use HeaderName::from_str
 
-use momento::functions::WasmSource;
+use momento::functions::{CurrentFunctionVersion, WasmSource};
 
 use crate::error::CliError;
 
@@ -35,6 +35,18 @@ pub fn determine_wasm_source(
     _ => Err(CliError::new(
         "Must provide a .wasm file compiled with wasm32-wasip2 to upload using the --wasm-file flag or a previously uploaded Wasm using the --id-uploaded-wasm and --version-uploaded-wasm flags",
     )),
+    }
+}
+
+/// put-function-config
+pub fn determine_current_function_version(
+    pin_version: Option<u32>,
+    use_latest_version: bool,
+) -> Option<CurrentFunctionVersion> {
+    if use_latest_version {
+        Some(CurrentFunctionVersion::Latest)
+    } else {
+        pin_version.map(CurrentFunctionVersion::Pinned)
     }
 }
 
