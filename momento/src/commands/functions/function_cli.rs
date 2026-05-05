@@ -131,13 +131,18 @@ pub async fn invoke_function(
         Ok(())
     } else {
         let error_text = response.text().await?;
-        let error_message = match serde_json::from_str::<InvokeError>(error_text.as_str()) {
-            Ok(error_json) => error_json
-                .detail
-                .unwrap_or(error_json.message.unwrap_or(error_text.clone())),
-            Err(_) => error_text.clone(),
-        };
-        Err(CliError::new(format!("{status}: {error_message}")).with_details(error_text))
+        Err(CliError::new(if error_text.is_empty() {
+            format!("{status}")
+        } else {
+            let error_message = match serde_json::from_str::<InvokeError>(error_text.as_str()) {
+                Ok(error_json) => error_json
+                    .detail
+                    .unwrap_or(error_json.message.unwrap_or(error_text.clone())),
+                Err(_) => error_text.clone(),
+            };
+            format!("{status}: {error_message}")
+        })
+        .with_details(error_text))
     }
 }
 
