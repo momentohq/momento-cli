@@ -4,7 +4,7 @@ use clap::Parser;
 use commands::topic::print_subscription;
 use env_logger::Env;
 use error::CliError;
-use log::{debug, error, LevelFilter};
+use log::{debug, error, warn, LevelFilter};
 use momento::MomentoError;
 use momento_cli_opts::PreviewCommand;
 use utils::{
@@ -336,11 +336,21 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
     Ok(())
 }
 
-/// todo: fix CliError to either not exist anymore or actually support sources
-/// todo: pick output strings more intentionally
 impl From<MomentoError> for CliError {
     fn from(val: MomentoError) -> Self {
-        CliError::new(format!("{val:?}"))
+        CliError::new(match &val.inner_error {
+            None => format!("{} (SDK {:?})", val.message, val.error_code),
+            Some(error_source) => format!(
+                "{} (SDK {:?} from: {}{})",
+                val.message,
+                val.error_code,
+                error_source,
+                val.details()
+                    .map(|details| format!(": {}", details.message))
+                    .unwrap_or_default()
+            ),
+        })
+        .with_details(format!("{val:#?}"))
     }
 }
 
@@ -367,7 +377,8 @@ async fn main() {
     .init();
 
     if let Err(e) = run_momento_command(args).await {
-        console_info!("{}", e);
+        warn!("{e:#?}"); // only in verbose mode (error!() would always output)
+        console_info!("{e}");
         exit(1)
     }
 }

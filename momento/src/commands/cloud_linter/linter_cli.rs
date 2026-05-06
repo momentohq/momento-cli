@@ -6,7 +6,7 @@ use std::time::Duration;
 use crate::commands::cloud_linter::api_gateway::process_api_gateway_resources;
 use aws_config::retry::RetryConfig;
 use aws_config::{BehaviorVersion, Region};
-use chrono::{NaiveDate, NaiveDateTime, Utc};
+use chrono::{NaiveDate, Utc};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use governor::{Quota, RateLimiter};
@@ -34,8 +34,8 @@ pub async fn run_cloud_linter(
     enable_api_gateway: bool,
     only_collect_for_resource: Option<CloudLinterResources>,
     metric_collection_rate: u32,
-    start_date: Option<String>,
-    end_date: Option<String>,
+    start_date: Option<NaiveDate>,
+    end_date: Option<NaiveDate>,
 ) -> Result<(), CliError> {
     let (tx, mut rx) = mpsc::channel::<Resource>(32);
     let file_path = "linter_results.json";
@@ -315,40 +315,34 @@ async fn process_data(
 ///
 /// # Arguments
 ///
-/// * `start_date` - An optional String representing the start date in "YYYY-MM-DD" format.
-/// * `end_date` - An optional String representing the end date in "YYYY-MM-DD" format.
+/// * `start_date` - An optional NaiveDate representing the start date.
+/// * `end_date` - An optional NaiveDate representing the end date.
 ///
 /// # Returns
 ///
-/// A Result containing a tuple of the start and end timestamps in millis, or a CliError
-/// if date parsing fails.
+/// A Result containing a tuple of the start and end timestamps in millis.
 fn get_metric_time_range(
-    start_date: Option<String>,
-    end_date: Option<String>,
+    start_date: Option<NaiveDate>,
+    end_date: Option<NaiveDate>,
 ) -> Result<(i64, i64), CliError> {
-    let now = Utc::now().naive_utc();
+    let now = Utc::now();
     let thirty_days = chrono::Duration::days(30).num_milliseconds();
 
     let processed_end_date = end_date
-        .map(|date| parse_date_string(&date))
-        .transpose()?
-        .unwrap_or(now)
-        .timestamp_millis();
+        .map(convert_to_timestamp_millis)
+        .unwrap_or(now.timestamp_millis());
     let processed_start_date = start_date
-        .map(|date| parse_date_string(&date))
-        .transpose()?
-        .map(|date| date.timestamp_millis())
+        .map(convert_to_timestamp_millis)
         .unwrap_or_else(|| processed_end_date - thirty_days);
 
     Ok((processed_start_date, processed_end_date))
 }
 
-fn parse_date_string(date: &str) -> Result<NaiveDateTime, CliError> {
-    let naive_date = NaiveDate::parse_from_str(date, "%Y-%m-%d")
-        .map_err(|_| CliError::new("Date must be in YYYY-MM-DD format"))?;
-    naive_date
-        .and_hms_opt(0, 0, 0)
-        .ok_or_else(|| CliError::new("invalid time"))
+fn convert_to_timestamp_millis(date: NaiveDate) -> i64 {
+    date.and_hms_opt(0, 0, 0)
+        .expect("midnight is always a valid time")
+        .and_utc()
+        .timestamp_millis()
 }
 
 async fn check_output_is_writable(file_path: &str) -> Result<(), CliError> {

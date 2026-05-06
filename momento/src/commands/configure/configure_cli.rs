@@ -57,20 +57,52 @@ pub async fn configure_momento(
     )
     .await?;
 
+    console_info!("");
+
     let credential_provider = credentials.override_and_authenticate(None, None)?;
+    console_info!("{profile_name} successfully created or updated");
+
     let client = get_cache_client(credential_provider).await?;
-    match create_cache(client, config.cache.clone()).await {
+    match create_cache(client.clone(), config.cache.clone()).await {
         Ok(_) => console_info!(
-            "{} successfully created as the default with default TTL of {}s",
-            config.cache.clone(),
+            "{} successfully created as the default cache with default TTL of {}s",
+            config.cache,
             config.ttl
         ),
-        Err(e) => {
-            if e.msg.contains("already exists") {
+        Err(create_err) => {
+            console_info!(
+                "{} successfully set as the default cache with default TTL of {}s",
+                config.cache,
+                config.ttl
+            );
+            if create_err.msg.contains("already exists") {
                 // Nothing to do here; the cache already exists but users won't find that particularly
                 // interesting.
             } else {
-                return Err(e);
+                // Check if cache exists
+                match client.list_caches().await {
+                    Ok(response)
+                    if response.caches.iter()
+                        .any(|cache| cache.name == config.cache) => {
+                        // The API key doesn't have cache creation permission,
+                        // but that's fine; the default cache already exists.
+                    },
+                    Ok(_) if create_err.msg.contains("Insufficient permissions") => {
+                        return Err(CliError::new(
+                            format!("{} couldn't be created, due to insufficient API key permissions. Please create it with another API key.", config.cache)
+                        ).with_details(create_err.details().unwrap_or(format!("{create_err:#?}"))))
+                    }
+                    Err(_) if create_err.msg.contains("Insufficient permissions") => {
+                        return Err(CliError::new(
+                            format!("{} couldn't be created, due to insufficient API key permissions. If you haven't yet, please create it with another API key.", config.cache)
+                        ).with_details(create_err.details().unwrap_or(format!("{create_err:#?}"))));
+                    }
+                    _ => {
+                        return Err(CliError::new(
+                            format!("{} couldn't be created:  {}", config.cache, create_err.msg)
+                        ).with_details(create_err.details().unwrap_or(format!("{create_err:#?}"))));
+                    }
+                }
             }
         }
     };

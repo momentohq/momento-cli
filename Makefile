@@ -43,6 +43,7 @@ precommit: clean-build lint test build-examples
 .PHONY: test-unit
 test-unit:
 	cargo test --lib
+	cargo test --bin momento
 
 .PHONY: test-sequentially
 test-sequentially:
