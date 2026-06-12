@@ -199,6 +199,28 @@ pub enum FunctionCommand {
             value_name = "WASM"
         )]
         environment_variables: Vec<(String, String)>,
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this function's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this function",
+            value_name = "IAM_ROLE",
+            group = "function-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this function's metrics to your CloudWatch account. Overrides your account-wide default for just this function",
+            default_value_t = false,
+            group = "function-metrics"
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this function's metrics configuration so it follows your account-wide default",
+            default_value_t = false,
+            group = "function-metrics"
+        )]
+        remove_metrics_config: bool,
     },
     #[command(
     about = "Update a Momento Function's configuration",
@@ -208,8 +230,10 @@ pub enum FunctionCommand {
     .args(["function_name", "function_id"]),
     ),
     group(
+    // Not required: a config update may change only the version, only the metrics
+    // configuration, or both. At least one is enforced at runtime.
     clap::ArgGroup::new("version")
-    .required(true)
+    .required(false)
     .args(["pin_version", "use_latest_version"]),
     ),
     )]
@@ -252,6 +276,29 @@ pub enum FunctionCommand {
             default_value_t = false
         )]
         use_latest_version: bool,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this function's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this function",
+            value_name = "IAM_ROLE",
+            group = "function-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this function's metrics to your CloudWatch account. Overrides your account-wide default for just this function",
+            default_value_t = false,
+            group = "function-metrics"
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this function's metrics configuration so it follows your account-wide default",
+            default_value_t = false,
+            group = "function-metrics"
+        )]
+        remove_metrics_config: bool,
     },
     #[command(about = "Create or update a Wasm source that can be used in a Momento Function")]
     PutWasm {
