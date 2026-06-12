@@ -15,7 +15,8 @@ use utils::{
 
 use crate::{
     commands::functions::utils::{
-        determine_current_function_version, determine_wasm_source, InvocationOptions,
+        determine_current_function_version, determine_metrics_config_change, determine_wasm_source,
+        InvocationOptions,
     },
     utils::console::console_info,
 };
@@ -242,6 +243,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         version_uploaded_wasm,
                         description,
                         environment_variables,
+                        metrics_iam_role,
+                        disable_metrics,
+                        remove_metrics_config,
                     } => {
                         let cache_name = cache_name.unwrap_or(config.cache);
                         let wasm_source = determine_wasm_source(
@@ -249,6 +253,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             id_uploaded_wasm,
                             version_uploaded_wasm,
                         )?;
+                        let metrics_change = determine_metrics_config_change(
+                            metrics_iam_role,
+                            disable_metrics,
+                            remove_metrics_config,
+                        );
                         commands::functions::function_cli::put_function(
                             client,
                             cache_name,
@@ -256,6 +265,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             wasm_source,
                             description,
                             environment_variables,
+                            metrics_change,
                         )
                         .await?
                     }
@@ -265,16 +275,25 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         function_id,
                         pin_version,
                         use_latest_version,
+                        metrics_iam_role,
+                        disable_metrics,
+                        remove_metrics_config,
                     } => {
                         let cache_name = cache_name.unwrap_or(config.cache);
                         let new_version =
                             determine_current_function_version(pin_version, use_latest_version);
+                        let metrics_change = determine_metrics_config_change(
+                            metrics_iam_role,
+                            disable_metrics,
+                            remove_metrics_config,
+                        );
                         commands::functions::function_cli::put_function_config(
                             client,
                             cache_name,
                             function_name,
                             function_id,
                             new_version,
+                            metrics_change,
                         )
                         .await?
                     }

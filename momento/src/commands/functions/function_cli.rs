@@ -1,14 +1,16 @@
 use momento::{
     functions::{
-        CurrentFunctionVersion, ListFunctionVersionsRequest, ListFunctionsRequest,
-        ListWasmsRequest, PutFunctionConfigRequest, PutFunctionRequest, PutWasmRequest, WasmSource,
+        CurrentFunctionVersion, FunctionMetricsConfigChange, ListFunctionVersionsRequest,
+        ListFunctionsRequest, ListWasmsRequest, PutFunctionConfigRequest, PutFunctionRequest,
+        PutWasmRequest, WasmSource,
     },
     FunctionClient,
 };
 
 use crate::{
     commands::functions::utils::{
-        build_invocation_headers, build_invocation_url, read_wasm_file, InvocationOptions,
+        build_invocation_headers, build_invocation_url, format_metrics_config, read_wasm_file,
+        InvocationOptions,
     },
     error::CliError,
     utils::console::console_data,
@@ -34,29 +36,36 @@ pub async fn put_function(
     wasm_source: WasmSource,
     description: Option<String>,
     environment_variables: Vec<(String, String)>,
+    metrics_change: Option<FunctionMetricsConfigChange>,
 ) -> Result<(), CliError> {
     let mut request = PutFunctionRequest::new(&cache_name, &name, wasm_source);
     if let Some(description) = description {
         request = request.description(description);
     }
     request = request.environment(environment_variables);
+    if let Some(metrics_change) = metrics_change {
+        request = request.metrics_config(metrics_change);
+    }
     let response = client.send(request).await.map_err(Into::<CliError>::into)?;
     let uploaded_version = response.latest_version();
     let current_version = response.version();
+    let metrics = format_metrics_config(response.metrics_config());
     if uploaded_version == current_version {
         console_data!(
-            "Function uploaded or updated! Name: {}, ID: {}, Version: {}",
+            "Function uploaded or updated! Name: {}, ID: {}, Version: {}, Metrics: {}",
             response.name(),
             response.function_id(),
             uploaded_version,
+            metrics,
         );
     } else {
         console_data!(
-        "Function version uploaded but not in use. Name: {}, ID: {}, Latest Version: {}, Current Version: {}",
+        "Function version uploaded but not in use. Name: {}, ID: {}, Latest Version: {}, Current Version: {}, Metrics: {}",
         response.name(),
         response.function_id(),
         uploaded_version,
         current_version,
+        metrics,
     );
     }
     Ok(())
@@ -68,7 +77,14 @@ pub async fn put_function_config(
     function_name: Option<String>,
     function_id: Option<String>,
     new_version: Option<CurrentFunctionVersion>,
+    metrics_change: Option<FunctionMetricsConfigChange>,
 ) -> Result<(), CliError> {
+    if new_version.is_none() && metrics_change.is_none() {
+        return Err(CliError::new(
+            "Specify a version (--pin-version or --use-latest-version) and/or a metrics configuration change (--metrics-iam-role, --disable-metrics, or --remove-metrics-config) to update",
+        ));
+    }
+
     let mut request = if let Some(name) = function_name {
         PutFunctionConfigRequest::from_function_name(&cache_name, &name)
     } else if let Some(id) = function_id {
@@ -80,14 +96,18 @@ pub async fn put_function_config(
     if let Some(new_version) = new_version {
         request = request.current_version(new_version);
     }
+    if let Some(metrics_change) = metrics_change {
+        request = request.metrics_config(metrics_change);
+    }
 
     let response = client.send(request).await.map_err(Into::<CliError>::into)?;
     console_data!(
-        "Function config updated! Name: {}, ID: {}, Latest Version: {}, Current Version: {}",
+        "Function config updated! Name: {}, ID: {}, Latest Version: {}, Current Version: {}, Metrics: {}",
         response.name(),
         response.function_id(),
         response.latest_version(),
         response.version(),
+        format_metrics_config(response.metrics_config()),
     );
     Ok(())
 }
@@ -157,13 +177,14 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
         console_data!("Functions in cache namespace: {cache_name}");
         functions_list.iter().for_each(|function| {
             console_data!(
-                "\nName: {}, ID: {}, Latest Version: {}, Current Version: {}, Description: \"{}\", Last Uploaded: {}",
+                "\nName: {}, ID: {}, Latest Version: {}, Current Version: {}, Description: \"{}\", Last Uploaded: {}, Metrics: {}",
                 function.name(),
                 function.function_id(),
                 function.latest_version(),
                 function.version(),
                 function.description(),
                 function.last_updated_at(),
+                format_metrics_config(function.metrics_config()),
             )
         });
     }

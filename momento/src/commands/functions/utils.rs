@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::fs;
 use std::str::FromStr; // to use HeaderName::from_str
 
-use momento::functions::{CurrentFunctionVersion, WasmSource};
+use momento::functions::{
+    CurrentFunctionVersion, FunctionMetricsConfig, FunctionMetricsConfigChange, WasmSource,
+};
 
 use crate::error::CliError;
 
@@ -47,6 +49,39 @@ pub fn determine_current_function_version(
         Some(CurrentFunctionVersion::Latest)
     } else {
         pin_version.map(CurrentFunctionVersion::Pinned)
+    }
+}
+
+/// put-function / put-function-config
+///
+/// Resolves the mutually-exclusive metrics flags into a change to apply to the function's
+/// metrics configuration, or `None` when no metrics flag was provided (leave it unchanged).
+/// The flags are mutually exclusive at the CLI layer, so at most one is set here.
+pub fn determine_metrics_config_change(
+    metrics_iam_role: Option<String>,
+    disable_metrics: bool,
+    remove_metrics_config: bool,
+) -> Option<FunctionMetricsConfigChange> {
+    if remove_metrics_config {
+        Some(FunctionMetricsConfigChange::Remove)
+    } else if disable_metrics {
+        Some(FunctionMetricsConfigChange::Set(
+            FunctionMetricsConfig::Disabled,
+        ))
+    } else {
+        metrics_iam_role
+            .map(|role| FunctionMetricsConfigChange::Set(FunctionMetricsConfig::enabled(role)))
+    }
+}
+
+/// Renders a function's resolved metrics configuration for display.
+pub fn format_metrics_config(metrics_config: Option<&FunctionMetricsConfig>) -> String {
+    match metrics_config {
+        None => "none (follows account-wide default)".to_string(),
+        Some(FunctionMetricsConfig::Disabled) => "disabled".to_string(),
+        Some(FunctionMetricsConfig::Enabled { customer_iam_role }) => {
+            format!("enabled (IAM role: {customer_iam_role})")
+        }
     }
 }
 
