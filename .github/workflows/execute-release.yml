@@ -112,7 +112,11 @@ jobs:
       - name: Build tar.gz and publish asset
         run: |
           VERSION=${{ needs.release.outputs.version }}
-          ARCHIVE_FILE="momento-cli-$VERSION.linux_${{ matrix.architecture.rpm-arch-shortname }}.tar.gz"
+          # Name must be "momento-cli-<version>-<rust-triple>.tar.gz". Homebrew scans
+          # the version out of this filename on brew releases that lack the GitHub
+          # release-tag parser; "0.56.2.linux_x86_64" scans as "86.64" and breaks
+          # bottle lookup for every customer. Do not reintroduce "." or "linux_".
+          ARCHIVE_FILE="momento-cli-$VERSION-${{ matrix.architecture.target }}.tar.gz"
           BUILD_OUTPUT_DIR="./target/${{ matrix.architecture.target }}/release/"
           mkdir $BUILD_OUTPUT_DIR/bash
           cp $BUILD_OUTPUT_DIR/momento.bash $BUILD_OUTPUT_DIR/bash/momento
@@ -234,7 +238,10 @@ jobs:
       - name: Build tar.gz and publish asset
         run: |
           VERSION=${{ needs.release.outputs.version }}
-          ARCHIVE_FILE="momento-cli-$VERSION.${{ matrix.architecture.target }}.tar.gz"
+          # Name must be "momento-cli-<version>-<rust-triple>.tar.gz" -- see the note
+          # in publish-linux-assets. "0.56.2.aarch64-apple-darwin" scans as
+          # "0.56.2.aarch64" and breaks bottle lookup. Do not reintroduce the ".".
+          ARCHIVE_FILE="momento-cli-$VERSION-${{ matrix.architecture.target }}.tar.gz"
           BUILD_OUTPUT_DIR="./target/${{ matrix.architecture.target }}/release/"
           mkdir $BUILD_OUTPUT_DIR/bash
           cp $BUILD_OUTPUT_DIR/momento.bash $BUILD_OUTPUT_DIR/bash/momento
@@ -523,10 +530,12 @@ jobs:
           echo "Version is $MOMENTO_CLI_VERSION"
           git checkout -b formula/momento-cli/v${MOMENTO_CLI_VERSION}
           
-          export MOMENTO_CLI_LINUX_X86_64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}.linux_x86_64.tar.gz"
-          export MOMENTO_CLI_LINUX_AARCH64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}.linux_aarch64.tar.gz"
-          export MOMENTO_CLI_MAC_X86_64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}.x86_64-apple-darwin.tar.gz"
-          export MOMENTO_CLI_MAC_AARCH64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}.aarch64-apple-darwin.tar.gz"
+          # These must match the ARCHIVE_FILE names built above, and must keep the
+          # "-<rust-triple>" form so Homebrew scans the version correctly.
+          export MOMENTO_CLI_LINUX_X86_64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+          export MOMENTO_CLI_LINUX_AARCH64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
+          export MOMENTO_CLI_MAC_X86_64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}-x86_64-apple-darwin.tar.gz"
+          export MOMENTO_CLI_MAC_AARCH64_URL="https://github.com/momentohq/momento-cli/releases/download/v${MOMENTO_CLI_VERSION}/momento-cli-${MOMENTO_CLI_VERSION}-aarch64-apple-darwin.tar.gz"
           
           echo "Downloading and computing SHA for ${MOMENTO_CLI_LINUX_X86_64_URL}"
           wget ${MOMENTO_CLI_LINUX_X86_64_URL} -O linux-x86_64.tgz

@@ -33,7 +33,7 @@ momento cache get key --cache example-cache
 ### Linux
 
 1. 最新の linux tar.gz ファイルを[https://github.com/momentohq/momento-cli/releases/latest](https://github.com/momentohq/momento-cli/releases/latest)からダウンロードする。
-2. `tar -xvf momento-cli-X.X.X.linux_x86_64.tar.gz`ファイルを展開する。
+2. `tar -xvf momento-cli-X.X.X-x86_64-unknown-linux-gnu.tar.gz`ファイルを展開する。
 3. `./momento`を実行パスに置く。
 
 ### Windows
