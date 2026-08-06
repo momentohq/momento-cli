@@ -519,7 +519,7 @@ pub enum CapacityPoolCommand {
             value_name = "AVAILABILITY_ZONES",
             group = "field"
         )]
-        zones: Option<Vec<String>>,
+        zones: Vec<String>,
     },
 }
 

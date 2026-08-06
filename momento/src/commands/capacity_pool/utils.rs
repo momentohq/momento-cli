@@ -61,16 +61,16 @@ pub enum CapacityPoolProvisioningUpdate {
         shard_count: Option<u32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         replicas_per_shard: Option<u32>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        zones: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        zones: Vec<String>,
     },
     Managed {
         #[serde(skip_serializing_if = "Option::is_none")]
         capacity: Option<CapacityBounds>,
         #[serde(skip_serializing_if = "Option::is_none")]
         replication: Option<ReplicationBounds>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        zones: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Vec::is_empty")]
+        zones: Vec<String>,
     },
 }
 
@@ -131,7 +131,7 @@ pub fn determine_provisioning_update(
     shard_count: Option<u32>,
     replicas_per_shard: Option<Bounds>,
     capacity_gb: Option<Bounds>,
-    zones: Option<Vec<String>>,
+    zones: Vec<String>,
 ) -> Result<CapacityPoolProvisioningUpdate, CliError> {
     let update = match mode {
         CapacityPoolProvisioningMode::Explicit => {
