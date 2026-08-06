@@ -6,31 +6,36 @@ pub struct Bounds {
     pub max: u32,
 }
 
-impl std::str::FromStr for Bounds {
-    type Err = String;
-
-    fn from_str(input: &str) -> Result<Bounds, String> {
-        let (min, max) = match input.split_once("..") {
-            None => (input, input),
-            Some(parts) => parts,
-        };
-        let parse = |bound: &str| {
-            bound.trim().parse::<u32>().map_err(|_| {
-                format!("`{bound}` is not a number; expected `N` (pinned) or `MIN..MAX`")
-            })
-        };
-        let bounds = Bounds {
-            min: parse(min)?,
-            max: parse(max)?,
-        };
-        if bounds.min > bounds.max {
-            return Err(format!(
-                "bounds are inverted: {}..{} (MIN must not exceed MAX)",
-                bounds.min, bounds.max
-            ));
-        }
-        Ok(bounds)
+pub fn parse_bounds(s: &str) -> Result<Bounds, String> {
+    let (min, max) = match s.split_once("..") {
+        None => (s, s),
+        Some(parts) => parts,
+    };
+    let parse = |bound: &str| {
+        bound
+            .trim()
+            .parse::<u32>()
+            .map_err(|_| format!("`{bound}` is not a number; expected `N` (pinned) or `MIN..MAX`"))
+    };
+    let bounds = Bounds {
+        min: parse(min)?,
+        max: parse(max)?,
+    };
+    if bounds.min > bounds.max {
+        return Err(format!(
+            "bounds are inverted: {}..{} (MIN must not exceed MAX)",
+            bounds.min, bounds.max
+        ));
     }
+    Ok(bounds)
+}
+
+pub fn parse_positive_bounds(s: &str) -> Result<Bounds, String> {
+    let bounds = parse_bounds(s)?;
+    if bounds.min == 0 {
+        return Err("bounds must be at least 1".to_string());
+    }
+    Ok(bounds)
 }
 
 #[derive(Debug, Clone, clap::ValueEnum)]

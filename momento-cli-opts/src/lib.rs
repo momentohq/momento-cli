@@ -1,12 +1,12 @@
 use std::error::Error;
 
-use clap::builder::NonEmptyStringValueParser;
 use clap::CommandFactory;
 use clap::Parser;
+use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
-use utils::parse_date;
+use utils::{parse_bounds, parse_date, parse_positive_bounds};
 pub use utils::{Bounds, CapacityPoolProvisioningMode};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
@@ -415,17 +415,20 @@ pub enum CapacityPoolCommand {
             long,
             group = "mode",
             requires = "shard_count",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Explicit mode: EC2 instance type backing the pool's cluster"
         )]
         instance_type: Option<String>,
         #[arg(
             long,
             requires = "instance_type",
+            value_parser = value_parser!(u32).range(1..),
             help = "Explicit mode: number of shards in the backing cluster"
         )]
         shard_count: Option<u32>,
         #[arg(
             long,
+            value_parser = parse_bounds,
             help = "Replicas per shard — a single value for explicit pools (e.g. `2`), \
                     a value or range for managed pools (e.g. `1..3`)"
         )]
@@ -433,6 +436,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             group = "mode",
+            value_parser = parse_positive_bounds,
             help = "Managed mode: capacity bounds in GB — `500` pins, \
                     `100..500` lets Momento auto-scale within the range"
         )]
@@ -442,6 +446,7 @@ pub enum CapacityPoolCommand {
             required = true,
             num_args = 1..,
             value_delimiter = ',',
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Availability zone IDs for the backing cluster, e.g. usw2-az1 (comma-delimited) — \
                     ids, not names like us-west-2a",
             value_name = "AVAILABILITY_ZONES"
@@ -484,18 +489,21 @@ pub enum CapacityPoolCommand {
         mode: CapacityPoolProvisioningMode,
         #[arg(
             long,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Explicit mode: new EC2 instance type for the backing cluster; omit to leave unchanged",
             group = "field"
         )]
         instance_type: Option<String>,
         #[arg(
             long,
+            value_parser = value_parser!(u32).range(1..),
             help = "Explicit mode: new shard count for the backing cluster; omit to leave unchanged",
             group = "field"
         )]
         shard_count: Option<u32>,
         #[arg(
             long,
+            value_parser = parse_bounds,
             help = "New replicas per shard — a single value for explicit pools (e.g. `2`), \
                     a value or range for managed pools (e.g. `1..3`); \
                     omit to leave unchanged",
@@ -504,6 +512,7 @@ pub enum CapacityPoolCommand {
         replicas_per_shard: Option<Bounds>,
         #[arg(
             long,
+            value_parser = parse_positive_bounds,
             help = "Managed mode: new capacity bounds in GB — `500` pins, \
                    `100..500` lets Momento auto-scale within the range; \
                     omit to leave unchanged",
@@ -514,6 +523,7 @@ pub enum CapacityPoolCommand {
             long,
             num_args = 1..,
             value_delimiter = ',',
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Replace the zone set with these AZ IDs, e.g. usw2-az1 (comma-delimited) — \
                     ids, not names like us-west-2a; omit to leave unchanged",
             value_name = "AVAILABILITY_ZONES",
