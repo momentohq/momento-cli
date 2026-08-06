@@ -22,7 +22,7 @@ pub async fn create_pool(
                 "Creating pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
                 pool.status,
-                serde_json::to_string_pretty(&pool.provisioning)?,
+                pool.provisioning,
             );
         }
         Unparseable(response_text) => {
@@ -61,7 +61,7 @@ pub async fn update_pool(
                 "Updating pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
                 pool.status,
-                serde_json::to_string_pretty(&pool.provisioning)?,
+                pool.provisioning,
             );
         }
         Unparseable(response_text) => {
@@ -96,8 +96,9 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
                         "\nName: {}, Status: {}, Provisioning: {}, Diagnostics: {}",
                         pool.name,
                         pool.status,
-                        serde_json::to_string_pretty(&pool.provisioning)?,
-                        serde_json::to_string_pretty(&pool.diagnostics)?,
+                        pool.provisioning,
+                        serde_json::to_string_pretty(&pool.diagnostics)
+                            .unwrap_or_else(|_| format!("{:#?}", pool.diagnostics)),
                     );
                 }
             }
