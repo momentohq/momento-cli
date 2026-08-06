@@ -435,7 +435,14 @@ pub enum CapacityPoolCommand {
         )]
         name: String,
     },
-    #[command(about = "Update a Momento capacity pool")]
+    #[command(
+    about = "Update a Momento capacity pool",
+    group(
+    clap::ArgGroup::new("field")
+    .required(true)
+    .multiple(true)
+    ),
+    )]
     UpdatePool {
         #[arg(
             long,
@@ -447,17 +454,20 @@ pub enum CapacityPoolCommand {
         name: String,
         #[arg(
             long,
-            help = "New EC2 instance type for the backing cluster; omit to leave unchanged"
+            help = "New EC2 instance type for the backing cluster; omit to leave unchanged",
+            group = "field"
         )]
         instance_type: Option<String>,
         #[arg(
             long,
-            help = "New shard count for the backing cluster; omit to leave unchanged"
+            help = "New shard count for the backing cluster; omit to leave unchanged",
+            group = "field"
         )]
         shard_count: Option<u32>,
         #[arg(
             long,
-            help = "New replicas per shard — a single value (e.g. 2); omit to leave unchanged"
+            help = "New replicas per shard — a single value (e.g. 2); omit to leave unchanged",
+            group = "field"
         )]
         replicas_per_shard: Option<u32>,
         #[arg(
@@ -466,7 +476,8 @@ pub enum CapacityPoolCommand {
             value_delimiter = ',',
             help = "Replace the zone set with these AZ IDs, e.g. usw2-az1 (comma-delimited) — \
                     ids, not names like us-west-2a; omit to leave unchanged",
-            value_name = "AVAILABILITY_ZONES"
+            value_name = "AVAILABILITY_ZONES",
+            group = "field"
         )]
         zones: Option<Vec<String>>,
     },
