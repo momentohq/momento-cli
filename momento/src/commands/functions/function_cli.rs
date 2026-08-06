@@ -9,8 +9,8 @@ use momento::{
 
 use crate::{
     commands::functions::utils::{
-        build_invocation_headers, build_invocation_url, format_metrics_config, read_wasm_file,
-        InvocationOptions,
+        build_invocation_headers, build_invocation_path, call_function_api, format_metrics_config,
+        read_wasm_file, InvocationOptions,
     },
     error::CliError,
     utils::console::console_data,
@@ -18,16 +18,7 @@ use crate::{
 
 use http::Method;
 use log::info;
-use reqwest;
-use serde::Deserialize;
-use serde_json;
 use std::str::FromStr; // to use http::Method::from_str
-
-#[derive(Deserialize)]
-struct InvokeError {
-    detail: Option<String>,
-    message: Option<String>,
-}
 
 pub async fn put_function(
     client: FunctionClient,
@@ -130,40 +121,20 @@ pub async fn invoke_function(
     if !headers.is_empty() {
         info!("with headers:\n{headers:#?}");
     }
-
-    let request_url = build_invocation_url(endpoint, cache_name, name.clone(), options.path)?;
-    info!("at URL: {request_url}");
-
     info!("with request method: {method}");
 
-    let req_client = reqwest::Client::builder().build()?;
-    let response = req_client
-        .request(Method::from_str(&method)?, &request_url)
-        .body(data)
-        .header("authorization", &auth_token)
-        .headers(headers)
-        .send()
-        .await?;
-    info!("Headers sent back by {name}:\n{:#?}", response.headers());
-    let status = response.status();
-    if status.is_success() {
-        console_data!("{}", response.text().await?);
-        Ok(())
-    } else {
-        let error_text = response.text().await?;
-        Err(CliError::new(if error_text.is_empty() {
-            format!("{status}")
-        } else {
-            let error_message = match serde_json::from_str::<InvokeError>(error_text.as_str()) {
-                Ok(error_json) => error_json
-                    .detail
-                    .unwrap_or(error_json.message.unwrap_or(error_text.clone())),
-                Err(_) => error_text.clone(),
-            };
-            format!("{status}: {error_message}")
-        })
-        .with_details(error_text))
-    }
+    let full_path = build_invocation_path(cache_name, name, options.path)?;
+    let response_text = call_function_api(
+        Method::from_str(&method)?,
+        endpoint,
+        auth_token,
+        full_path,
+        headers,
+        data,
+    )
+    .await?;
+    console_data!("{response_text}");
+    Ok(())
 }
 
 pub async fn list_functions(client: FunctionClient, cache_name: String) -> Result<(), CliError> {

@@ -1,16 +1,16 @@
-use std::collections::HashMap;
-use std::fs;
-use std::str::FromStr; // to use HeaderName::from_str
+use crate::commands::utils::{call_momento_http_api_raw, MomentoHttpData};
+use crate::error::CliError;
 
 use momento::functions::{
     CurrentFunctionVersion, FunctionMetricsConfig, FunctionMetricsConfigChange, WasmSource,
 };
 
-use crate::error::CliError;
-
 use form_urlencoded;
-use http::method::InvalidMethod;
+use http::{method::InvalidMethod, Method};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderName, InvalidHeaderValue};
+use std::collections::HashMap;
+use std::fs;
+use std::str::FromStr; // to use HeaderName::from_str
 
 /// put-function
 pub fn read_wasm_file(wasm_file: String) -> Result<Vec<u8>, CliError> {
@@ -128,15 +128,13 @@ pub fn build_invocation_headers(headers_str: &str) -> Result<HeaderMap, CliError
     Ok(headers)
 }
 
-pub fn build_invocation_url(
-    endpoint: String,
+pub fn build_invocation_path(
     cache_name: String,
-    name: String,
+    function_name: String,
     path: Option<String>,
 ) -> Result<String, CliError> {
-    let function_url = format!("{endpoint}/functions/{cache_name}/{name}");
-    let request_url = match path {
-        None => function_url,
+    let path = match path {
+        None => format!("{cache_name}/{function_name}"),
         Some(path) => {
             let query_string = path.split_once('?').unwrap_or_default().1;
             if form_urlencoded::parse(query_string.as_bytes()).any(|(key, _)| key == "token") {
@@ -144,16 +142,31 @@ pub fn build_invocation_url(
                     "To use a specific Momento API key, please specify --profile or --api-key, not the 'token' query parameter",
                 ));
             }
-            format!("{function_url}/{}", path.trim_start_matches("/"))
+            format!(
+                "{cache_name}/{function_name}/{}",
+                path.trim_start_matches("/")
+            )
         }
     };
-    Ok(request_url)
+    Ok(path)
 }
 
-impl From<reqwest::Error> for CliError {
-    fn from(e: reqwest::Error) -> Self {
-        CliError::new(format!("{e} (reqwest error)")).with_details(format!("{e:#?}"))
-    }
+pub async fn call_function_api(
+    method: Method,
+    endpoint: String,
+    auth_token: String,
+    full_path: String,
+    headers: reqwest::header::HeaderMap,
+    data: String,
+) -> Result<String, CliError> {
+    call_momento_http_api_raw(
+        method,
+        format!("{endpoint}/functions/{full_path}"),
+        auth_token,
+        Some(headers),
+        Some(MomentoHttpData::String(data)),
+    )
+    .await
 }
 
 impl From<InvalidMethod> for CliError {

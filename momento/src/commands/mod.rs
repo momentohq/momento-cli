@@ -6,3 +6,4 @@ pub mod configure;
 pub mod database;
 pub mod functions;
 pub mod topic;
+pub mod utils;

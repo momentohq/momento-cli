@@ -1,6 +1,5 @@
-use super::utils::{
-    call_pool_http_api, ExplicitProvisioning, ExplicitProvisioningUpdate, Response,
-};
+use super::utils::{call_pool_api, ExplicitProvisioning, ExplicitProvisioningUpdate};
+use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
@@ -25,8 +24,8 @@ pub async fn create_pool(
             }
         }
     });
-    match call_pool_http_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
-        Response::Parsed(pool) => {
+    match call_pool_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
+        Parsed(pool) => {
             console_data!(
                 "Creating pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
@@ -34,7 +33,7 @@ pub async fn create_pool(
                 serde_json::to_string_pretty(&pool.provisioning.explicit)?,
             );
         }
-        Response::Unparseable(response_text) => {
+        Unparseable(response_text) => {
             console_data!("Creating pool! {response_text}");
         }
     };
@@ -46,11 +45,11 @@ pub async fn get_status(
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
-    match call_pool_http_api(Method::GET, endpoint, auth_token, name, None).await? {
-        Response::Parsed(pool) => {
+    match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
+        Parsed(pool) => {
             console_data!("Pool status for {}: {}", pool.name, pool.status);
         }
-        Response::Unparseable(response_text) => {
+        Unparseable(response_text) => {
             console_data!("{response_text}");
         }
     };
@@ -76,8 +75,8 @@ pub async fn update_pool(
             }
         }
     });
-    match call_pool_http_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
-        Response::Parsed(pool) => {
+    match call_pool_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
+        Parsed(pool) => {
             console_data!(
                 "Updating pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
@@ -85,7 +84,7 @@ pub async fn update_pool(
                 serde_json::to_string_pretty(&pool.provisioning.explicit)?,
             );
         }
-        Response::Unparseable(response_text) => {
+        Unparseable(response_text) => {
             console_data!("Updating pool! {response_text}");
         }
     };
