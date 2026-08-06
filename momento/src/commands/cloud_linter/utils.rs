@@ -40,12 +40,6 @@ where
     }
 }
 
-impl From<serde_json::Error> for CliError {
-    fn from(val: serde_json::Error) -> Self {
-        CliError::new(format!("{val:?}"))
-    }
-}
-
 impl From<std::io::Error> for CliError {
     fn from(val: std::io::Error) -> Self {
         CliError::new(format!("{val:?}"))

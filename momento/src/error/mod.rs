@@ -26,6 +26,12 @@ impl fmt::Display for CliError {
     }
 }
 
+impl From<serde_json::Error> for CliError {
+    fn from(val: serde_json::Error) -> Self {
+        CliError::new(format!("{val:?}"))
+    }
+}
+
 impl CliError {
     pub fn new(msg: impl Into<String>) -> Self {
         Self {

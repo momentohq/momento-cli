@@ -28,10 +28,10 @@ pub async fn create_pool(
     match call_pool_http_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
         Response::Parsed(pool) => {
             console_data!(
-                "Creating pool! Name: {}, Status: {}, Provisioning: {:#?}",
+                "Creating pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
                 pool.status,
-                pool.provisioning.explicit,
+                serde_json::to_string_pretty(&pool.provisioning.explicit)?,
             );
         }
         Response::Unparseable(response_text) => {
@@ -79,10 +79,10 @@ pub async fn update_pool(
     match call_pool_http_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
         Response::Parsed(pool) => {
             console_data!(
-                "Updating pool! Name: {}, Status: {}, Provisioning: {:#?}",
+                "Updating pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
                 pool.status,
-                pool.provisioning.explicit,
+                serde_json::to_string_pretty(&pool.provisioning.explicit)?,
             );
         }
         Response::Unparseable(response_text) => {
