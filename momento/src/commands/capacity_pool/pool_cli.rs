@@ -19,14 +19,14 @@ pub async fn create_pool(
     match call_pool_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!(
-                "Creating pool! Name: {}, Status: {}, Provisioning: {}",
+                "Creating capacity pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
                 pool.status,
                 pool.provisioning,
             );
         }
         Unparseable(response_text) => {
-            console_data!("Creating pool! {response_text}");
+            console_data!("Creating capacity pool! {response_text}");
         }
     };
     Ok(())
@@ -39,7 +39,7 @@ pub async fn get_status(
 ) -> Result<(), CliError> {
     match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(pool) => {
-            console_data!("Pool status for {}: {}", pool.name, pool.status);
+            console_data!("Capacity pool status for {}: {}", pool.name, pool.status);
         }
         Unparseable(response_text) => {
             console_data!("{response_text}");
@@ -58,14 +58,14 @@ pub async fn update_pool(
     match call_pool_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!(
-                "Updating pool! Name: {}, Status: {}, Provisioning: {}",
+                "Updating capacity pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
                 pool.status,
                 pool.provisioning,
             );
         }
         Unparseable(response_text) => {
-            console_data!("Updating pool! {response_text}");
+            console_data!("Updating capacity pool! {response_text}");
         }
     };
     Ok(())
@@ -76,8 +76,8 @@ pub async fn delete_pool(
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
-    let response_text = call_pool_delete_api(endpoint, auth_token, name).await?;
-    console_data!("Deleting pool! {response_text}");
+    let response_text = call_pool_delete_api(endpoint, auth_token, name.clone()).await?;
+    console_data!("Deleting capacity pool {name}! {response_text}");
     Ok(())
 }
 

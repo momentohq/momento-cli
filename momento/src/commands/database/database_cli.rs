@@ -25,7 +25,7 @@ pub async fn create_database(
     {
         Parsed(database) => {
             console_data!(
-                "Creating database! Name: {}, Pool: {}",
+                "Creating database! Name: {}, Capacity Pool: {}",
                 database.name,
                 database.pool_name,
             );
@@ -42,8 +42,9 @@ pub async fn delete_database(
     auth_token: String,
     database_name: String,
 ) -> Result<(), CliError> {
-    let response_text = call_database_delete_api(endpoint, auth_token, database_name).await?;
-    console_data!("Deleting database! {response_text}");
+    let response_text =
+        call_database_delete_api(endpoint, auth_token, database_name.clone()).await?;
+    console_data!("Deleting database {database_name}! {response_text}");
     Ok(())
 }
 
@@ -58,7 +59,11 @@ pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), 
             } else {
                 console_data!("Databases:");
                 databases_list.iter().for_each(|database| {
-                    console_data!("\nName: {}, Pool: {}", database.name, database.pool_name);
+                    console_data!(
+                        "\nName: {}, Capacity Pool: {}",
+                        database.name,
+                        database.pool_name
+                    );
                 });
             }
         }
