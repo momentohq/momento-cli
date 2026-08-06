@@ -1,6 +1,8 @@
 pub mod account;
 pub mod cache;
+pub mod capacity_pool;
 pub mod cloud_linter;
 pub mod configure;
+pub mod database;
 pub mod functions;
 pub mod topic;

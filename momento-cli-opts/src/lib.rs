@@ -396,6 +396,94 @@ pub enum FunctionCommand {
 }
 
 #[derive(Debug, Parser)]
+pub enum PoolCommand {
+    #[command(about = "Create a Momento capacity pool")]
+    CreatePool {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to create",
+            value_name = "POOL"
+        )]
+        name: String,
+        #[arg(long, help = "Instance type")]
+        instance_type: String,
+        #[arg(long, help = "Shard count")]
+        shard_count: u32,
+        #[arg(long, help = "Replicas per shard")]
+        replicas_per_shard: u32,
+        #[arg(
+            long,
+            help = "Availability zone IDs",
+            required = true,
+            num_args = 1..,
+            value_delimiter = ',',
+            value_name = "AVAILABILITY_ZONES"
+        )]
+        zones: Vec<String>,
+    },
+    #[command(about = "Get your capacity pool's lifecycle status")]
+    GetStatus {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to describe",
+            value_name = "POOL"
+        )]
+        name: String,
+    },
+    #[command(about = "Update a Momento capacity pool")]
+    UpdatePool {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to update",
+            value_name = "POOL"
+        )]
+        name: String,
+        #[arg(long, help = "Instance type")]
+        instance_type: Option<String>,
+        #[arg(long, help = "Shard count")]
+        shard_count: Option<u32>,
+        #[arg(long, help = "Replicas per shard")]
+        replicas_per_shard: Option<u32>,
+        #[arg(
+            long,
+            help = "Availability zone IDs",
+            num_args = 1..,
+            value_delimiter = ',',
+            value_name = "AVAILABILITY_ZONES"
+        )]
+        zones: Option<Vec<String>>,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum DatabaseCommand {
+    #[command(about = "Create a Momento database")]
+    CreateDatabase {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to create",
+            value_name = "DATABASE"
+        )]
+        name: String,
+        #[arg(
+            long,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool to pin your database to",
+            value_name = "POOL"
+        )]
+        pool_name: String,
+    },
+}
+
+#[derive(Debug, Parser)]
 pub enum PreviewCommand {
     #[command(
         about = "**PREVIEW** Query your AWS account to find optimizations with Momento",
@@ -487,6 +575,50 @@ https://github.com/momentohq/functions/"
 
         #[command(subcommand)]
         operation: FunctionCommand,
+    },
+    #[command(about = "**PREVIEW** Interact with your Momento capacity pools")]
+    Pool {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: PoolCommand,
+    },
+    #[command(about = "**PREVIEW** Interact with your Momento databases")]
+    Database {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: DatabaseCommand,
     },
 }
 
