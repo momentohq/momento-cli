@@ -362,7 +362,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::PoolCommand::CreatePool {
+                    momento_cli_opts::CapacityPoolCommand::CreatePool {
                         name,
                         instance_type,
                         shard_count,
@@ -380,7 +380,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::PoolCommand::GetStatus { name } => {
+                    momento_cli_opts::CapacityPoolCommand::GetStatus { name } => {
                         commands::capacity_pool::pool_cli::get_status(
                             api_endpoint,
                             auth_token,
@@ -388,7 +388,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::PoolCommand::UpdatePool {
+                    momento_cli_opts::CapacityPoolCommand::UpdatePool {
                         name,
                         instance_type,
                         shard_count,
@@ -420,12 +420,15 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::DatabaseCommand::CreateDatabase { pool_name, name } => {
+                    momento_cli_opts::DatabaseCommand::CreateDatabase {
+                        pool_name,
+                        database_name,
+                    } => {
                         commands::database::database_cli::create_database(
                             api_endpoint,
                             auth_token,
                             pool_name,
-                            name,
+                            database_name,
                         )
                         .await?
                     }

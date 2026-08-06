@@ -396,29 +396,30 @@ pub enum FunctionCommand {
 }
 
 #[derive(Debug, Parser)]
-pub enum PoolCommand {
+pub enum CapacityPoolCommand {
     #[command(about = "Create a Momento capacity pool")]
     CreatePool {
         #[arg(
             long,
-            short,
+            short = 'n',
             value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the capacity pool you want to create",
             value_name = "POOL"
         )]
         name: String,
-        #[arg(long, help = "Instance type")]
+        #[arg(long, help = "EC2 instance type backing the pool's cluster")]
         instance_type: String,
-        #[arg(long, help = "Shard count")]
+        #[arg(long, help = "Number of shards in the backing cluster")]
         shard_count: u32,
-        #[arg(long, help = "Replicas per shard")]
+        #[arg(long, help = "Replicas per shard — a single value (e.g. 2)")]
         replicas_per_shard: u32,
         #[arg(
             long,
-            help = "Availability zone IDs",
             required = true,
             num_args = 1..,
             value_delimiter = ',',
+            help = "Availability zone IDs for the backing cluster, e.g. usw2-az1 (comma-delimited) — \
+                    ids, not names like us-west-2a",
             value_name = "AVAILABILITY_ZONES"
         )]
         zones: Vec<String>,
@@ -444,17 +445,27 @@ pub enum PoolCommand {
             value_name = "POOL"
         )]
         name: String,
-        #[arg(long, help = "Instance type")]
+        #[arg(
+            long,
+            help = "New EC2 instance type for the backing cluster; omit to leave unchanged"
+        )]
         instance_type: Option<String>,
-        #[arg(long, help = "Shard count")]
+        #[arg(
+            long,
+            help = "New shard count for the backing cluster; omit to leave unchanged"
+        )]
         shard_count: Option<u32>,
-        #[arg(long, help = "Replicas per shard")]
+        #[arg(
+            long,
+            help = "New replicas per shard — a single value (e.g. 2); omit to leave unchanged"
+        )]
         replicas_per_shard: Option<u32>,
         #[arg(
             long,
-            help = "Availability zone IDs",
             num_args = 1..,
             value_delimiter = ',',
+            help = "Replace the zone set with these AZ IDs, e.g. usw2-az1 (comma-delimited) — \
+                    ids, not names like us-west-2a; omit to leave unchanged",
             value_name = "AVAILABILITY_ZONES"
         )]
         zones: Option<Vec<String>>,
@@ -467,16 +478,16 @@ pub enum DatabaseCommand {
     CreateDatabase {
         #[arg(
             long,
-            short,
+            short = 'n',
             value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the database you want to create",
             value_name = "DATABASE"
         )]
-        name: String,
+        database_name: String,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the capacity pool to pin your database to",
+            help = "Name of the capacity pool to pin the database to",
             value_name = "POOL"
         )]
         pool_name: String,
@@ -596,7 +607,7 @@ https://github.com/momentohq/functions/"
         endpoint: Option<String>,
 
         #[command(subcommand)]
-        operation: PoolCommand,
+        operation: CapacityPoolCommand,
     },
     #[command(about = "**PREVIEW** Interact with your Momento databases")]
     Database {

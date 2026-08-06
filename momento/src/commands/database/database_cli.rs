@@ -10,9 +10,9 @@ pub async fn create_database(
     endpoint: String,
     auth_token: String,
     pool_name: String,
-    name: String,
+    database_name: String,
 ) -> Result<(), CliError> {
-    let request_url = format!("{endpoint}/database/{name}");
+    let request_url = format!("{endpoint}/database/{database_name}");
     let data = serde_json::json!({
         "pool_name": pool_name
     })
@@ -31,7 +31,7 @@ pub async fn create_database(
         let response_text = response.text().await?;
         match serde_json::from_str::<DatabaseResponse>(response_text.as_str()) {
             Ok(database) => {
-                info!("Response sent back by {name} database creation:\n{database:#?}");
+                info!("Response sent back by {database_name} database creation:\n{database:#?}");
                 console_data!(
                     "Database created! Name: {}, Pool: {}",
                     database.name,
@@ -40,7 +40,7 @@ pub async fn create_database(
             }
             Err(err) => {
                 warn!(
-                    "Can't parse response from {name} database creation:\n{response_text}\n{err}"
+                    "Can't parse response from {database_name} database creation:\n{response_text}\n{err}"
                 );
                 console_data!("Database created! {response_text}");
             }
