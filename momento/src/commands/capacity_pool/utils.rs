@@ -1,4 +1,6 @@
-use crate::commands::utils::{call_momento_http_api, MomentoHttpData, MomentoHttpResponse};
+use crate::commands::utils::{
+    call_momento_http_api, call_momento_http_api_raw, MomentoHttpData, MomentoHttpResponse,
+};
 use crate::error::CliError;
 use momento_cli_opts::{Bounds, CapacityPoolProvisioningMode};
 
@@ -79,6 +81,13 @@ pub struct CapacityPoolResponse {
     pub name: String,
     pub status: String,
     pub provisioning: CapacityPoolProvisioning,
+    #[serde(default)]
+    pub diagnostics: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListCapacityPoolsResponse {
+    pub capacity_pools: Vec<CapacityPoolResponse>,
 }
 
 /// The single, pinned `--replicas-per-shard` that's required by explicit provisioning.
@@ -165,6 +174,13 @@ pub fn determine_provisioning_update(
     Ok(update)
 }
 
+fn build_request_url(endpoint: String, pool_name: Option<String>) -> String {
+    match pool_name {
+        None => format!("{endpoint}/capacity_pool"),
+        Some(name) => format!("{endpoint}/capacity_pool/{name}"),
+    }
+}
+
 pub async fn call_pool_api(
     method: Method,
     endpoint: String,
@@ -174,10 +190,39 @@ pub async fn call_pool_api(
 ) -> Result<MomentoHttpResponse<CapacityPoolResponse>, CliError> {
     call_momento_http_api(
         method,
-        format!("{endpoint}/capacity_pool/{pool_name}"),
+        build_request_url(endpoint, Some(pool_name)),
         auth_token,
         None,
         data.map(MomentoHttpData::Json),
+    )
+    .await
+}
+
+pub async fn call_pool_delete_api(
+    endpoint: String,
+    auth_token: String,
+    pool_name: String,
+) -> Result<String, CliError> {
+    call_momento_http_api_raw(
+        Method::DELETE,
+        build_request_url(endpoint, Some(pool_name)),
+        auth_token,
+        None,
+        None,
+    )
+    .await
+}
+
+pub async fn call_pool_list_api(
+    endpoint: String,
+    auth_token: String,
+) -> Result<MomentoHttpResponse<ListCapacityPoolsResponse>, CliError> {
+    call_momento_http_api(
+        Method::GET,
+        build_request_url(endpoint, None),
+        auth_token,
+        None,
+        None,
     )
     .await
 }

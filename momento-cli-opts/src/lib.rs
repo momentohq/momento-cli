@@ -531,6 +531,19 @@ pub enum CapacityPoolCommand {
         )]
         zones: Vec<String>,
     },
+    #[command(about = "Delete a Momento capacity pool")]
+    DeletePool {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to delete",
+            value_name = "POOL"
+        )]
+        name: String,
+    },
+    #[command(about = "List all your Momento capacity pools")]
+    ListPools {},
 }
 
 #[derive(Debug, Parser)]
@@ -553,6 +566,19 @@ pub enum DatabaseCommand {
         )]
         pool_name: String,
     },
+    #[command(about = "Delete a Momento database")]
+    DeleteDatabase {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to delete",
+            value_name = "DATABASE"
+        )]
+        database_name: String,
+    },
+    #[command(about = "List all your Momento databases")]
+    ListDatabases {},
 }
 
 #[derive(Debug, Parser)]
