@@ -1,4 +1,4 @@
-use super::utils::{call_pool_api, ExplicitProvisioning, ExplicitProvisioningUpdate};
+use super::utils::{call_pool_api, CapacityPoolProvisioning, CapacityPoolProvisioningUpdate};
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
 
@@ -9,28 +9,16 @@ pub async fn create_pool(
     endpoint: String,
     auth_token: String,
     name: String,
-    instance_type: String,
-    shard_count: u32,
-    replicas_per_shard: u32,
-    zones: Vec<String>,
+    provisioning: CapacityPoolProvisioning,
 ) -> Result<(), CliError> {
-    let data = serde_json::json!({
-        "provisioning": {
-            "explicit": ExplicitProvisioning {
-                instance_type,
-                shard_count,
-                replicas_per_shard,
-                zones,
-            }
-        }
-    });
+    let data = serde_json::json!({"provisioning": provisioning});
     match call_pool_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!(
                 "Creating pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
                 pool.status,
-                serde_json::to_string_pretty(&pool.provisioning.explicit)?,
+                serde_json::to_string_pretty(&pool.provisioning)?,
             );
         }
         Unparseable(response_text) => {
@@ -60,28 +48,16 @@ pub async fn update_pool(
     endpoint: String,
     auth_token: String,
     name: String,
-    instance_type: Option<String>,
-    shard_count: Option<u32>,
-    replicas_per_shard: Option<u32>,
-    zones: Option<Vec<String>>,
+    provisioning_update: CapacityPoolProvisioningUpdate,
 ) -> Result<(), CliError> {
-    let data = serde_json::json!({
-        "provisioning": {
-            "explicit": ExplicitProvisioningUpdate {
-                instance_type,
-                shard_count,
-                replicas_per_shard,
-                zones,
-            }
-        }
-    });
+    let data = serde_json::json!({"provisioning": provisioning_update});
     match call_pool_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!(
                 "Updating pool! Name: {}, Status: {}, Provisioning: {}",
                 pool.name,
                 pool.status,
-                serde_json::to_string_pretty(&pool.provisioning.explicit)?,
+                serde_json::to_string_pretty(&pool.provisioning)?,
             );
         }
         Unparseable(response_text) => {

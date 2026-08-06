@@ -1,2 +1,2 @@
 pub mod pool_cli;
-mod utils;
+pub mod utils;

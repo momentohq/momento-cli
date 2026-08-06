@@ -14,6 +14,7 @@ use utils::{
 };
 
 use crate::{
+    commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
     commands::functions::utils::{
         determine_current_function_version, determine_metrics_config_change, determine_wasm_source,
         InvocationOptions,
@@ -367,16 +368,21 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         instance_type,
                         shard_count,
                         replicas_per_shard,
+                        capacity_gb,
                         zones,
                     } => {
+                        let provisioning = determine_provisioning(
+                            instance_type,
+                            shard_count,
+                            replicas_per_shard,
+                            capacity_gb,
+                            zones,
+                        )?;
                         commands::capacity_pool::pool_cli::create_pool(
                             api_endpoint,
                             auth_token,
                             name,
-                            instance_type,
-                            shard_count,
-                            replicas_per_shard,
-                            zones,
+                            provisioning,
                         )
                         .await?
                     }
@@ -390,19 +396,26 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                     momento_cli_opts::CapacityPoolCommand::UpdatePool {
                         name,
+                        mode,
                         instance_type,
                         shard_count,
                         replicas_per_shard,
+                        capacity_gb,
                         zones,
                     } => {
+                        let provisioning_update = determine_provisioning_update(
+                            mode,
+                            instance_type,
+                            shard_count,
+                            replicas_per_shard,
+                            capacity_gb,
+                            zones,
+                        )?;
                         commands::capacity_pool::pool_cli::update_pool(
                             api_endpoint,
                             auth_token,
                             name,
-                            instance_type,
-                            shard_count,
-                            replicas_per_shard,
-                            zones,
+                            provisioning_update,
                         )
                         .await?
                     }
