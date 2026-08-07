@@ -459,6 +459,17 @@ pub enum CapacityPoolCommand {
             long,
             short,
             value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to get the status of",
+            value_name = "POOL"
+        )]
+        name: String,
+    },
+    #[command(about = "Get the details of your capacity pool")]
+    DescribePool {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the capacity pool you want to describe",
             value_name = "POOL"
         )]
@@ -565,6 +576,17 @@ pub enum DatabaseCommand {
             value_name = "POOL"
         )]
         pool_name: String,
+    },
+    #[command(about = "Get the details of your Momento database")]
+    DescribeDatabase {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to describe",
+            value_name = "DATABASE"
+        )]
+        database_name: String,
     },
     #[command(about = "Delete a Momento database")]
     DeleteDatabase {

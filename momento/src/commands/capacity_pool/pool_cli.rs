@@ -39,10 +39,33 @@ pub async fn get_status(
 ) -> Result<(), CliError> {
     match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(pool) => {
-            console_data!("Capacity pool status for {}: {}", pool.name, pool.status);
+            console_data!("Capacity pool status for {}:\n{}", pool.name, pool.status);
         }
         Unparseable(response_text) => {
             console_data!("{response_text}");
+        }
+    };
+    Ok(())
+}
+
+pub async fn describe_pool(
+    endpoint: String,
+    auth_token: String,
+    name: String,
+) -> Result<(), CliError> {
+    match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
+        Parsed(pool) => {
+            console_data!(
+                "Your capacity pool:\nName: {}, Status: {}, Provisioning: {}, Diagnostics: {}",
+                pool.name,
+                pool.status,
+                pool.provisioning,
+                serde_json::to_string_pretty(&pool.diagnostics)
+                    .unwrap_or_else(|_| format!("{:#?}", pool.diagnostics)),
+            );
+        }
+        Unparseable(response_text) => {
+            console_data!("Your capacity pool:\n{response_text}");
         }
     };
     Ok(())

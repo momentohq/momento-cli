@@ -37,6 +37,26 @@ pub async fn create_database(
     Ok(())
 }
 
+pub async fn describe_database(
+    endpoint: String,
+    auth_token: String,
+    name: String,
+) -> Result<(), CliError> {
+    match call_database_api(Method::GET, endpoint, auth_token, name, None).await? {
+        Parsed(database) => {
+            console_data!(
+                "Your database:\nName: {}, Capacity Pool: {}",
+                database.name,
+                database.pool_name
+            );
+        }
+        Unparseable(response_text) => {
+            console_data!("Your database:\n{response_text}");
+        }
+    };
+    Ok(())
+}
+
 pub async fn delete_database(
     endpoint: String,
     auth_token: String,
