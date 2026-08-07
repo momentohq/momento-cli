@@ -10,8 +10,8 @@ use std::fmt;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CapacityBounds {
-    pub min_gb: u32,
-    pub max_gb: u32,
+    pub min_gib: u32,
+    pub max_gib: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -23,8 +23,8 @@ pub struct ReplicationBounds {
 impl From<Bounds> for CapacityBounds {
     fn from(bounds: Bounds) -> Self {
         Self {
-            min_gb: bounds.min,
-            max_gb: bounds.max,
+            min_gib: bounds.min,
+            max_gib: bounds.max,
         }
     }
 }
@@ -116,10 +116,10 @@ pub fn determine_provisioning(
     instance_type: Option<String>,
     shard_count: Option<u32>,
     replicas_per_shard: Bounds,
-    capacity_gb: Option<Bounds>,
+    capacity_gib: Option<Bounds>,
     zones: Vec<String>,
 ) -> Result<CapacityPoolProvisioning, CliError> {
-    let provisioning = match (instance_type, shard_count, capacity_gb) {
+    let provisioning = match (instance_type, shard_count, capacity_gib) {
         (Some(instance_type), Some(shard_count), None) => {
             let replicas_per_shard = pinned(replicas_per_shard)?;
             CapacityPoolProvisioning::Explicit {
@@ -137,7 +137,7 @@ pub fn determine_provisioning(
         _ => {
             return Err(CliError::new(
                 "pass either --instance-type with --shard-count (explicit) \
-                 or --capacity-gb (managed)",
+                 or --capacity-gib (managed)",
             ));
         }
     };
@@ -149,14 +149,14 @@ pub fn determine_provisioning_update(
     instance_type: Option<String>,
     shard_count: Option<u32>,
     replicas_per_shard: Option<Bounds>,
-    capacity_gb: Option<Bounds>,
+    capacity_gib: Option<Bounds>,
     zones: Vec<String>,
 ) -> Result<CapacityPoolProvisioningUpdate, CliError> {
     let update = match mode {
         CapacityPoolProvisioningMode::Explicit => {
-            if capacity_gb.is_some() {
+            if capacity_gib.is_some() {
                 return Err(CliError::new(
-                    "--capacity-gb is a managed-mode field; pass --mode managed",
+                    "--capacity-gib is a managed-mode field; pass --mode managed",
                 ));
             }
             let replicas_per_shard = replicas_per_shard.map(pinned).transpose()?;
@@ -175,7 +175,7 @@ pub fn determine_provisioning_update(
                 ));
             }
             CapacityPoolProvisioningUpdate::Managed {
-                capacity: capacity_gb.map(CapacityBounds::from),
+                capacity: capacity_gib.map(CapacityBounds::from),
                 replication: replicas_per_shard.map(ReplicationBounds::from),
                 zones,
             }

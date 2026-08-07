@@ -437,10 +437,10 @@ pub enum CapacityPoolCommand {
             long,
             group = "mode",
             value_parser = parse_positive_bounds,
-            help = "Managed mode: capacity bounds in GB — `500` pins, \
+            help = "Managed mode: capacity bounds in GiB — `500` pins, \
                     `100..500` lets Momento auto-scale within the range"
         )]
-        capacity_gb: Option<Bounds>,
+        capacity_gib: Option<Bounds>,
         #[arg(
             long,
             required = true,
@@ -513,12 +513,12 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             value_parser = parse_positive_bounds,
-            help = "Managed mode: new capacity bounds in GB — `500` pins, \
+            help = "Managed mode: new capacity bounds in GiB — `500` pins, \
                    `100..500` lets Momento auto-scale within the range; \
                     omit to leave unchanged",
             group = "field"
         )]
-        capacity_gb: Option<Bounds>,
+        capacity_gib: Option<Bounds>,
         #[arg(
             long,
             num_args = 1..,

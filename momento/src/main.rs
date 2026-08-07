@@ -368,14 +368,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         instance_type,
                         shard_count,
                         replicas_per_shard,
-                        capacity_gb,
+                        capacity_gib,
                         zones,
                     } => {
                         let provisioning = determine_provisioning(
                             instance_type,
                             shard_count,
                             replicas_per_shard,
-                            capacity_gb,
+                            capacity_gib,
                             zones,
                         )?;
                         commands::capacity_pool::pool_cli::create_pool(
@@ -400,7 +400,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         instance_type,
                         shard_count,
                         replicas_per_shard,
-                        capacity_gb,
+                        capacity_gib,
                         zones,
                     } => {
                         let provisioning_update = determine_provisioning_update(
@@ -408,7 +408,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             instance_type,
                             shard_count,
                             replicas_per_shard,
-                            capacity_gb,
+                            capacity_gib,
                             zones,
                         )?;
                         commands::capacity_pool::pool_cli::update_pool(
