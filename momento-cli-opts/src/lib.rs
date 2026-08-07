@@ -1,12 +1,13 @@
 use std::error::Error;
 
-use clap::builder::NonEmptyStringValueParser;
 use clap::CommandFactory;
 use clap::Parser;
+use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
-use utils::parse_date;
+use utils::{parse_bounds, parse_date, parse_positive_bounds};
+pub use utils::{Bounds, CapacityPoolProvisioningMode};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
@@ -396,6 +397,191 @@ pub enum FunctionCommand {
 }
 
 #[derive(Debug, Parser)]
+pub enum CapacityPoolCommand {
+    #[command(
+    about = "Create a Momento capacity pool",
+    group(clap::ArgGroup::new("mode").required(true)),
+    )]
+    CreatePool {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to create",
+            value_name = "POOL"
+        )]
+        name: String,
+        #[arg(
+            long,
+            group = "mode",
+            requires = "shard_count",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Explicit mode: EC2 instance type backing the pool's cluster"
+        )]
+        instance_type: Option<String>,
+        #[arg(
+            long,
+            requires = "instance_type",
+            value_parser = value_parser!(u32).range(1..),
+            help = "Explicit mode: number of shards in the backing cluster"
+        )]
+        shard_count: Option<u32>,
+        #[arg(
+            long,
+            value_parser = parse_bounds,
+            help = "Replicas per shard — a single value for explicit pools (e.g. `2`), \
+                    a value or range for managed pools (e.g. `1..3`)"
+        )]
+        replicas_per_shard: Bounds,
+        #[arg(
+            long,
+            group = "mode",
+            value_parser = parse_positive_bounds,
+            help = "Managed mode: capacity bounds in GiB — `500` pins, \
+                    `100..500` lets Momento auto-scale within the range"
+        )]
+        capacity_gib: Option<Bounds>,
+        #[arg(
+            long,
+            required = true,
+            num_args = 1..,
+            value_delimiter = ',',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Availability zone IDs for the backing cluster, e.g. usw2-az1 (comma-delimited) — \
+                    ids, not names like us-west-2a",
+            value_name = "AVAILABILITY_ZONES"
+        )]
+        zones: Vec<String>,
+    },
+    #[command(about = "Get your capacity pool's lifecycle status")]
+    GetStatus {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to describe",
+            value_name = "POOL"
+        )]
+        name: String,
+    },
+    #[command(
+    about = "Update a Momento capacity pool",
+    group(
+    clap::ArgGroup::new("field")
+    .required(true)
+    .multiple(true)
+    ),
+    )]
+    UpdatePool {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to update",
+            value_name = "POOL"
+        )]
+        name: String,
+        #[arg(
+            long,
+            value_enum,
+            help = "The pool's provisioning mode (explicit or managed)"
+        )]
+        mode: CapacityPoolProvisioningMode,
+        #[arg(
+            long,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Explicit mode: new EC2 instance type for the backing cluster; omit to leave unchanged",
+            group = "field"
+        )]
+        instance_type: Option<String>,
+        #[arg(
+            long,
+            value_parser = value_parser!(u32).range(1..),
+            help = "Explicit mode: new shard count for the backing cluster; omit to leave unchanged",
+            group = "field"
+        )]
+        shard_count: Option<u32>,
+        #[arg(
+            long,
+            value_parser = parse_bounds,
+            help = "New replicas per shard — a single value for explicit pools (e.g. `2`), \
+                    a value or range for managed pools (e.g. `1..3`); \
+                    omit to leave unchanged",
+            group = "field"
+        )]
+        replicas_per_shard: Option<Bounds>,
+        #[arg(
+            long,
+            value_parser = parse_positive_bounds,
+            help = "Managed mode: new capacity bounds in GiB — `500` pins, \
+                   `100..500` lets Momento auto-scale within the range; \
+                    omit to leave unchanged",
+            group = "field"
+        )]
+        capacity_gib: Option<Bounds>,
+        #[arg(
+            long,
+            num_args = 1..,
+            value_delimiter = ',',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Replace the zone set with these AZ IDs, e.g. usw2-az1 (comma-delimited) — \
+                    ids, not names like us-west-2a; omit to leave unchanged",
+            value_name = "AVAILABILITY_ZONES",
+            group = "field"
+        )]
+        zones: Vec<String>,
+    },
+    #[command(about = "Delete a Momento capacity pool")]
+    DeletePool {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to delete",
+            value_name = "POOL"
+        )]
+        name: String,
+    },
+    #[command(about = "List all your Momento capacity pools")]
+    ListPools {},
+}
+
+#[derive(Debug, Parser)]
+pub enum DatabaseCommand {
+    #[command(about = "Create a Momento database")]
+    CreateDatabase {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to create",
+            value_name = "DATABASE"
+        )]
+        database_name: String,
+        #[arg(
+            long,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool to pin the database to",
+            value_name = "POOL"
+        )]
+        pool_name: String,
+    },
+    #[command(about = "Delete a Momento database")]
+    DeleteDatabase {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to delete",
+            value_name = "DATABASE"
+        )]
+        database_name: String,
+    },
+    #[command(about = "List all your Momento databases")]
+    ListDatabases {},
+}
+
+#[derive(Debug, Parser)]
 pub enum PreviewCommand {
     #[command(
         about = "**PREVIEW** Query your AWS account to find optimizations with Momento",
@@ -487,6 +673,50 @@ https://github.com/momentohq/functions/"
 
         #[command(subcommand)]
         operation: FunctionCommand,
+    },
+    #[command(about = "**PREVIEW** Interact with your Momento capacity pools")]
+    Pool {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: CapacityPoolCommand,
+    },
+    #[command(about = "**PREVIEW** Interact with your Momento databases")]
+    Database {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: DatabaseCommand,
     },
 }
 

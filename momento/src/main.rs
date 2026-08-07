@@ -14,6 +14,7 @@ use utils::{
 };
 
 use crate::{
+    commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
     commands::functions::utils::{
         determine_current_function_version, determine_metrics_config_change, determine_wasm_source,
         InvocationOptions,
@@ -347,6 +348,126 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                     momento_cli_opts::FunctionCommand::ListWasms {} => {
                         commands::functions::function_cli::list_wasms(client).await?
+                    }
+                }
+            }
+            PreviewCommand::Pool {
+                api_key,
+                endpoint,
+                operation,
+            } => {
+                let (creds, _) = get_creds_and_config(&args.profile).await?;
+                let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
+
+                let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+                let auth_token = credential_provider.auth_token().to_string();
+
+                match operation {
+                    momento_cli_opts::CapacityPoolCommand::CreatePool {
+                        name,
+                        instance_type,
+                        shard_count,
+                        replicas_per_shard,
+                        capacity_gib,
+                        zones,
+                    } => {
+                        let provisioning = determine_provisioning(
+                            instance_type,
+                            shard_count,
+                            replicas_per_shard,
+                            capacity_gib,
+                            zones,
+                        )?;
+                        commands::capacity_pool::pool_cli::create_pool(
+                            api_endpoint,
+                            auth_token,
+                            name,
+                            provisioning,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::CapacityPoolCommand::GetStatus { name } => {
+                        commands::capacity_pool::pool_cli::get_status(
+                            api_endpoint,
+                            auth_token,
+                            name,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::CapacityPoolCommand::UpdatePool {
+                        name,
+                        mode,
+                        instance_type,
+                        shard_count,
+                        replicas_per_shard,
+                        capacity_gib,
+                        zones,
+                    } => {
+                        let provisioning_update = determine_provisioning_update(
+                            mode,
+                            instance_type,
+                            shard_count,
+                            replicas_per_shard,
+                            capacity_gib,
+                            zones,
+                        )?;
+                        commands::capacity_pool::pool_cli::update_pool(
+                            api_endpoint,
+                            auth_token,
+                            name,
+                            provisioning_update,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::CapacityPoolCommand::DeletePool { name } => {
+                        commands::capacity_pool::pool_cli::delete_pool(
+                            api_endpoint,
+                            auth_token,
+                            name,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::CapacityPoolCommand::ListPools {} => {
+                        commands::capacity_pool::pool_cli::list_pools(api_endpoint, auth_token)
+                            .await?
+                    }
+                }
+            }
+            PreviewCommand::Database {
+                api_key,
+                endpoint,
+                operation,
+            } => {
+                let (creds, _) = get_creds_and_config(&args.profile).await?;
+                let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
+
+                let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+                let auth_token = credential_provider.auth_token().to_string();
+
+                match operation {
+                    momento_cli_opts::DatabaseCommand::CreateDatabase {
+                        pool_name,
+                        database_name,
+                    } => {
+                        commands::database::database_cli::create_database(
+                            api_endpoint,
+                            auth_token,
+                            pool_name,
+                            database_name,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::DatabaseCommand::DeleteDatabase { database_name } => {
+                        commands::database::database_cli::delete_database(
+                            api_endpoint,
+                            auth_token,
+                            database_name,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::DatabaseCommand::ListDatabases {} => {
+                        commands::database::database_cli::list_databases(api_endpoint, auth_token)
+                            .await?
                     }
                 }
             }
