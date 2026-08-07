@@ -33,7 +33,7 @@ pub fn parse_bounds(s: &str) -> Result<Bounds, String> {
 pub fn parse_positive_bounds(s: &str) -> Result<Bounds, String> {
     let bounds = parse_bounds(s)?;
     if bounds.min == 0 {
-        return Err("bounds must be at least 1".to_string());
+        return Err("bounds must be >0".to_string());
     }
     Ok(bounds)
 }
