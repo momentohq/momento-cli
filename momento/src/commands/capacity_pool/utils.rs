@@ -82,7 +82,7 @@ pub struct CapacityPoolResponse {
     pub status: String,
     pub provisioning: CapacityPoolProvisioning,
     #[serde(default)]
-    pub diagnostics: serde_json::Value,
+    pub diagnostics: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]

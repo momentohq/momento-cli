@@ -18,12 +18,7 @@ pub async fn create_pool(
     let data = serde_json::json!({"provisioning": provisioning});
     match call_pool_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
-            console_data!(
-                "Creating capacity pool!\n\nName: {}\nStatus: {}\nProvisioning:\n{}",
-                pool.name,
-                pool.status,
-                pool.provisioning,
-            );
+            console_data!("Creating capacity pool!\n\n{pool}");
         }
         Unparseable(response_text) => {
             console_data!("Creating capacity pool!");
@@ -58,14 +53,7 @@ pub async fn describe_pool(
 ) -> Result<(), CliError> {
     match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(pool) => {
-            console_data!(
-                "Your capacity pool:\nName: {}\nStatus: {}\nProvisioning:\n{}\nDiagnostics: {}",
-                pool.name,
-                pool.status,
-                pool.provisioning,
-                serde_json::to_string_pretty(&pool.diagnostics)
-                    .unwrap_or_else(|_| format!("{:#?}", pool.diagnostics)),
-            );
+            console_data!("Your capacity pool:\n\n{pool}");
         }
         Unparseable(response_text) => {
             console_data!("Your capacity pool:\n\n{response_text}");
@@ -83,12 +71,7 @@ pub async fn update_pool(
     let data = serde_json::json!({"provisioning": provisioning_update});
     match call_pool_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
-            console_data!(
-                "Updating capacity pool!\n\nName: {}\nStatus: {}\nProvisioning:\n{}",
-                pool.name,
-                pool.status,
-                pool.provisioning,
-            );
+            console_data!("Updating capacity pool!\n\n{pool}");
         }
         Unparseable(response_text) => {
             console_data!("Updating capacity pool!");
@@ -124,14 +107,7 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
             } else {
                 console_data!("Capacity pools:");
                 for pool in pools_list.iter() {
-                    console_data!(
-                        "\nName: {}\nStatus: {}\nProvisioning:\n{}\nActive Diagnostics: {}",
-                        pool.name,
-                        pool.status,
-                        pool.provisioning,
-                        serde_json::to_string_pretty(&pool.diagnostics)
-                            .unwrap_or_else(|_| format!("{:#?}", pool.diagnostics)),
-                    );
+                    console_data!("\n{pool}");
                 }
             }
         }

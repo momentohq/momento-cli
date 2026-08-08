@@ -1,4 +1,4 @@
-use super::utils::CapacityPoolProvisioning;
+use super::utils::{CapacityPoolProvisioning, CapacityPoolResponse};
 
 use std::fmt;
 
@@ -39,5 +39,22 @@ impl fmt::Display for CapacityPoolProvisioning {
                 )
             }
         }
+    }
+}
+
+impl fmt::Display for CapacityPoolResponse {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Name: {}\n", self.name)?;
+        write!(f, "Status: {}\n", self.status)?;
+        write!(f, "Provisioning:\n{}", self.provisioning)?;
+        if !self.diagnostics.is_empty() {
+            write!(
+                f,
+                "\nDiagnostics: {}",
+                serde_json::to_string_pretty(&self.diagnostics)
+                    .unwrap_or_else(|_| format!("{:#?}", self.diagnostics)),
+            )?;
+        }
+        Ok(())
     }
 }
