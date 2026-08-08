@@ -6,7 +6,6 @@ use momento_cli_opts::{Bounds, CapacityPoolProvisioningMode};
 
 use http::Method;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CapacityBounds {
@@ -52,15 +51,6 @@ pub enum CapacityPoolProvisioning {
         replication: ReplicationBounds,
         zones: Vec<String>,
     },
-}
-
-impl fmt::Display for CapacityPoolProvisioning {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match serde_json::to_string_pretty(self) {
-            Ok(pretty) => write!(f, "{pretty}"),
-            Err(_) => write!(f, "{self:?}"),
-        }
-    }
 }
 
 #[derive(Debug, Serialize)]

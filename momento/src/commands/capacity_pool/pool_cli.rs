@@ -19,14 +19,17 @@ pub async fn create_pool(
     match call_pool_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!(
-                "Creating capacity pool! Name: {}, Status: {}, Provisioning: {}",
+                "Creating capacity pool!\n\nName: {}\nStatus: {}\nProvisioning:\n{}",
                 pool.name,
                 pool.status,
                 pool.provisioning,
             );
         }
         Unparseable(response_text) => {
-            console_data!("Creating capacity pool! {response_text}");
+            console_data!("Creating capacity pool!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
         }
     };
     Ok(())
@@ -56,7 +59,7 @@ pub async fn describe_pool(
     match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(pool) => {
             console_data!(
-                "Your capacity pool:\nName: {}, Status: {}, Provisioning: {}, Diagnostics: {}",
+                "Your capacity pool:\nName: {}\nStatus: {}\nProvisioning:\n{}\nDiagnostics: {}",
                 pool.name,
                 pool.status,
                 pool.provisioning,
@@ -65,7 +68,7 @@ pub async fn describe_pool(
             );
         }
         Unparseable(response_text) => {
-            console_data!("Your capacity pool:\n{response_text}");
+            console_data!("Your capacity pool:\n\n{response_text}");
         }
     };
     Ok(())
@@ -81,14 +84,17 @@ pub async fn update_pool(
     match call_pool_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!(
-                "Updating capacity pool! Name: {}, Status: {}, Provisioning: {}",
+                "Updating capacity pool!\n\nName: {}\nStatus: {}\nProvisioning:\n{}",
                 pool.name,
                 pool.status,
                 pool.provisioning,
             );
         }
         Unparseable(response_text) => {
-            console_data!("Updating capacity pool! {response_text}");
+            console_data!("Updating capacity pool!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
         }
     };
     Ok(())
@@ -100,7 +106,10 @@ pub async fn delete_pool(
     name: String,
 ) -> Result<(), CliError> {
     let response_text = call_pool_delete_api(endpoint, auth_token, name.clone()).await?;
-    console_data!("Deleting capacity pool {name}! {response_text}");
+    console_data!("Deleting capacity pool {name}!");
+    if !response_text.is_empty() {
+        console_data!("\n\n{response_text}");
+    }
     Ok(())
 }
 
@@ -116,7 +125,7 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
                 console_data!("Capacity pools:");
                 for pool in pools_list.iter() {
                     console_data!(
-                        "\nName: {}, Status: {}, Provisioning: {}, Diagnostics: {}",
+                        "\nName: {}\nStatus: {}\nProvisioning:\n{}\nActive Diagnostics: {}",
                         pool.name,
                         pool.status,
                         pool.provisioning,
@@ -127,7 +136,7 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
             }
         }
         Unparseable(response_text) => {
-            console_data!("Listing capacity pools:\n{response_text}");
+            console_data!("Listing your capacity pools:\n\n{response_text}");
         }
     };
     Ok(())
