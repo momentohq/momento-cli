@@ -55,6 +55,16 @@ impl fmt::Display for CapacityPoolResponse {
                     .unwrap_or_else(|_| format!("{:#?}", self.diagnostics)),
             )?;
         }
+        if !self.extra_fields.is_empty() {
+            write!(f, "\nAdditional details:")?;
+            for (field, value) in &self.extra_fields {
+                write!(
+                    f,
+                    "\n- {field}: {}",
+                    serde_json::to_string_pretty(value).unwrap_or_else(|_| format!("{:#?}", value)),
+                )?;
+            }
+        }
         Ok(())
     }
 }

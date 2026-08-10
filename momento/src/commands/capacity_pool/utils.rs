@@ -6,6 +6,7 @@ use momento_cli_opts::{Bounds, CapacityPoolProvisioningMode};
 
 use http::Method;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CapacityBounds {
@@ -83,6 +84,8 @@ pub struct CapacityPoolResponse {
     pub provisioning: CapacityPoolProvisioning,
     #[serde(default)]
     pub diagnostics: Vec<serde_json::Value>,
+    #[serde(flatten)]
+    pub extra_fields: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
