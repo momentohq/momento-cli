@@ -44,9 +44,15 @@ impl fmt::Display for CapacityPoolProvisioning {
 
 impl fmt::Display for CapacityPoolResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Name: {}\n", self.name)?;
-        write!(f, "Status: {}\n", self.status)?;
-        write!(f, "Provisioning:\n{}", self.provisioning)?;
+        write!(f, "Name: {}", self.name)?;
+        write!(f, "\nStatus: {}", self.status)?;
+        write!(f, "\nProvisioning:\n{}", self.provisioning)?;
+        if let Some(capacity) = self.current_capacity_gib {
+            write!(f, "\nCurrent capacity: {} GiB", capacity)?;
+        }
+        if let Some(replicas) = self.current_replicas_per_shard {
+            write!(f, "\nCurrent replication: {} replicas per shard", replicas)?;
+        }
         if !self.diagnostics.is_empty() {
             write!(
                 f,

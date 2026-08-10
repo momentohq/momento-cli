@@ -84,6 +84,10 @@ pub struct CapacityPoolResponse {
     pub provisioning: CapacityPoolProvisioning,
     #[serde(default)]
     pub diagnostics: Vec<serde_json::Value>,
+    /// Managed pools only: the capacity the pool concretely has right now.
+    pub current_capacity_gib: Option<u32>,
+    /// Managed pools only: the replication the pool concretely has right now.
+    pub current_replicas_per_shard: Option<u32>,
     #[serde(flatten)]
     pub extra_fields: HashMap<String, serde_json::Value>,
 }
