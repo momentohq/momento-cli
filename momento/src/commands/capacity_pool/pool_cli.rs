@@ -37,7 +37,7 @@ pub async fn get_status(
 ) -> Result<(), CliError> {
     match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(pool) => {
-            console_data!("Capacity pool status for {}:\n{}", pool.name, pool.status);
+            console_data!("{}", pool.status);
         }
         Unparseable(response_text) => {
             console_data!("{response_text}");
