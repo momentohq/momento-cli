@@ -80,13 +80,45 @@ pub enum CapacityPoolProvisioningUpdate {
     },
 }
 
+/// A single diagnostic, which the API sends as a one-entry object keyed by kind:
+/// `{"insufficient_capacity": {"state": "active", ...}}`. The fields vary by kind,
+/// so we keep them as raw JSON rather than modelling every variant.
+#[derive(Debug, Deserialize)]
+#[serde(from = "serde_json::Value")]
+pub enum CapacityPoolDiagnosticEntry {
+    Parsed {
+        kind: String,
+        fields: serde_json::Map<String, serde_json::Value>,
+    },
+    Unparseable(serde_json::Value),
+}
+
+impl From<serde_json::Value> for CapacityPoolDiagnosticEntry {
+    fn from(entry: serde_json::Value) -> Self {
+        let (kind, fields) = match entry {
+            serde_json::Value::Object(entry) if entry.len() == 1 => {
+                entry.into_iter().next().expect("length checked above")
+            }
+            other => return Self::Unparseable(other),
+        };
+        match fields {
+            serde_json::Value::Object(fields) => Self::Parsed { kind, fields },
+            other => Self::Unparseable(serde_json::Value::Object(
+                [(kind, other)].into_iter().collect(),
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
+pub struct CapacityPoolDiagnostics(pub Vec<CapacityPoolDiagnosticEntry>);
+
 #[derive(Debug, Deserialize)]
 pub struct CapacityPoolResponse {
     pub name: String,
     pub status: String,
     pub provisioning: CapacityPoolProvisioning,
-    #[serde(default)]
-    pub diagnostics: Vec<serde_json::Value>,
+    pub diagnostics: Option<CapacityPoolDiagnostics>,
     /// Managed pools only: the capacity the pool concretely has right now.
     pub current_capacity_gib: Option<u32>,
     /// Managed pools only: the replication the pool concretely has right now.

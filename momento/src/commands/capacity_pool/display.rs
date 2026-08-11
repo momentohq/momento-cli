@@ -1,4 +1,7 @@
-use super::utils::{CapacityPoolProvisioning, CapacityPoolResponse, ManagedProvisioning};
+use super::utils::{
+    CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics, CapacityPoolProvisioning,
+    CapacityPoolResponse, ManagedProvisioning,
+};
 
 use std::fmt;
 
@@ -32,6 +35,66 @@ fn format_managed_provisioning(
     )
 }
 
+/// Fields worth reading first; everything else follows in alphabetical order.
+const LEADING_DIAGNOSTIC_FIELDS: [&str; 2] = ["state", "message"];
+
+fn format_diagnostic_value(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(text) => text.clone(),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .map(format_diagnostic_value)
+            .collect::<Vec<_>>()
+            .join(", "),
+        other => other.to_string(),
+    }
+}
+
+impl fmt::Display for CapacityPoolDiagnosticEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (kind, fields) = match self {
+            Self::Parsed { kind, fields } => (kind, fields),
+            Self::Unparseable(raw) => {
+                return write!(
+                    f,
+                    "- Unrecognized diagnostic: {}",
+                    serde_json::to_string_pretty(raw).unwrap_or_else(|_| format!("{:#?}", raw))
+                )
+            }
+        };
+        write!(f, "- {kind}")?;
+        for name in LEADING_DIAGNOSTIC_FIELDS {
+            if let Some(value) = fields.get(name) {
+                write!(f, "\n  {name}: {}", format_diagnostic_value(value))?;
+            }
+        }
+        for (name, value) in fields {
+            if !LEADING_DIAGNOSTIC_FIELDS.contains(&name.as_str()) {
+                write!(f, "\n  {name}: {}", format_diagnostic_value(value))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for CapacityPoolDiagnostics {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0.is_empty() {
+            return write!(f, "(none)");
+        }
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|diagnostic| diagnostic.to_string())
+                .collect::<Vec<String>>()
+                .join("\n")
+        )?;
+        Ok(())
+    }
+}
+
 impl fmt::Display for CapacityPoolResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
@@ -63,13 +126,8 @@ impl fmt::Display for CapacityPoolResponse {
                 ),
             }
         )?;
-        if !self.diagnostics.is_empty() {
-            write!(
-                f,
-                "\nDiagnostics: {}",
-                serde_json::to_string_pretty(&self.diagnostics)
-                    .unwrap_or_else(|_| format!("{:#?}", self.diagnostics)),
-            )?;
+        if let Some(diagnostics) = &self.diagnostics {
+            write!(f, "\nDiagnostics: {}", diagnostics)?;
         }
         if !self.extra_fields.is_empty() {
             write!(f, "\nAdditional details:")?;
