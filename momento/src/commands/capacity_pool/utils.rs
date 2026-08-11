@@ -39,6 +39,13 @@ impl From<Bounds> for ReplicationBounds {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct ManagedProvisioning {
+    pub capacity: CapacityBounds,
+    pub replication: ReplicationBounds,
+    pub zones: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CapacityPoolProvisioning {
     Explicit {
@@ -47,11 +54,7 @@ pub enum CapacityPoolProvisioning {
         replicas_per_shard: u32,
         zones: Vec<String>,
     },
-    Managed {
-        capacity: CapacityBounds,
-        replication: ReplicationBounds,
-        zones: Vec<String>,
-    },
+    Managed(ManagedProvisioning),
 }
 
 #[derive(Debug, Serialize)]
@@ -126,11 +129,11 @@ pub fn determine_provisioning(
                 zones,
             }
         }
-        (None, None, Some(capacity)) => CapacityPoolProvisioning::Managed {
+        (None, None, Some(capacity)) => CapacityPoolProvisioning::Managed(ManagedProvisioning {
             capacity: CapacityBounds::from(capacity),
             replication: ReplicationBounds::from(replicas_per_shard),
             zones,
-        },
+        }),
         _ => {
             return Err(CliError::new(
                 "pass either --instance-type with --shard-count (explicit) \
