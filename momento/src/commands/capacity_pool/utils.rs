@@ -6,7 +6,6 @@ use momento_cli_opts::{Bounds, CapacityPoolProvisioningMode};
 
 use http::Method;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CapacityBounds {
@@ -83,7 +82,7 @@ pub enum CapacityPoolProvisioningUpdate {
 /// A single diagnostic, which the API sends as a one-entry object keyed by kind:
 /// `{"insufficient_capacity": {"state": "active", ...}}`. The fields vary by kind,
 /// so we keep them as raw JSON rather than modelling every variant.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq)]
 #[serde(from = "serde_json::Value")]
 pub enum CapacityPoolDiagnosticEntry {
     Parsed {
@@ -124,7 +123,7 @@ pub struct CapacityPoolResponse {
     /// Managed pools only: the replication the pool concretely has right now.
     pub current_replicas_per_shard: Option<u32>,
     #[serde(flatten)]
-    pub extra_fields: HashMap<String, serde_json::Value>,
+    pub extra_fields: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -267,4 +266,567 @@ pub async fn call_pool_list_api(
         None,
     )
     .await
+}
+
+#[cfg(test)]
+pub mod test_utils {
+    pub fn field_map<const N: usize>(
+        pairs: [(&str, serde_json::Value); N],
+    ) -> serde_json::Map<String, serde_json::Value> {
+        pairs
+            .into_iter()
+            .map(|(name, value)| (name.to_string(), value))
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_utils::*;
+    use super::*;
+
+    use serde_json::json;
+
+    fn parse_diagnostic(json: &str) -> CapacityPoolDiagnosticEntry {
+        serde_json::from_str(json).expect("should parse diagnostic")
+    }
+
+    fn parse_pool(json: &str) -> CapacityPoolResponse {
+        serde_json::from_str(json).expect("should parse a capacity pool")
+    }
+
+    #[test]
+    fn test_serialize_provisioning_in_managed_mode() {
+        let provisioning = CapacityPoolProvisioning::Managed(ManagedProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            zones: vec!["use1-az1".to_string()],
+        });
+
+        assert_eq!(
+            json!({
+                "managed": {
+                    "capacity": {"min_gib": 32, "max_gib": 128},
+                    "replication": {
+                        "min_replicas_per_shard": 1,
+                        "max_replicas_per_shard": 2
+                    },
+                    "zones": ["use1-az1"]
+                }
+            }),
+            serde_json::to_value(provisioning).expect("provisioning should serialize")
+        )
+    }
+
+    #[test]
+    fn test_serialize_provisioning_in_explicit_mode() {
+        let provisioning = CapacityPoolProvisioning::Explicit {
+            instance_type: "r7g.xlarge".to_string(),
+            shard_count: 3,
+            replicas_per_shard: 1,
+            zones: vec!["use1-az2".to_string(), "use1-az3".to_string()],
+        };
+
+        assert_eq!(
+            json!({
+                "explicit": {
+                    "instance_type": "r7g.xlarge",
+                    "shard_count": 3,
+                    "replicas_per_shard": 1,
+                    "zones": ["use1-az2", "use1-az3"]
+                }
+            }),
+            serde_json::to_value(provisioning).expect("provisioning should serialize")
+        );
+    }
+
+    #[test]
+    fn test_serialize_provisioning_update_in_managed_mode_with_all_fields() {
+        let update = CapacityPoolProvisioningUpdate::Managed {
+            capacity: Some(CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            }),
+            replication: Some(ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            }),
+            zones: vec!["use1-az1".to_string()],
+        };
+
+        assert_eq!(
+            json!({
+                "managed": {
+                    "capacity": {"min_gib": 32, "max_gib": 128},
+                    "replication": {
+                        "min_replicas_per_shard": 1,
+                        "max_replicas_per_shard": 2
+                    },
+                    "zones": ["use1-az1"]
+                }
+            }),
+            serde_json::to_value(update).expect("provisioning updateshould serialize")
+        )
+    }
+
+    #[test]
+    fn test_serialize_provisioning_update_in_explicit_mode_with_all_fields() {
+        let update = CapacityPoolProvisioningUpdate::Explicit {
+            instance_type: Some("r7g.xlarge".to_string()),
+            shard_count: Some(3),
+            replicas_per_shard: Some(1),
+            zones: vec!["use1-az2".to_string(), "use1-az3".to_string()],
+        };
+
+        assert_eq!(
+            json!({
+                "explicit": {
+                    "instance_type": "r7g.xlarge",
+                    "shard_count": 3,
+                    "replicas_per_shard": 1,
+                    "zones": ["use1-az2", "use1-az3"]
+                }
+            }),
+            serde_json::to_value(update).expect("provisioning updateshould serialize")
+        );
+    }
+
+    #[test]
+    fn test_serialize_provisioning_update_in_managed_mode_with_no_updates() {
+        let update = CapacityPoolProvisioningUpdate::Managed {
+            capacity: None,
+            replication: None,
+            // Must have at least 1 availability zone, so [] is treated as No Update
+            zones: vec![],
+        };
+
+        assert_eq!(
+            json!({ "managed": {} }),
+            serde_json::to_value(update).expect("provisioning updateshould serialize")
+        );
+    }
+
+    #[test]
+    fn test_serialize_provisioning_update_in_explicit_mode_with_no_updates() {
+        let update = CapacityPoolProvisioningUpdate::Explicit {
+            instance_type: None,
+            shard_count: None,
+            replicas_per_shard: None,
+            // Must have at least 1 availability zone, so [] is treated as No Update
+            zones: vec![],
+        };
+
+        assert_eq!(
+            json!({ "explicit": {} }),
+            serde_json::to_value(update).expect("provisioning updateshould serialize")
+        );
+    }
+
+    #[test]
+    fn test_deserialize_diagnostic_by_its_kind() {
+        let diagnostic = parse_diagnostic(
+            r#"{
+                "insufficient_capacity": {
+                    "state": "active",
+                    "message": "Insufficient r7g.xlarge capacity in use1-az1.",
+                    "instance_type": "r7g.xlarge",
+                    "availability_zones": ["use1-az1"],
+                    "first_observed_epoch_seconds": 1719360000,
+                    "last_observed_epoch_seconds": 1719363600
+                }
+            }"#,
+        );
+
+        let CapacityPoolDiagnosticEntry::Parsed { kind, fields } = diagnostic else {
+            panic!("expected a recognized diagnostic");
+        };
+        assert_eq!("insufficient_capacity", kind);
+        assert!(!fields.is_empty());
+    }
+
+    #[test]
+    fn test_deserialize_diagnostic_with_various_field_types() {
+        let diagnostic = parse_diagnostic(
+            r#"{
+                "something_something": {
+                    "state": "active",
+                    "zones": ["use1-az1"],
+                    "observed": 1719360000
+                }
+            }"#,
+        );
+
+        let CapacityPoolDiagnosticEntry::Parsed { fields, .. } = diagnostic else {
+            panic!("expected a recognized diagnostic");
+        };
+        assert_eq!(Some(&json!("active")), fields.get("state"));
+        assert_eq!(Some(&json!(["use1-az1"])), fields.get("zones"));
+        assert_eq!(Some(&json!(1719360000)), fields.get("observed"));
+    }
+
+    #[test]
+    fn test_deserialize_diagnostic_fields_in_api_order() {
+        let diagnostic = parse_diagnostic(
+            r#"{
+                "insufficient_capacity": {
+                    "state": "active",
+                    "instance_type": "r7g.xlarge",
+                    "availability_zones": ["use1-az1"],
+                    "first_observed_epoch_seconds": 1719360000,
+                    "message": "hello world",
+                    "last_observed_epoch_seconds": 1719363600
+                }
+            }"#,
+        );
+
+        let CapacityPoolDiagnosticEntry::Parsed { fields, .. } = diagnostic else {
+            panic!("expected a recognized diagnostic");
+        };
+        assert_eq!(
+            vec![
+                "state",
+                "instance_type",
+                "availability_zones",
+                "first_observed_epoch_seconds",
+                "message",
+                "last_observed_epoch_seconds",
+            ],
+            fields.keys().collect::<Vec<&String>>()
+        );
+    }
+
+    #[test]
+    fn test_deserialize_diagnostic_as_raw_json_when_unrecognized() {
+        for (json, want) in [
+            (r#"{}"#, json!({})),
+            (r#"{"a": {}, "b": {}}"#, json!({"a": {}, "b": {}})),
+            (r#"{"answer": 42}"#, json!({"answer": 42})),
+            (r#""a""#, json!("a")),
+        ] {
+            let diagnostic = parse_diagnostic(json);
+            assert_eq!(
+                CapacityPoolDiagnosticEntry::Unparseable(want),
+                diagnostic,
+                "{json} should survive parsing as raw json, got {diagnostic:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_deserialize_diagnostics_with_both_recognized_and_unrecognized() {
+        let diagnostics = serde_json::from_str::<CapacityPoolDiagnostics>(
+            r#"[{"answer": 42}, {"stuck": {"state": "active"}}]"#,
+        )
+        .expect("should parse all diagnostics")
+        .0;
+
+        assert_eq!(
+            vec![
+                CapacityPoolDiagnosticEntry::Unparseable(json!({"answer": 42})),
+                CapacityPoolDiagnosticEntry::Parsed {
+                    kind: "stuck".to_string(),
+                    fields: field_map([("state", json!("active"))]),
+                }
+            ],
+            diagnostics
+        );
+    }
+
+    #[test]
+    fn test_deserialize_capacity_pool_with_all_managed_fields() {
+        let pool = parse_pool(
+            r#"{
+                "name": "hello world",
+                "status": "creating",
+                "provisioning": {
+                    "managed": {
+                        "capacity": {"min_gib": 32, "max_gib": 128},
+                        "replication": {
+                            "min_replicas_per_shard": 1,
+                            "max_replicas_per_shard": 2
+                        },
+                        "zones": ["use1-az1", "use1-az2"]
+                    }
+                },
+                "diagnostics": [{"stuck": {"state": "resolved"}}],
+                "current_capacity_gib": 40,
+                "current_replicas_per_shard": 2,
+                "abc": {"X": "x", "Y": "y", "Z": "z"},
+                "hello": "world",
+                "answer": 42
+            }"#,
+        );
+
+        assert_eq!("hello world", pool.name);
+        assert_eq!("creating", pool.status);
+        let CapacityPoolProvisioning::Managed(provisioning) = &pool.provisioning else {
+            panic!("expected managed provisioning, got {:?}", pool.provisioning);
+        };
+        assert_eq!(32, provisioning.capacity.min_gib);
+        assert_eq!(128, provisioning.capacity.max_gib);
+        assert_eq!(1, provisioning.replication.min_replicas_per_shard);
+        assert_eq!(2, provisioning.replication.max_replicas_per_shard);
+        assert_eq!(vec!["use1-az1", "use1-az2"], provisioning.zones);
+        assert_eq!(Some(40), pool.current_capacity_gib);
+        assert_eq!(Some(2), pool.current_replicas_per_shard);
+
+        assert_eq!(
+            vec![CapacityPoolDiagnosticEntry::Parsed {
+                kind: "stuck".to_string(),
+                fields: field_map([("state", json!("resolved"))]),
+            }],
+            pool.diagnostics.expect("should parse diagnostics").0
+        );
+
+        assert_eq!(
+            field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+            pool.extra_fields
+        );
+        // Map equality ignores order, so check the order the API sent separately.
+        assert_eq!(
+            vec!["abc", "hello", "answer"],
+            pool.extra_fields.keys().collect::<Vec<&String>>()
+        );
+    }
+
+    #[test]
+    fn test_deserialize_capacity_pool_with_all_explicit_fields() {
+        let pool = parse_pool(
+            r#"{
+                "name": "hello world",
+                "status": "creating",
+                "provisioning": {
+                    "explicit": {
+                        "instance_type": "r7g.xlarge",
+                        "shard_count": 3,
+                        "replicas_per_shard": 1,
+                        "zones": ["use1-az3", "use1-az4", "use1-az5"]
+                    }
+                },
+                "diagnostics": [{"stuck": {"state": "resolved"}}],
+                "abc": {"X": "x", "Y": "y", "Z": "z"},
+                "hello": "world",
+                "answer": 42
+            }"#,
+        );
+
+        assert_eq!("hello world", pool.name);
+        assert_eq!("creating", pool.status);
+        let CapacityPoolProvisioning::Explicit {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = &pool.provisioning
+        else {
+            panic!(
+                "expected explicit provisioning, got {:?}",
+                pool.provisioning
+            );
+        };
+        assert_eq!("r7g.xlarge", instance_type);
+        assert_eq!(3, *shard_count);
+        assert_eq!(1, *replicas_per_shard);
+        assert_eq!(vec!["use1-az3", "use1-az4", "use1-az5"], *zones);
+        assert_eq!(None, pool.current_capacity_gib);
+        assert_eq!(None, pool.current_replicas_per_shard);
+
+        assert_eq!(
+            vec![CapacityPoolDiagnosticEntry::Parsed {
+                kind: "stuck".to_string(),
+                fields: field_map([("state", json!("resolved"))]),
+            }],
+            pool.diagnostics.expect("should parse diagnostics").0
+        );
+
+        assert_eq!(
+            field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+            pool.extra_fields
+        );
+        // Map equality ignores order, so check the order the API sent separately.
+        assert_eq!(
+            vec!["abc", "hello", "answer"],
+            pool.extra_fields.keys().collect::<Vec<&String>>()
+        );
+    }
+
+    #[test]
+    fn test_deserialize_capacity_pool_with_empty_diagnostics() {
+        let pool = parse_pool(
+            r#"{
+                "name": "hello world",
+                "status": "creating",
+                "provisioning": {
+                    "explicit": {
+                        "instance_type": "r7g.xlarge",
+                        "shard_count": 3,
+                        "replicas_per_shard": 1,
+                        "zones": ["use1-az1"]
+                    }
+                },
+                "diagnostics": [],
+                "abc": {"X": "x", "Y": "y", "Z": "z"},
+                "hello": "world",
+                "answer": 42
+            }"#,
+        );
+
+        let CapacityPoolProvisioning::Explicit {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = &pool.provisioning
+        else {
+            panic!(
+                "expected explicit provisioning, got {:?}",
+                pool.provisioning
+            );
+        };
+        assert_eq!("r7g.xlarge", instance_type);
+        assert_eq!(&3, shard_count);
+        assert_eq!(&1, replicas_per_shard);
+        assert_eq!(&vec!["use1-az1".to_string()], zones);
+        assert_eq!(None, pool.current_capacity_gib);
+        assert_eq!(None, pool.current_replicas_per_shard);
+
+        assert_eq!(
+            field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+            pool.extra_fields
+        );
+
+        // Properly includes *empty* diagnostics
+        // (different from the API excluding the field entirely):
+        assert_eq!(
+            Vec::<CapacityPoolDiagnosticEntry>::new(),
+            pool.diagnostics.expect("should parse diagnostics").0,
+        );
+    }
+
+    #[test]
+    fn test_deserialize_capacity_pool_with_no_diagnostics() {
+        let pool = parse_pool(
+            r#"{
+                "name": "hello world",
+                "status": "creating",
+                "provisioning": {
+                    "explicit": {
+                        "instance_type": "r7g.xlarge",
+                        "shard_count": 3,
+                        "replicas_per_shard": 1,
+                        "zones": ["use1-az1"]
+                    }
+                },
+                "abc": {"X": "x", "Y": "y", "Z": "z"},
+                "hello": "world",
+                "answer": 42
+            }"#,
+        );
+
+        let CapacityPoolProvisioning::Explicit {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = &pool.provisioning
+        else {
+            panic!(
+                "expected explicit provisioning, got {:?}",
+                pool.provisioning
+            );
+        };
+        assert_eq!("r7g.xlarge", instance_type);
+        assert_eq!(&3, shard_count);
+        assert_eq!(&1, replicas_per_shard);
+        assert_eq!(&vec!["use1-az1".to_string()], zones);
+        assert_eq!(None, pool.current_capacity_gib);
+        assert_eq!(None, pool.current_replicas_per_shard);
+
+        assert_eq!(
+            field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+            pool.extra_fields
+        );
+
+        // Properly excludes diagnostics
+        // (different from the API returning an empty field):
+        assert!(
+            pool.diagnostics.is_none(),
+            "diagnostics should be None when excluded, got {:?}",
+            pool.diagnostics
+        );
+    }
+
+    #[test]
+    fn test_deserialize_capacity_pool_with_no_additional_fields() {
+        let pool = parse_pool(
+            r#"{
+                "name": "hello world",
+                "status": "creating",
+                "provisioning": {
+                    "explicit": {
+                        "instance_type": "r7g.xlarge",
+                        "shard_count": 3,
+                        "replicas_per_shard": 1,
+                        "zones": ["use1-az1"]
+                    }
+                },
+                "diagnostics": [{"stuck": {"state": "resolved"}}]
+            }"#,
+        );
+
+        let CapacityPoolProvisioning::Explicit {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = &pool.provisioning
+        else {
+            panic!(
+                "expected explicit provisioning, got {:?}",
+                pool.provisioning
+            );
+        };
+        assert_eq!("r7g.xlarge", instance_type);
+        assert_eq!(&3, shard_count);
+        assert_eq!(&1, replicas_per_shard);
+        assert_eq!(&vec!["use1-az1".to_string()], zones);
+        assert_eq!(None, pool.current_capacity_gib);
+        assert_eq!(None, pool.current_replicas_per_shard);
+        assert_eq!(
+            vec![CapacityPoolDiagnosticEntry::Parsed {
+                kind: "stuck".to_string(),
+                fields: field_map([("state", json!("resolved"))]),
+            }],
+            pool.diagnostics.expect("should parse diagnostics").0
+        );
+
+        // Properly excludes optional fields:
+        assert!(
+            pool.extra_fields.is_empty(),
+            "known fields should not land in extra_fields, got {:?}",
+            pool.extra_fields
+        );
+    }
 }

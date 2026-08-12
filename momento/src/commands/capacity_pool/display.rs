@@ -19,7 +19,7 @@ fn format_managed_provisioning(
         Some(capacity) => format!("{capacity_range} (currently {capacity})"),
     };
     let replication_range = format!(
-        "{}..{} replicas per shard",
+        "{}..{} per shard",
         provisioning.replication.min_replicas_per_shard,
         provisioning.replication.max_replicas_per_shard,
     );
@@ -29,13 +29,13 @@ fn format_managed_provisioning(
     };
     format!(
         "- Capacity: {capacity}\n\
-         - Replication: {replication}\n\
+         - Replicas: {replication}\n\
          - Availability Zones: {}",
         provisioning.zones.join(", ")
     )
 }
 
-/// Fields worth reading first; everything else follows in alphabetical order.
+/// Fields worth reading first; everything else follows in the order the API sent it.
 const LEADING_DIAGNOSTIC_FIELDS: [&str; 2] = ["state", "message"];
 
 fn format_diagnostic_value(value: &serde_json::Value) -> String {
@@ -112,7 +112,7 @@ impl fmt::Display for CapacityPoolResponse {
                     "Explicit Provisioning:\n\
                      - EC2 Instance Type: {instance_type}\n\
                      - Shard Count: {shard_count}\n\
-                     - Replication: {replicas_per_shard} replicas per shard\n\
+                     - Replicas: {replicas_per_shard} per shard\n\
                      - Availability Zones: {}",
                     zones.join(", "),
                 ),
@@ -127,7 +127,13 @@ impl fmt::Display for CapacityPoolResponse {
             }
         )?;
         if let Some(diagnostics) = &self.diagnostics {
-            write!(f, "\nDiagnostics: {}", diagnostics)?;
+            let string = diagnostics.to_string();
+            write!(
+                f,
+                "\nDiagnostics:{}{}",
+                if string.contains("\n") { "\n" } else { " " },
+                diagnostics
+            )?;
         }
         if !self.extra_fields.is_empty() {
             write!(f, "\nAdditional details:")?;
@@ -140,5 +146,544 @@ impl fmt::Display for CapacityPoolResponse {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::utils::test_utils::field_map;
+    use super::super::utils::{CapacityBounds, ReplicationBounds};
+    use super::*;
+
+    use serde_json::json;
+
+    #[test]
+    fn test_format_managed_provisioning_with_current_values() {
+        let provisioning = ManagedProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            zones: vec!["use1-az1".to_string()],
+        };
+
+        assert_eq!(
+            "- Capacity: 32..128 GiB (currently 40)\n\
+             - Replicas: 1..2 per shard (currently 2)\n\
+             - Availability Zones: use1-az1",
+            format_managed_provisioning(&provisioning, Some(40), Some(2))
+        );
+    }
+
+    #[test]
+    fn test_display_diagnostic_with_state_and_message_first() {
+        let diagnostic = CapacityPoolDiagnosticEntry::Parsed {
+            kind: "something_something".to_string(),
+            fields: field_map([
+                ("instance_type", json!("r7g.xlarge")),
+                ("state", json!("active")),
+                ("zone", json!("use1-az1")),
+                ("observed", json!("today")),
+                ("message", json!("Something's wrong")),
+            ]),
+        };
+
+        let string = diagnostic.to_string();
+        assert!(
+            string.starts_with(
+                "- something_something\n  \
+                   state: active\n  \
+                   message: Something's wrong\n"
+            ),
+            "should display diagnostic's state and message first, got:\n{string}"
+        );
+    }
+
+    #[test]
+    fn test_display_diagnostic_various_field_types_in_api_order() {
+        let diagnostic = CapacityPoolDiagnosticEntry::Parsed {
+            kind: "something_something".to_string(),
+            fields: field_map([
+                ("instance_type", json!("r7g.xlarge")),
+                ("state", json!("active")),
+                ("zones", json!(["use1-az1", "use1-az2", "use1-az3"])),
+                ("observed", json!(1719360000)),
+                ("message", json!("Something's wrong")),
+            ]),
+        };
+
+        let string = diagnostic.to_string();
+        assert!(
+            string.ends_with(
+                "\n  \
+                     instance_type: r7g.xlarge\n  \
+                     zones: use1-az1, use1-az2, use1-az3\n  \
+                     observed: 1719360000"
+            ),
+            "should display all field types and preserve API order, got:\n{string}"
+        );
+    }
+
+    #[test]
+    fn test_display_diagnostic_placeholder_when_empty_diagnostics() {
+        assert_eq!("(none)", CapacityPoolDiagnostics(vec![]).to_string());
+    }
+
+    #[test]
+    fn test_display_diagnostic_as_raw_json_when_unrecognized() {
+        assert_eq!(
+            "- Unrecognized diagnostic: {\n  \
+               \"answer\": 42\n\
+             }",
+            CapacityPoolDiagnosticEntry::Unparseable(json!({"answer": 42})).to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_diagnostics_with_both_recognized_and_unrecognized() {
+        let diagnostics = CapacityPoolDiagnostics(vec![
+            CapacityPoolDiagnosticEntry::Unparseable(json!({"surprise": 42})),
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "stuck".to_string(),
+                fields: field_map([("state", json!("active"))]),
+            },
+        ]);
+
+        assert_eq!(
+            "- Unrecognized diagnostic: {\n  \
+               \"surprise\": 42\n\
+             }\n\
+             - stuck\n  \
+               state: active",
+            diagnostics.to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_capacity_pool_with_all_managed_fields() {
+        let provisioning = CapacityPoolProvisioning::Managed(ManagedProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            zones: vec!["use1-az1".to_string(), "use1-az2".to_string()],
+        });
+        let diagnostics = CapacityPoolDiagnostics(vec![
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "scale_blocked_by_utilization".to_string(),
+                fields: field_map([
+                    ("requested_shard_count", json!(6)),
+                    ("state", json!("resolved")),
+                    (
+                        "message",
+                        json!("The requested configuration is smaller than the pool's current data; retrying until it fits."),
+                    ),
+                    ("requested_instance_type", json!("r7g.xlarge")),
+                    ("data_approx", json!("42 GiB")),
+                    ("capacity_approx", json!("32 GiB")),
+                    ("first_observed_epoch_seconds", json!(1719360000)),
+                    ("last_observed_epoch_seconds", json!(1719363600)),
+                ]),
+            },
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "something_something".to_string(),
+                fields: field_map([]),
+            },
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "something_else".to_string(),
+                fields: field_map([]),
+            },
+        ]);
+        let response = CapacityPoolResponse {
+            name: "hello world".to_string(),
+            provisioning,
+            status: "creating".to_string(),
+            diagnostics: Some(diagnostics),
+            current_capacity_gib: Some(40),
+            current_replicas_per_shard: Some(2),
+            extra_fields: field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+        };
+
+        assert_eq!(
+            "Name: hello world\n\
+             Status: creating\n\
+             Managed Provisioning:\n\
+             - Capacity: 32..128 GiB (currently 40)\n\
+             - Replicas: 1..2 per shard (currently 2)\n\
+             - Availability Zones: use1-az1, use1-az2\n\
+             Diagnostics:\n\
+             - scale_blocked_by_utilization\n  \
+               state: resolved\n  \
+               message: The requested configuration is smaller than the pool's current data; retrying until it fits.\n  \
+               requested_shard_count: 6\n  \
+               requested_instance_type: r7g.xlarge\n  \
+               data_approx: 42 GiB\n  \
+               capacity_approx: 32 GiB\n  \
+               first_observed_epoch_seconds: 1719360000\n  \
+               last_observed_epoch_seconds: 1719363600\n\
+             - something_something\n\
+             - something_else\n\
+             Additional details:\n\
+             - abc: {\n  \
+               \"X\": \"x\",\n  \
+               \"Y\": \"y\",\n  \
+               \"Z\": \"z\"\n\
+             }\n\
+             - hello: \"world\"\n\
+             - answer: 42",
+            response.to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_capacity_pool_with_no_current_values_in_managed_mode() {
+        let provisioning = CapacityPoolProvisioning::Managed(ManagedProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            zones: vec!["use1-az1".to_string(), "use1-az2".to_string()],
+        });
+        let diagnostics = CapacityPoolDiagnostics(vec![
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "something_something".to_string(),
+                fields: field_map([
+                    ("state", json!("active")),
+                    ("message", json!("Something's wrong")),
+                ]),
+            },
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "something_else".to_string(),
+                fields: field_map([]),
+            },
+        ]);
+        let response = CapacityPoolResponse {
+            name: "hello world".to_string(),
+            provisioning,
+            status: "creating".to_string(),
+            diagnostics: Some(diagnostics),
+            // create-pool sends back only the requested ranges, no current/concrete values
+            current_capacity_gib: None,
+            current_replicas_per_shard: None,
+            extra_fields: field_map([("answer", json!(42))]),
+        };
+
+        assert_eq!(
+            "Name: hello world\n\
+             Status: creating\n\
+             Managed Provisioning:\n\
+             - Capacity: 32..128 GiB\n\
+             - Replicas: 1..2 per shard\n\
+             - Availability Zones: use1-az1, use1-az2\n\
+             Diagnostics:\n\
+             - something_something\n  \
+               state: active\n  \
+               message: Something's wrong\n\
+             - something_else\n\
+             Additional details:\n\
+             - answer: 42",
+            response.to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_capacity_pool_with_all_explicit_fields() {
+        let provisioning = CapacityPoolProvisioning::Explicit {
+            instance_type: "r7g.xlarge".to_string(),
+            shard_count: 3,
+            replicas_per_shard: 1,
+            zones: vec![
+                "use1-az3".to_string(),
+                "use1-az4".to_string(),
+                "use1-az5".to_string(),
+            ],
+        };
+        let diagnostics = CapacityPoolDiagnostics(vec![
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "scale_blocked_by_utilization".to_string(),
+                fields: field_map([
+                    ("requested_shard_count", json!(6)),
+                    ("state", json!("resolved")),
+                    (
+                        "message",
+                        json!("The requested configuration is smaller than the pool's current data; retrying until it fits."),
+                    ),
+                    ("requested_instance_type", json!("r7g.xlarge")),
+                    ("data_approx", json!("42 GiB")),
+                    ("capacity_approx", json!("32 GiB")),
+                    ("first_observed_epoch_seconds", json!(1719360000)),
+                    ("last_observed_epoch_seconds", json!(1719363600)),
+                ]),
+            },
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "something_something".to_string(),
+                fields: field_map([]),
+            },
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "something_else".to_string(),
+                fields: field_map([]),
+            },
+        ]);
+        let response = CapacityPoolResponse {
+            name: "hello world".to_string(),
+            provisioning,
+            status: "creating".to_string(),
+            diagnostics: Some(diagnostics),
+            current_capacity_gib: None,
+            current_replicas_per_shard: None,
+            extra_fields: field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+        };
+
+        assert_eq!(
+            "Name: hello world\n\
+             Status: creating\n\
+             Explicit Provisioning:\n\
+             - EC2 Instance Type: r7g.xlarge\n\
+             - Shard Count: 3\n\
+             - Replicas: 1 per shard\n\
+             - Availability Zones: use1-az3, use1-az4, use1-az5\n\
+             Diagnostics:\n\
+             - scale_blocked_by_utilization\n  \
+               state: resolved\n  \
+               message: The requested configuration is smaller than the pool's current data; retrying until it fits.\n  \
+               requested_shard_count: 6\n  \
+               requested_instance_type: r7g.xlarge\n  \
+               data_approx: 42 GiB\n  \
+               capacity_approx: 32 GiB\n  \
+               first_observed_epoch_seconds: 1719360000\n  \
+               last_observed_epoch_seconds: 1719363600\n\
+             - something_something\n\
+             - something_else\n\
+             Additional details:\n\
+             - abc: {\n  \
+               \"X\": \"x\",\n  \
+               \"Y\": \"y\",\n  \
+               \"Z\": \"z\"\n\
+             }\n\
+             - hello: \"world\"\n\
+             - answer: 42",
+            response.to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_capacity_pool_with_empty_diagnostics() {
+        let provisioning = CapacityPoolProvisioning::Explicit {
+            instance_type: "r7g.xlarge".to_string(),
+            shard_count: 3,
+            replicas_per_shard: 1,
+            zones: vec!["usw2-az1".to_string()],
+        };
+        let response = CapacityPoolResponse {
+            name: "hello world".to_string(),
+            provisioning,
+            status: "creating".to_string(),
+            diagnostics: Some(CapacityPoolDiagnostics(vec![])),
+            current_capacity_gib: None,
+            current_replicas_per_shard: None,
+            extra_fields: field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+        };
+
+        assert_eq!(
+            "Name: hello world\n\
+             Status: creating\n\
+             Explicit Provisioning:\n\
+             - EC2 Instance Type: r7g.xlarge\n\
+             - Shard Count: 3\n\
+             - Replicas: 1 per shard\n\
+             - Availability Zones: usw2-az1\n\
+             Diagnostics: (none)\n\
+             Additional details:\n\
+             - abc: {\n  \
+               \"X\": \"x\",\n  \
+               \"Y\": \"y\",\n  \
+               \"Z\": \"z\"\n\
+             }\n\
+             - hello: \"world\"\n\
+             - answer: 42",
+            response.to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_capacity_pool_with_no_diagnostics() {
+        let provisioning = CapacityPoolProvisioning::Explicit {
+            instance_type: "r7g.xlarge".to_string(),
+            shard_count: 3,
+            replicas_per_shard: 1,
+            zones: vec!["usw2-az1".to_string()],
+        };
+        let response = CapacityPoolResponse {
+            name: "hello world".to_string(),
+            provisioning,
+            status: "creating".to_string(),
+            diagnostics: None,
+            current_capacity_gib: None,
+            current_replicas_per_shard: None,
+            extra_fields: field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+        };
+
+        assert_eq!(
+            "Name: hello world\n\
+             Status: creating\n\
+             Explicit Provisioning:\n\
+             - EC2 Instance Type: r7g.xlarge\n\
+             - Shard Count: 3\n\
+             - Replicas: 1 per shard\n\
+             - Availability Zones: usw2-az1\n\
+             Additional details:\n\
+             - abc: {\n  \
+               \"X\": \"x\",\n  \
+               \"Y\": \"y\",\n  \
+               \"Z\": \"z\"\n\
+             }\n\
+             - hello: \"world\"\n\
+             - answer: 42",
+            response.to_string()
+        );
+    }
+
+    #[test]
+    fn test_display_capacity_pool_with_no_additional_fields() {
+        let provisioning = CapacityPoolProvisioning::Explicit {
+            instance_type: "r7g.xlarge".to_string(),
+            shard_count: 3,
+            replicas_per_shard: 1,
+            zones: vec!["usw2-az1".to_string()],
+        };
+        let diagnostics = CapacityPoolDiagnostics(vec![
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "something_something".to_string(),
+                fields: field_map([
+                    ("state", json!("active")),
+                    ("message", json!("Something's wrong")),
+                ]),
+            },
+            CapacityPoolDiagnosticEntry::Parsed {
+                kind: "something_else".to_string(),
+                fields: field_map([]),
+            },
+        ]);
+        let response = CapacityPoolResponse {
+            name: "hello world".to_string(),
+            provisioning,
+            status: "creating".to_string(),
+            diagnostics: Some(diagnostics),
+            current_capacity_gib: None,
+            current_replicas_per_shard: None,
+            extra_fields: serde_json::Map::new(),
+        };
+
+        assert_eq!(
+            "Name: hello world\n\
+             Status: creating\n\
+             Explicit Provisioning:\n\
+             - EC2 Instance Type: r7g.xlarge\n\
+             - Shard Count: 3\n\
+             - Replicas: 1 per shard\n\
+             - Availability Zones: usw2-az1\n\
+             Diagnostics:\n\
+             - something_something\n  \
+               state: active\n  \
+               message: Something's wrong\n\
+             - something_else",
+            response.to_string()
+        );
+    }
+
+    #[test]
+    fn test_deserialize_through_display() {
+        let response: CapacityPoolResponse = serde_json::from_str(
+            r#"{
+                "name": "hello world",
+                "status": "creating",
+                "provisioning": {
+                    "managed": {
+                        "capacity": {"min_gib": 32, "max_gib": 128},
+                        "replication": {
+                            "min_replicas_per_shard": 1,
+                            "max_replicas_per_shard": 2
+                        },
+                        "zones": ["use1-az1", "use1-az2"]
+                    }
+                },
+                "diagnostics": [
+                    {
+                        "insufficient_capacity": {
+                            "state": "resolved",
+                            "message": "Insufficient r7g.xlarge capacity in use1-az1.",
+                            "instance_type": "r7g.xlarge",
+                            "availability_zones": ["use1-az1"],
+                            "first_observed_epoch_seconds": 1719360000,
+                            "last_observed_epoch_seconds": 1719363600
+                        }
+                    },
+                    { "something_something": {} },
+                    { "something_else": {} }
+                ],
+                "current_capacity_gib": 40,
+                "current_replicas_per_shard": 2,
+                "abc": {"X": "x", "Y": "y", "Z": "z"},
+                "hello": "world",
+                "answer": 42
+            }"#,
+        )
+        .expect("should parse a capacity pool");
+
+        assert_eq!(
+            "Name: hello world\n\
+             Status: creating\n\
+             Managed Provisioning:\n\
+             - Capacity: 32..128 GiB (currently 40)\n\
+             - Replicas: 1..2 per shard (currently 2)\n\
+             - Availability Zones: use1-az1, use1-az2\n\
+             Diagnostics:\n\
+             - insufficient_capacity\n  \
+               state: resolved\n  \
+               message: Insufficient r7g.xlarge capacity in use1-az1.\n  \
+               instance_type: r7g.xlarge\n  \
+               availability_zones: use1-az1\n  \
+               first_observed_epoch_seconds: 1719360000\n  \
+               last_observed_epoch_seconds: 1719363600\n\
+             - something_something\n\
+             - something_else\n\
+             Additional details:\n\
+             - abc: {\n  \
+               \"X\": \"x\",\n  \
+               \"Y\": \"y\",\n  \
+               \"Z\": \"z\"\n\
+             }\n\
+             - hello: \"world\"\n\
+             - answer: 42",
+            response.to_string()
+        );
     }
 }
