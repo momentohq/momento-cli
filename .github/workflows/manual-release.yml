@@ -17,8 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
 
       - name: rustfmt
         run: cargo fmt -- --check
@@ -29,8 +27,6 @@ jobs:
       version: ${{ steps.release.outputs.release }}
     steps:
       - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.MOMENTO_MACHINE_USER_GITHUB_TOKEN }}
 
       - name: Install protoc
         run: ./scripts/install_protoc_linux.sh
