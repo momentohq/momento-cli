@@ -3,6 +3,7 @@ use super::utils::{
     CapacityPoolResponse, ManagedProvisioning,
 };
 
+use chrono::prelude::DateTime;
 use std::fmt;
 
 fn format_managed_provisioning(
@@ -38,12 +39,34 @@ fn format_managed_provisioning(
 /// Fields worth reading first; everything else follows in the order the API sent it.
 const LEADING_DIAGNOSTIC_FIELDS: [&str; 2] = ["state", "message"];
 
-fn format_diagnostic_value(value: &serde_json::Value) -> String {
+/// Fields (like `first_observed_epoch_seconds`) to pretty print as a date.
+const EPOCH_SECONDS_SUFFIX: &str = "_epoch_seconds";
+
+fn format_diagnostic_field_name(name: &str) -> String {
+    name.strip_suffix(EPOCH_SECONDS_SUFFIX)
+        .unwrap_or(name)
+        .replace('_', " ")
+}
+
+fn format_diagnostic_field_value(name: &str, value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::String(text) => text.clone(),
+        serde_json::Value::Number(number) => {
+            if name.ends_with(EPOCH_SECONDS_SUFFIX) {
+                match number
+                    .as_i64()
+                    .and_then(|seconds| DateTime::from_timestamp(seconds, 0))
+                {
+                    Some(datetime) => datetime.to_string(),
+                    None => format!("{number} (epoch seconds)"),
+                }
+            } else {
+                number.to_string()
+            }
+        }
         serde_json::Value::Array(items) => items
             .iter()
-            .map(format_diagnostic_value)
+            .map(|value| format_diagnostic_field_value(name, value))
             .collect::<Vec<_>>()
             .join(", "),
         other => other.to_string(),
@@ -65,12 +88,22 @@ impl fmt::Display for CapacityPoolDiagnosticEntry {
         write!(f, "- {kind}")?;
         for name in LEADING_DIAGNOSTIC_FIELDS {
             if let Some(value) = fields.get(name) {
-                write!(f, "\n  {name}: {}", format_diagnostic_value(value))?;
+                write!(
+                    f,
+                    "\n  {}: {}",
+                    format_diagnostic_field_name(name),
+                    format_diagnostic_field_value(name, value)
+                )?;
             }
         }
         for (name, value) in fields {
             if !LEADING_DIAGNOSTIC_FIELDS.contains(&name.as_str()) {
-                write!(f, "\n  {name}: {}", format_diagnostic_value(value))?;
+                write!(
+                    f,
+                    "\n  {}: {}",
+                    format_diagnostic_field_name(name),
+                    format_diagnostic_field_value(name, value)
+                )?;
             }
         }
         Ok(())
@@ -158,6 +191,25 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn test_format_diagnostic_field_value_parses_timestamps() {
+        assert_eq!(
+            "2024-06-26 00:00:00 UTC",
+            format_diagnostic_field_value("first_observed_epoch_seconds", &json!(1719360000)),
+        );
+        assert_eq!(
+            "2024-06-26 01:00:00 UTC",
+            format_diagnostic_field_value("last_observed_epoch_seconds", &json!(1719363600)),
+        );
+        assert_eq!(
+            "9223372036854775807 (epoch seconds)",
+            format_diagnostic_field_value(
+                "resolved_epoch_seconds",
+                &json!(serde_json::Number::from(0x7FFF_FFFF_FFFF_FFFF as u64))
+            ),
+        );
+    }
+
+    #[test]
     fn test_format_managed_provisioning_with_current_values() {
         let provisioning = ManagedProvisioning {
             capacity: CapacityBounds {
@@ -220,7 +272,7 @@ mod tests {
         assert!(
             string.ends_with(
                 "\n  \
-                     instance_type: r7g.xlarge\n  \
+                     instance type: r7g.xlarge\n  \
                      zones: use1-az1, use1-az2, use1-az3\n  \
                      observed: 1719360000"
             ),
@@ -327,12 +379,12 @@ mod tests {
              - scale_blocked_by_utilization\n  \
                state: resolved\n  \
                message: The requested configuration is smaller than the pool's current data; retrying until it fits.\n  \
-               requested_shard_count: 6\n  \
-               requested_instance_type: r7g.xlarge\n  \
-               data_approx: 42 GiB\n  \
-               capacity_approx: 32 GiB\n  \
-               first_observed_epoch_seconds: 1719360000\n  \
-               last_observed_epoch_seconds: 1719363600\n\
+               requested shard count: 6\n  \
+               requested instance type: r7g.xlarge\n  \
+               data approx: 42 GiB\n  \
+               capacity approx: 32 GiB\n  \
+               first observed: 2024-06-26 00:00:00 UTC\n  \
+               last observed: 2024-06-26 01:00:00 UTC\n\
              - something_something\n\
              - something_else\n\
              Additional details:\n\
@@ -466,12 +518,12 @@ mod tests {
              - scale_blocked_by_utilization\n  \
                state: resolved\n  \
                message: The requested configuration is smaller than the pool's current data; retrying until it fits.\n  \
-               requested_shard_count: 6\n  \
-               requested_instance_type: r7g.xlarge\n  \
-               data_approx: 42 GiB\n  \
-               capacity_approx: 32 GiB\n  \
-               first_observed_epoch_seconds: 1719360000\n  \
-               last_observed_epoch_seconds: 1719363600\n\
+               requested shard count: 6\n  \
+               requested instance type: r7g.xlarge\n  \
+               data approx: 42 GiB\n  \
+               capacity approx: 32 GiB\n  \
+               first observed: 2024-06-26 00:00:00 UTC\n  \
+               last observed: 2024-06-26 01:00:00 UTC\n\
              - something_something\n\
              - something_else\n\
              Additional details:\n\
@@ -669,10 +721,10 @@ mod tests {
              - insufficient_capacity\n  \
                state: resolved\n  \
                message: Insufficient r7g.xlarge capacity in use1-az1.\n  \
-               instance_type: r7g.xlarge\n  \
-               availability_zones: use1-az1\n  \
-               first_observed_epoch_seconds: 1719360000\n  \
-               last_observed_epoch_seconds: 1719363600\n\
+               instance type: r7g.xlarge\n  \
+               availability zones: use1-az1\n  \
+               first observed: 2024-06-26 00:00:00 UTC\n  \
+               last observed: 2024-06-26 01:00:00 UTC\n\
              - something_something\n\
              - something_else\n\
              Additional details:\n\
