@@ -210,7 +210,7 @@ mod tests {
             "9223372036854775807 (epoch seconds)",
             format_diagnostic_field_value(
                 "resolved_epoch_seconds",
-                &json!(serde_json::Number::from(0x7FFF_FFFF_FFFF_FFFF as u64))
+                &json!(serde_json::Number::from(i64::MAX))
             ),
         );
     }
