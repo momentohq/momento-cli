@@ -1,0 +1,7 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: "format_managed_provisioning(&provisioning, Some(40), Some(2))"
+---
+- Capacity: 32..128 GiB (currently 40)
+- Replicas: 1..2 per shard (currently 2)
+- Availability Zones: use1-az1

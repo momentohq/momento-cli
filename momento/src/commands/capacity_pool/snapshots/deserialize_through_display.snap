@@ -1,0 +1,28 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: response.to_string()
+---
+Name: hello world
+Status: creating
+Managed Provisioning:
+- Capacity: 32..128 GiB (currently 40)
+- Replicas: 1..2 per shard (currently 2)
+- Availability Zones: use1-az1, use1-az2
+Diagnostics:
+- insufficient_capacity
+  state: resolved
+  message: Insufficient r7g.xlarge capacity in use1-az1.
+  instance type: r7g.xlarge
+  availability zones: use1-az1
+  first observed: 2024-06-26 00:00:00 UTC
+  last observed: 2024-06-26 01:00:00 UTC
+- something_something
+- something_else
+Additional details:
+- abc: {
+  "X": "x",
+  "Y": "y",
+  "Z": "z"
+}
+- hello: "world"
+- answer: 42

@@ -1,0 +1,20 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: response.to_string()
+---
+Name: hello world
+Status: creating
+Explicit Provisioning:
+- EC2 Instance Type: r7g.xlarge
+- Shard Count: 3
+- Replicas: 1 per shard
+- Availability Zones: usw2-az1
+Diagnostics: (none)
+Additional details:
+- abc: {
+  "X": "x",
+  "Y": "y",
+  "Z": "z"
+}
+- hello: "world"
+- answer: 42

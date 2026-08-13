@@ -190,6 +190,12 @@ mod tests {
 
     use serde_json::json;
 
+    fn snapshot_settings() -> insta::Settings {
+        let mut settings = insta::Settings::clone_current();
+        settings.set_prepend_module_to_snapshot(false);
+        settings
+    }
+
     #[test]
     fn test_format_diagnostic_field_value_parses_timestamps() {
         assert_eq!(
@@ -223,12 +229,13 @@ mod tests {
             zones: vec!["use1-az1".to_string()],
         };
 
-        assert_eq!(
-            "- Capacity: 32..128 GiB (currently 40)\n\
-             - Replicas: 1..2 per shard (currently 2)\n\
-             - Availability Zones: use1-az1",
-            format_managed_provisioning(&provisioning, Some(40), Some(2))
-        );
+        snapshot_settings().bind(|| {
+            insta::assert_snapshot!(format_managed_provisioning(
+                &provisioning,
+                Some(40),
+                Some(2)
+            ))
+        });
     }
 
     #[test]
@@ -287,12 +294,11 @@ mod tests {
 
     #[test]
     fn test_display_diagnostic_as_raw_json_when_unrecognized() {
-        assert_eq!(
-            "- Unrecognized diagnostic: {\n  \
-               \"answer\": 42\n\
-             }",
-            CapacityPoolDiagnosticEntry::Unparseable(json!({"answer": 42})).to_string()
-        );
+        snapshot_settings().bind(|| {
+            insta::assert_snapshot!(
+                CapacityPoolDiagnosticEntry::Unparseable(json!({"answer": 42})).to_string()
+            )
+        });
     }
 
     #[test]
@@ -305,14 +311,7 @@ mod tests {
             },
         ]);
 
-        assert_eq!(
-            "- Unrecognized diagnostic: {\n  \
-               \"surprise\": 42\n\
-             }\n\
-             - stuck\n  \
-               state: active",
-            diagnostics.to_string()
-        );
+        snapshot_settings().bind(|| insta::assert_snapshot!(diagnostics.to_string()));
     }
 
     #[test]
@@ -368,35 +367,7 @@ mod tests {
             ]),
         };
 
-        assert_eq!(
-            "Name: hello world\n\
-             Status: creating\n\
-             Managed Provisioning:\n\
-             - Capacity: 32..128 GiB (currently 40)\n\
-             - Replicas: 1..2 per shard (currently 2)\n\
-             - Availability Zones: use1-az1, use1-az2\n\
-             Diagnostics:\n\
-             - scale_blocked_by_utilization\n  \
-               state: resolved\n  \
-               message: The requested configuration is smaller than the pool's current data; retrying until it fits.\n  \
-               requested shard count: 6\n  \
-               requested instance type: r7g.xlarge\n  \
-               data approx: 42 GiB\n  \
-               capacity approx: 32 GiB\n  \
-               first observed: 2024-06-26 00:00:00 UTC\n  \
-               last observed: 2024-06-26 01:00:00 UTC\n\
-             - something_something\n\
-             - something_else\n\
-             Additional details:\n\
-             - abc: {\n  \
-               \"X\": \"x\",\n  \
-               \"Y\": \"y\",\n  \
-               \"Z\": \"z\"\n\
-             }\n\
-             - hello: \"world\"\n\
-             - answer: 42",
-            response.to_string()
-        );
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 
     #[test]
@@ -436,22 +407,7 @@ mod tests {
             extra_fields: field_map([("answer", json!(42))]),
         };
 
-        assert_eq!(
-            "Name: hello world\n\
-             Status: creating\n\
-             Managed Provisioning:\n\
-             - Capacity: 32..128 GiB\n\
-             - Replicas: 1..2 per shard\n\
-             - Availability Zones: use1-az1, use1-az2\n\
-             Diagnostics:\n\
-             - something_something\n  \
-               state: active\n  \
-               message: Something's wrong\n\
-             - something_else\n\
-             Additional details:\n\
-             - answer: 42",
-            response.to_string()
-        );
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 
     #[test]
@@ -506,36 +462,7 @@ mod tests {
             ]),
         };
 
-        assert_eq!(
-            "Name: hello world\n\
-             Status: creating\n\
-             Explicit Provisioning:\n\
-             - EC2 Instance Type: r7g.xlarge\n\
-             - Shard Count: 3\n\
-             - Replicas: 1 per shard\n\
-             - Availability Zones: use1-az3, use1-az4, use1-az5\n\
-             Diagnostics:\n\
-             - scale_blocked_by_utilization\n  \
-               state: resolved\n  \
-               message: The requested configuration is smaller than the pool's current data; retrying until it fits.\n  \
-               requested shard count: 6\n  \
-               requested instance type: r7g.xlarge\n  \
-               data approx: 42 GiB\n  \
-               capacity approx: 32 GiB\n  \
-               first observed: 2024-06-26 00:00:00 UTC\n  \
-               last observed: 2024-06-26 01:00:00 UTC\n\
-             - something_something\n\
-             - something_else\n\
-             Additional details:\n\
-             - abc: {\n  \
-               \"X\": \"x\",\n  \
-               \"Y\": \"y\",\n  \
-               \"Z\": \"z\"\n\
-             }\n\
-             - hello: \"world\"\n\
-             - answer: 42",
-            response.to_string()
-        );
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 
     #[test]
@@ -560,25 +487,7 @@ mod tests {
             ]),
         };
 
-        assert_eq!(
-            "Name: hello world\n\
-             Status: creating\n\
-             Explicit Provisioning:\n\
-             - EC2 Instance Type: r7g.xlarge\n\
-             - Shard Count: 3\n\
-             - Replicas: 1 per shard\n\
-             - Availability Zones: usw2-az1\n\
-             Diagnostics: (none)\n\
-             Additional details:\n\
-             - abc: {\n  \
-               \"X\": \"x\",\n  \
-               \"Y\": \"y\",\n  \
-               \"Z\": \"z\"\n\
-             }\n\
-             - hello: \"world\"\n\
-             - answer: 42",
-            response.to_string()
-        );
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 
     #[test]
@@ -603,24 +512,7 @@ mod tests {
             ]),
         };
 
-        assert_eq!(
-            "Name: hello world\n\
-             Status: creating\n\
-             Explicit Provisioning:\n\
-             - EC2 Instance Type: r7g.xlarge\n\
-             - Shard Count: 3\n\
-             - Replicas: 1 per shard\n\
-             - Availability Zones: usw2-az1\n\
-             Additional details:\n\
-             - abc: {\n  \
-               \"X\": \"x\",\n  \
-               \"Y\": \"y\",\n  \
-               \"Z\": \"z\"\n\
-             }\n\
-             - hello: \"world\"\n\
-             - answer: 42",
-            response.to_string()
-        );
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 
     #[test]
@@ -654,21 +546,7 @@ mod tests {
             extra_fields: serde_json::Map::new(),
         };
 
-        assert_eq!(
-            "Name: hello world\n\
-             Status: creating\n\
-             Explicit Provisioning:\n\
-             - EC2 Instance Type: r7g.xlarge\n\
-             - Shard Count: 3\n\
-             - Replicas: 1 per shard\n\
-             - Availability Zones: usw2-az1\n\
-             Diagnostics:\n\
-             - something_something\n  \
-               state: active\n  \
-               message: Something's wrong\n\
-             - something_else",
-            response.to_string()
-        );
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 
     #[test]
@@ -710,32 +588,6 @@ mod tests {
         )
         .expect("should parse a capacity pool");
 
-        assert_eq!(
-            "Name: hello world\n\
-             Status: creating\n\
-             Managed Provisioning:\n\
-             - Capacity: 32..128 GiB (currently 40)\n\
-             - Replicas: 1..2 per shard (currently 2)\n\
-             - Availability Zones: use1-az1, use1-az2\n\
-             Diagnostics:\n\
-             - insufficient_capacity\n  \
-               state: resolved\n  \
-               message: Insufficient r7g.xlarge capacity in use1-az1.\n  \
-               instance type: r7g.xlarge\n  \
-               availability zones: use1-az1\n  \
-               first observed: 2024-06-26 00:00:00 UTC\n  \
-               last observed: 2024-06-26 01:00:00 UTC\n\
-             - something_something\n\
-             - something_else\n\
-             Additional details:\n\
-             - abc: {\n  \
-               \"X\": \"x\",\n  \
-               \"Y\": \"y\",\n  \
-               \"Z\": \"z\"\n\
-             }\n\
-             - hello: \"world\"\n\
-             - answer: 42",
-            response.to_string()
-        );
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 }

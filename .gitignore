@@ -11,3 +11,6 @@ obj/
 linter_results.json
 linter_results.json.gz
 
+# Pending insta snapshots, written when a test fails.
+*.snap.new
+
