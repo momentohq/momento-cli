@@ -529,6 +529,10 @@ jobs:
         with:
           app-id: ${{ secrets.MOMENTO_RELEASE_APP_ID }}
           private-key: ${{ secrets.MOMENTO_RELEASE_APP_PRIVATE_KEY }}
+          # This job only touches the tap, never this repo — `repositories` defaults to the
+          # current repo, so without this the checkout and push to the tap 403.
+          owner: momentohq
+          repositories: homebrew-tap
 
       - name: Check out homebrew-tap
         uses: actions/checkout@v4
