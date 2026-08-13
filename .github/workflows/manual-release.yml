@@ -26,7 +26,18 @@ jobs:
     outputs:
       version: ${{ steps.release.outputs.release }}
     steps:
+      - name: Generate release bot token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.MOMENTO_RELEASE_APP_ID }}
+          private-key: ${{ secrets.MOMENTO_RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v3
+        with:
+          # git-auto-commit-action below pushes the Cargo version bump using the
+          # credential checkout persists, so it has to be the app token.
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Install protoc
         run: ./scripts/install_protoc_linux.sh
