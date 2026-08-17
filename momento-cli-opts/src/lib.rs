@@ -568,7 +568,7 @@ pub enum DatabaseCommand {
             help = "Name of the database you want to create",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
@@ -586,7 +586,7 @@ pub enum DatabaseCommand {
             help = "Name of the database you want to describe",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
     },
     #[command(about = "Delete a Momento database")]
     DeleteDatabase {
@@ -597,7 +597,7 @@ pub enum DatabaseCommand {
             help = "Name of the database you want to delete",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
     },
     #[command(about = "List all your Momento databases")]
     ListDatabases {},

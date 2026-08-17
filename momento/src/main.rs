@@ -453,31 +453,28 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::DatabaseCommand::CreateDatabase {
-                        pool_name,
-                        database_name,
-                    } => {
+                    momento_cli_opts::DatabaseCommand::CreateDatabase { pool_name, name } => {
                         commands::database::database_cli::create_database(
                             api_endpoint,
                             auth_token,
                             pool_name,
-                            database_name,
+                            name,
                         )
                         .await?
                     }
-                    momento_cli_opts::DatabaseCommand::DescribeDatabase { database_name } => {
+                    momento_cli_opts::DatabaseCommand::DescribeDatabase { name } => {
                         commands::database::database_cli::describe_database(
                             api_endpoint,
                             auth_token,
-                            database_name,
+                            name,
                         )
                         .await?
                     }
-                    momento_cli_opts::DatabaseCommand::DeleteDatabase { database_name } => {
+                    momento_cli_opts::DatabaseCommand::DeleteDatabase { name } => {
                         commands::database::database_cli::delete_database(
                             api_endpoint,
                             auth_token,
-                            database_name,
+                            name,
                         )
                         .await?
                     }
