@@ -25,13 +25,13 @@ pub async fn create_database(
     {
         Parsed(database) => {
             console_data!(
-                "Creating database! Name: {}, Capacity Pool: {}",
+                "Creating your Valkey Database! Name: {}, Capacity Pool: {}",
                 database.name,
                 database.pool_name,
             );
         }
         Unparseable(response_text) => {
-            console_data!("Creating database! {response_text}");
+            console_data!("Creating your Valkey Database! {response_text}");
         }
     };
     Ok(())
@@ -45,13 +45,13 @@ pub async fn describe_database(
     match call_database_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(database) => {
             console_data!(
-                "Your database:\nName: {}, Capacity Pool: {}",
+                "Your Valkey Database:\nName: {}, Capacity Pool: {}",
                 database.name,
                 database.pool_name
             );
         }
         Unparseable(response_text) => {
-            console_data!("Your database:\n{response_text}");
+            console_data!("Your Valkey Database:\n{response_text}");
         }
     };
     Ok(())
@@ -64,7 +64,7 @@ pub async fn delete_database(
 ) -> Result<(), CliError> {
     let response_text =
         call_database_delete_api(endpoint, auth_token, database_name.clone()).await?;
-    console_data!("Deleting database {database_name}! {response_text}");
+    console_data!("Deleting your Valkey Database {database_name}! {response_text}");
     Ok(())
 }
 
@@ -75,9 +75,9 @@ pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), 
             databases: databases_list,
         }) => {
             if databases_list.is_empty() {
-                console_data!("No databases found");
+                console_data!("No Valkey Databases found");
             } else {
-                console_data!("Databases:");
+                console_data!("Valkey Databases:");
                 databases_list.iter().for_each(|database| {
                     console_data!(
                         "\nName: {}, Capacity Pool: {}",
@@ -88,7 +88,7 @@ pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), 
             }
         }
         Unparseable(response_text) => {
-            console_data!("Listing databases:\n{response_text}");
+            console_data!("Listing your Valkey Databases:\n{response_text}");
         }
     };
     Ok(())

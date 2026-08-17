@@ -453,7 +453,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::DatabaseCommand::CreateDatabase {
+                    momento_cli_opts::ValkeyDatabaseCommand::CreateDatabase {
                         pool_name,
                         database_name,
                     } => {
@@ -465,7 +465,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::DatabaseCommand::DescribeDatabase { database_name } => {
+                    momento_cli_opts::ValkeyDatabaseCommand::DescribeDatabase { database_name } => {
                         commands::database::database_cli::describe_database(
                             api_endpoint,
                             auth_token,
@@ -473,7 +473,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::DatabaseCommand::DeleteDatabase { database_name } => {
+                    momento_cli_opts::ValkeyDatabaseCommand::DeleteDatabase { database_name } => {
                         commands::database::database_cli::delete_database(
                             api_endpoint,
                             auth_token,
@@ -481,7 +481,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::DatabaseCommand::ListDatabases {} => {
+                    momento_cli_opts::ValkeyDatabaseCommand::ListDatabases {} => {
                         commands::database::database_cli::list_databases(api_endpoint, auth_token)
                             .await?
                     }

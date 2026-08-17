@@ -558,48 +558,48 @@ pub enum CapacityPoolCommand {
 }
 
 #[derive(Debug, Parser)]
-pub enum DatabaseCommand {
-    #[command(about = "Create a Momento database")]
+pub enum ValkeyDatabaseCommand {
+    #[command(about = "Create a Valkey Database")]
     CreateDatabase {
         #[arg(
             long,
             short = 'n',
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the database you want to create",
+            help = "Name of the Database you want to create",
             value_name = "DATABASE"
         )]
         database_name: String,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the capacity pool to pin the database to",
+            help = "Name of the capacity pool to pin the Database to",
             value_name = "POOL"
         )]
         pool_name: String,
     },
-    #[command(about = "Get the details of your Momento database")]
+    #[command(about = "Get the details of your Valkey Database")]
     DescribeDatabase {
         #[arg(
             long,
             short = 'n',
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the database you want to describe",
+            help = "Name of the Database you want to describe",
             value_name = "DATABASE"
         )]
         database_name: String,
     },
-    #[command(about = "Delete a Momento database")]
+    #[command(about = "Delete a Valkey Database")]
     DeleteDatabase {
         #[arg(
             long,
             short = 'n',
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the database you want to delete",
+            help = "Name of the Database you want to delete",
             value_name = "DATABASE"
         )]
         database_name: String,
     },
-    #[command(about = "List all your Momento databases")]
+    #[command(about = "List all your Valkey Databases")]
     ListDatabases {},
 }
 
@@ -718,7 +718,7 @@ https://github.com/momentohq/functions/"
         #[command(subcommand)]
         operation: CapacityPoolCommand,
     },
-    #[command(about = "**PREVIEW** Interact with your Momento databases")]
+    #[command(about = "**PREVIEW** Interact with your Valkey Databases")]
     Database {
         #[arg(
             long,
@@ -738,7 +738,7 @@ https://github.com/momentohq/functions/"
         endpoint: Option<String>,
 
         #[command(subcommand)]
-        operation: DatabaseCommand,
+        operation: ValkeyDatabaseCommand,
     },
 }
 
