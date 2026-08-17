@@ -365,7 +365,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::CapacityPoolCommand::CreatePool {
+                    momento_cli_opts::CapacityPoolCommand::Create {
                         name,
                         instance_type,
                         shard_count,
@@ -396,7 +396,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::CapacityPoolCommand::DescribePool { name } => {
+                    momento_cli_opts::CapacityPoolCommand::Describe { name } => {
                         commands::capacity_pool::pool_cli::describe_pool(
                             api_endpoint,
                             auth_token,
@@ -404,7 +404,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::CapacityPoolCommand::UpdatePool {
+                    momento_cli_opts::CapacityPoolCommand::Update {
                         name,
                         mode,
                         instance_type,
@@ -429,7 +429,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::CapacityPoolCommand::DeletePool { name } => {
+                    momento_cli_opts::CapacityPoolCommand::Delete { name } => {
                         commands::capacity_pool::pool_cli::delete_pool(
                             api_endpoint,
                             auth_token,
@@ -437,7 +437,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::CapacityPoolCommand::ListPools {} => {
+                    momento_cli_opts::CapacityPoolCommand::List {} => {
                         commands::capacity_pool::pool_cli::list_pools(api_endpoint, auth_token)
                             .await?
                     }
@@ -451,7 +451,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::ValkeyDatabaseCommand::CreateDatabase { pool_name, name } => {
+                    momento_cli_opts::ValkeyDatabaseCommand::Create { pool_name, name } => {
                         commands::database::database_cli::create_database(
                             api_endpoint,
                             auth_token,
@@ -460,7 +460,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::ValkeyDatabaseCommand::DescribeDatabase { name } => {
+                    momento_cli_opts::ValkeyDatabaseCommand::Describe { name } => {
                         commands::database::database_cli::describe_database(
                             api_endpoint,
                             auth_token,
@@ -468,7 +468,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::ValkeyDatabaseCommand::DeleteDatabase { name } => {
+                    momento_cli_opts::ValkeyDatabaseCommand::Delete { name } => {
                         commands::database::database_cli::delete_database(
                             api_endpoint,
                             auth_token,
@@ -476,7 +476,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
-                    momento_cli_opts::ValkeyDatabaseCommand::ListDatabases {} => {
+                    momento_cli_opts::ValkeyDatabaseCommand::List {} => {
                         commands::database::database_cli::list_databases(api_endpoint, auth_token)
                             .await?
                     }

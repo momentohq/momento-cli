@@ -424,7 +424,7 @@ pub enum CapacityPoolCommand {
     about = "Create a Momento capacity pool",
     group(clap::ArgGroup::new("mode").required(true)),
     )]
-    CreatePool {
+    Create {
         #[arg(
             long,
             short = 'n',
@@ -487,7 +487,7 @@ pub enum CapacityPoolCommand {
         name: String,
     },
     #[command(about = "Get the details of your capacity pool")]
-    DescribePool {
+    Describe {
         #[arg(
             long,
             short,
@@ -505,7 +505,7 @@ pub enum CapacityPoolCommand {
     .multiple(true)
     ),
     )]
-    UpdatePool {
+    Update {
         #[arg(
             long,
             short,
@@ -565,7 +565,7 @@ pub enum CapacityPoolCommand {
         zones: Vec<String>,
     },
     #[command(about = "Delete a Momento capacity pool")]
-    DeletePool {
+    Delete {
         #[arg(
             long,
             short,
@@ -576,13 +576,13 @@ pub enum CapacityPoolCommand {
         name: String,
     },
     #[command(about = "List all your Momento capacity pools")]
-    ListPools {},
+    List {},
 }
 
 #[derive(Debug, Parser)]
 pub enum ValkeyDatabaseCommand {
     #[command(about = "Create a Valkey Database")]
-    CreateDatabase {
+    Create {
         #[arg(
             long,
             short = 'n',
@@ -600,7 +600,7 @@ pub enum ValkeyDatabaseCommand {
         pool_name: String,
     },
     #[command(about = "Get the details of your Valkey Database")]
-    DescribeDatabase {
+    Describe {
         #[arg(
             long,
             short = 'n',
@@ -611,7 +611,7 @@ pub enum ValkeyDatabaseCommand {
         name: String,
     },
     #[command(about = "Delete a Valkey Database")]
-    DeleteDatabase {
+    Delete {
         #[arg(
             long,
             short = 'n',
@@ -622,7 +622,7 @@ pub enum ValkeyDatabaseCommand {
         name: String,
     },
     #[command(about = "List all your Valkey Databases")]
-    ListDatabases {},
+    List {},
 }
 
 #[derive(Debug, Parser)]
