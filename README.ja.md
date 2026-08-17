@@ -20,11 +20,11 @@ momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED
 momento configure --quick
 
 # キャッシュ作成
-momento cache create example-cache
+momento legacy-cache create example-cache
 
 # キャッシュからSet・Getでバリューを取得
-momento cache set key value --ttl 100 --cache example-cache
-momento cache get key --cache example-cache
+momento legacy-cache set key value --ttl 100 --cache example-cache
+momento legacy-cache get key --cache example-cache
 
 ```
 
@@ -92,9 +92,9 @@ momento configure --profile new-profile
 
 ```
 #　デフォルトプロファイルが使用される
-momento cache create example-cache
-momento cache set key value --ttl 100 --cache example-cache
-momento cache get key --cache example-cache
+momento legacy-cache create example-cache
+momento legacy-cache set key value --ttl 100 --cache example-cache
+momento legacy-cache get key --cache example-cache
 
 ```
 
@@ -102,9 +102,9 @@ momento cache get key --cache example-cache
 
 ```
 # new-profileが使用される
-momento cache create example-cache --profile new-profile
-momento cache set key value --ttl 100 --cache example-cache --profile new-profile
-momento cache get key --cache example-cache --profile new-profile
+momento legacy-cache create example-cache --profile new-profile
+momento legacy-cache set key value --ttl 100 --cache example-cache --profile new-profile
+momento legacy-cache get key --cache example-cache --profile new-profile
 ```
 
 ## ご自身のプロジェクト内での Momento 使用方法

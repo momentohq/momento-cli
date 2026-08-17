@@ -35,7 +35,7 @@ ttl=700
 Follow the [README](./README.md#use-cli), using `./target/debug/momento` instead of `momento`, for example:
 
 ```bash
-./target/debug/momento cache create example-cache
+./target/debug/momento legacy-cache create example-cache
 ```
 
 ### Automated Testing
