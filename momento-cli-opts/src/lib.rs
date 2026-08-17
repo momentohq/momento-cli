@@ -590,7 +590,7 @@ pub enum ValkeyDatabaseCommand {
             help = "Name of the Database you want to create",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
@@ -608,7 +608,7 @@ pub enum ValkeyDatabaseCommand {
             help = "Name of the Database you want to describe",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
     },
     #[command(about = "Delete a Valkey Database")]
     DeleteDatabase {
@@ -619,7 +619,7 @@ pub enum ValkeyDatabaseCommand {
             help = "Name of the Database you want to delete",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
     },
     #[command(about = "List all your Valkey Databases")]
     ListDatabases {},
