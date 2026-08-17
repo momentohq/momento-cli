@@ -1,0 +1,7 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: "CapacityPoolDiagnosticEntry::Unparseable(json!({\"answer\": 42})).to_string()"
+---
+- Unrecognized diagnostic: {
+  "answer": 42
+}

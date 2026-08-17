@@ -1,0 +1,31 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: response.to_string()
+---
+Name: hello world
+Status: creating
+Explicit Provisioning:
+- EC2 Instance Type: r7g.xlarge
+- Shard Count: 3
+- Replicas: 1 per shard
+- Availability Zones: use1-az3, use1-az4, use1-az5
+Diagnostics:
+- scale_blocked_by_utilization
+  state: resolved
+  message: The requested configuration is smaller than the pool's current data; retrying until it fits.
+  requested shard count: 6
+  requested instance type: r7g.xlarge
+  data approx: 42 GiB
+  capacity approx: 32 GiB
+  first observed: 2024-06-26 00:00:00 UTC
+  last observed: 2024-06-26 01:00:00 UTC
+- something_something
+- something_else
+Additional details:
+- abc: {
+  "X": "x",
+  "Y": "y",
+  "Z": "z"
+}
+- hello: "world"
+- answer: 42

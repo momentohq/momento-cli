@@ -394,6 +394,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
+                    momento_cli_opts::CapacityPoolCommand::DescribePool { name } => {
+                        commands::capacity_pool::pool_cli::describe_pool(
+                            api_endpoint,
+                            auth_token,
+                            name,
+                        )
+                        .await?
+                    }
                     momento_cli_opts::CapacityPoolCommand::UpdatePool {
                         name,
                         mode,
@@ -453,6 +461,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             api_endpoint,
                             auth_token,
                             pool_name,
+                            database_name,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::DatabaseCommand::DescribeDatabase { database_name } => {
+                        commands::database::database_cli::describe_database(
+                            api_endpoint,
+                            auth_token,
                             database_name,
                         )
                         .await?
