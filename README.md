@@ -78,15 +78,15 @@ the appropriate installation steps above.
 momento configure --quick
 
 # Set and Get values from your default cache, with default ttl
-momento cache set key value
-momento cache get key
+momento legacy-cache set key value
+momento legacy-cache get key
 
 # Make a different cache
-momento cache create example-cache
+momento legacy-cache create example-cache
 
 # Set and Get values from a non-default cache with a different ttl
-momento cache set key value --ttl 100 --cache example-cache
-momento cache get key --cache example-cache
+momento legacy-cache set key value --ttl 100 --cache example-cache
+momento legacy-cache get key --cache example-cache
 ```
 
 ## Configure
@@ -116,18 +116,18 @@ To update your desired profile, use the same command as above.
 
 ```
 # use default profile
-momento cache create example-cache
-momento cache set key value --ttl 100 --cache example-cache
-momento cache get key --cache example-cache
+momento legacy-cache create example-cache
+momento legacy-cache set key value --ttl 100 --cache example-cache
+momento legacy-cache get key --cache example-cache
 ```
 
 You can also specify your desired profile.
 
 ```
 # use new-profile
-momento cache create example-cache --profile new-profile
-momento cache set key value --ttl 100 --cache example-cache --profile new-profile
-momento cache get key --cache example-cache --profile new-profile
+momento legacy-cache create example-cache --profile new-profile
+momento legacy-cache set key value --ttl 100 --cache example-cache --profile new-profile
+momento legacy-cache get key --cache example-cache --profile new-profile
 ```
 
 ## Use Momento in Your Project

@@ -1,0 +1,30 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: response.to_string()
+---
+Name: hello world
+Status: creating
+Managed Provisioning:
+- Capacity: 32..128 GiB (currently 40)
+- Replicas: 1..2 per shard (currently 2)
+- Availability Zones: use1-az1, use1-az2
+Diagnostics:
+- scale_blocked_by_utilization
+  state: resolved
+  message: The requested configuration is smaller than the pool's current data; retrying until it fits.
+  requested shard count: 6
+  requested instance type: r7g.xlarge
+  data approx: 42 GiB
+  capacity approx: 32 GiB
+  first observed: 2024-06-26 00:00:00 UTC
+  last observed: 2024-06-26 01:00:00 UTC
+- something_something
+- something_else
+Additional details:
+- abc: {
+  "X": "x",
+  "Y": "y",
+  "Z": "z"
+}
+- hello: "world"
+- answer: 42

@@ -38,7 +38,7 @@ mod tests {
     async fn momento_cache_create_with_profile(profile_name: &str, cache_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args([
-            "cache",
+            "legacy-cache",
             "create",
             "--name",
             cache_name,
@@ -52,7 +52,7 @@ mod tests {
     async fn momento_cache_set_with_profile(profile_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args([
-            "cache",
+            "legacy-cache",
             "set",
             "--key",
             "key",
@@ -67,15 +67,22 @@ mod tests {
 
     async fn momento_cache_get_with_profile(profile_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "get", "--key", "key", "--profile", profile_name])
-            .assert()
-            .stdout("value\n");
+        cmd.args([
+            "legacy-cache",
+            "get",
+            "--key",
+            "key",
+            "--profile",
+            profile_name,
+        ])
+        .assert()
+        .stdout("value\n");
     }
 
     async fn momento_cache_delete_key_with_profile(profile_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args([
-            "cache",
+            "legacy-cache",
             "delete-item",
             "--key",
             "key",
@@ -88,7 +95,7 @@ mod tests {
 
     async fn momento_cache_list_with_profile(profile_name: &str, cache_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "list", "--profile", profile_name])
+        cmd.args(["legacy-cache", "list", "--profile", profile_name])
             .assert()
             .stdout(cache_list_output_contains_cache_predicate(cache_name));
     }
@@ -96,7 +103,7 @@ mod tests {
     async fn momento_cache_delete_with_profile(profile_name: &str, cache_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args([
-            "cache",
+            "legacy-cache",
             "delete",
             "--name",
             cache_name,
@@ -110,10 +117,38 @@ mod tests {
     async fn test_profile_allowed_in_any_position(profile_name: &str) {
         let profile_permutations = vec![
             // cache subcommand
-            vec!["cache", "get", "--key", "key", "--profile", profile_name],
-            vec!["cache", "get", "--profile", profile_name, "--key", "key"],
-            vec!["cache", "--profile", profile_name, "get", "--key", "key"],
-            vec!["--profile", profile_name, "cache", "get", "--key", "key"],
+            vec![
+                "legacy-cache",
+                "get",
+                "--key",
+                "key",
+                "--profile",
+                profile_name,
+            ],
+            vec![
+                "legacy-cache",
+                "get",
+                "--profile",
+                profile_name,
+                "--key",
+                "key",
+            ],
+            vec![
+                "legacy-cache",
+                "--profile",
+                profile_name,
+                "get",
+                "--key",
+                "key",
+            ],
+            vec![
+                "--profile",
+                profile_name,
+                "legacy-cache",
+                "get",
+                "--key",
+                "key",
+            ],
             // configure subcommand
             vec!["configure", "--disposable-token", "--profile", profile_name],
             vec!["--profile", profile_name, "configure", "--disposable-token"],

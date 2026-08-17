@@ -70,11 +70,33 @@ pub enum Subcommand {
         #[command(subcommand)]
         operation: CacheCommand,
     },
+    #[command(about = "Interact with legacy caches")]
+    LegacyCache {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: LegacyCacheCommand,
+    },
     #[command(
         about = "Interact with topics",
         before_help = "
 These commands require a cache, which serves as a namespace
-for your topics. If you haven't already, call `cache create`
+for your topics. If you haven't already, call `legacy-cache create`
 to make one!
 
 To create a topic, subscribe to it.
@@ -402,7 +424,7 @@ pub enum CapacityPoolCommand {
     about = "Create a Momento capacity pool",
     group(clap::ArgGroup::new("mode").required(true)),
     )]
-    CreatePool {
+    Create {
         #[arg(
             long,
             short = 'n',
@@ -459,6 +481,17 @@ pub enum CapacityPoolCommand {
             long,
             short,
             value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the capacity pool you want to get the status of",
+            value_name = "POOL"
+        )]
+        name: String,
+    },
+    #[command(about = "Get the details of your capacity pool")]
+    Describe {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "Name of the capacity pool you want to describe",
             value_name = "POOL"
         )]
@@ -472,7 +505,7 @@ pub enum CapacityPoolCommand {
     .multiple(true)
     ),
     )]
-    UpdatePool {
+    Update {
         #[arg(
             long,
             short,
@@ -532,7 +565,7 @@ pub enum CapacityPoolCommand {
         zones: Vec<String>,
     },
     #[command(about = "Delete a Momento capacity pool")]
-    DeletePool {
+    Delete {
         #[arg(
             long,
             short,
@@ -543,42 +576,53 @@ pub enum CapacityPoolCommand {
         name: String,
     },
     #[command(about = "List all your Momento capacity pools")]
-    ListPools {},
+    List {},
 }
 
 #[derive(Debug, Parser)]
-pub enum DatabaseCommand {
-    #[command(about = "Create a Momento database")]
-    CreateDatabase {
+pub enum ValkeyDatabaseCommand {
+    #[command(about = "Create a Valkey Database")]
+    Create {
         #[arg(
             long,
             short = 'n',
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the database you want to create",
+            help = "Name of the Database you want to create",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the capacity pool to pin the database to",
+            help = "Name of the capacity pool to pin the Database to",
             value_name = "POOL"
         )]
         pool_name: String,
     },
-    #[command(about = "Delete a Momento database")]
-    DeleteDatabase {
+    #[command(about = "Get the details of your Valkey Database")]
+    Describe {
         #[arg(
             long,
             short = 'n',
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the database you want to delete",
+            help = "Name of the Database you want to describe",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
     },
-    #[command(about = "List all your Momento databases")]
-    ListDatabases {},
+    #[command(about = "Delete a Valkey Database")]
+    Delete {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the Database you want to delete",
+            value_name = "DATABASE"
+        )]
+        name: String,
+    },
+    #[command(about = "List all your Valkey Databases")]
+    List {},
 }
 
 #[derive(Debug, Parser)]
@@ -647,7 +691,7 @@ to help find opportunities for optimizations with Momento.
         about = "**PREVIEW** Interact with your Momento Functions",
         before_help = "
 Momento Functions require a cache, which serves as a namespace
-for your Functions. If you haven't already, call `cache create`
+for your Functions. If you haven't already, call `legacy-cache create`
 to make one!
 
 For more information about Momento Functions, visit our repo:
@@ -674,49 +718,19 @@ https://github.com/momentohq/functions/"
         #[command(subcommand)]
         operation: FunctionCommand,
     },
-    #[command(about = "**PREVIEW** Interact with your Momento capacity pools")]
+}
+
+#[derive(Debug, Parser)]
+pub enum CacheCommand {
+    #[command(about = "Interact with your Momento capacity pools")]
     Pool {
-        #[arg(
-            long,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit Momento API key to use [default: your profile's API key]"
-        )]
-        api_key: Option<String>,
-
-        #[arg(
-            long,
-            short,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
-        )]
-        endpoint: Option<String>,
-
         #[command(subcommand)]
         operation: CapacityPoolCommand,
     },
-    #[command(about = "**PREVIEW** Interact with your Momento databases")]
+    #[command(about = "Interact with your Valkey Databases")]
     Database {
-        #[arg(
-            long,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit Momento API key to use [default: your profile's API key]"
-        )]
-        api_key: Option<String>,
-
-        #[arg(
-            long,
-            short,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
-        )]
-        endpoint: Option<String>,
-
         #[command(subcommand)]
-        operation: DatabaseCommand,
+        operation: ValkeyDatabaseCommand,
     },
 }
 
@@ -751,7 +765,7 @@ pub enum CloudSignupCommand {
 }
 
 #[derive(Debug, Parser)]
-pub enum CacheCommand {
+pub enum LegacyCacheCommand {
     #[command(
     about = "Create a cache",
     group(

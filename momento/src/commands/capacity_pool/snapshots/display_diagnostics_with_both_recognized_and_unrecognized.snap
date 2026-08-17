@@ -1,0 +1,9 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: diagnostics.to_string()
+---
+- Unrecognized diagnostic: {
+  "surprise": 42
+}
+- stuck
+  state: active
