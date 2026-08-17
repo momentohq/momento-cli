@@ -119,7 +119,7 @@ pub enum Subcommand {
         about = "Interact with topics",
         before_help = "
 These commands require a cache, which serves as a namespace
-for your topics. If you haven't already, call `cache create`
+for your topics. If you haven't already, call `legacy-cache create`
 to make one!
 
 To create a topic, subscribe to it.
@@ -700,7 +700,7 @@ to help find opportunities for optimizations with Momento.
         about = "**PREVIEW** Interact with your Momento Functions",
         before_help = "
 Momento Functions require a cache, which serves as a namespace
-for your Functions. If you haven't already, call `cache create`
+for your Functions. If you haven't already, call `legacy-cache create`
 to make one!
 
 For more information about Momento Functions, visit our repo:
@@ -731,12 +731,12 @@ https://github.com/momentohq/functions/"
 
 #[derive(Debug, Parser)]
 pub enum CacheCommand {
-    #[command(about = "**PREVIEW** Interact with your Momento capacity pools")]
+    #[command(about = "Interact with your Momento capacity pools")]
     Pool {
         #[command(subcommand)]
         operation: CapacityPoolCommand,
     },
-    #[command(about = "**PREVIEW** Interact with your Momento databases")]
+    #[command(about = "Interact with your Momento databases")]
     Database {
         #[command(subcommand)]
         operation: DatabaseCommand,

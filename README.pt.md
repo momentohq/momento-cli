@@ -19,11 +19,11 @@ momento account signup gcp --email <insira_seu_email_aqui> --region <regiao_dese
 momento configure
 
 # Crie um primeiro cache
-momento cache create example-cache
+momento legacy-cache create example-cache
 
 # escreva e leia valores do seu cache
-momento cache set key value --ttl 100 --cache example-cache
-momento cache get key --cache example-cache
+momento legacy-cache set key value --ttl 100 --cache example-cache
+momento legacy-cache get key --cache example-cache
 
 ```
 
@@ -91,18 +91,18 @@ Para atualizar sem perfil, use os mesmos comandos anteriores.
 
 ```
 # use default profile
-momento cache create example-cache
-momento cache set key value --ttl 100 --cache example-cache
-momento cache get key --cache example-cache
+momento legacy-cache create example-cache
+momento legacy-cache set key value --ttl 100 --cache example-cache
+momento legacy-cache get key --cache example-cache
 ```
 
 Você também pode especificar seu perfil desejado.
 
 ```
 # usar new-profile
-momento cache create example-cache --profile new-profile
-momento cache set key value --ttl 100 --cache example-cache --profile new-profile
-momento cache get key --cache example-cache --profile new-profile
+momento legacy-cache create example-cache --profile new-profile
+momento legacy-cache set key value --ttl 100 --cache example-cache --profile new-profile
+momento legacy-cache get key --cache example-cache --profile new-profile
 ```
 
 ## Usar Momento no seu Projeto

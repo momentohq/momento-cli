@@ -23,7 +23,7 @@ mod tests {
     async fn momento_cache_create_default_profile(cache_name: &str) {
         let output = Command::cargo_bin("momento")
             .unwrap()
-            .args(["cache", "list"])
+            .args(["legacy-cache", "list"])
             .output()
             .unwrap()
             .stdout;
@@ -35,79 +35,79 @@ mod tests {
                 if !cache.is_empty() {
                     Command::cargo_bin("momento")
                         .unwrap()
-                        .args(["cache", "delete", "--name", cache_name])
+                        .args(["legacy-cache", "delete", "--name", cache_name])
                         .unwrap();
                 }
             }
         }
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "create", "--name", cache_name])
+        cmd.args(["legacy-cache", "create", "--name", cache_name])
             .assert()
             .success();
     }
 
     async fn momento_cache_set_default_profile() {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "set", "--key", "key", "--value", "value"])
+        cmd.args(["legacy-cache", "set", "--key", "key", "--value", "value"])
             .assert()
             .success();
     }
 
     async fn momento_cache_get_default_profile() {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "get", "--key", "key"])
+        cmd.args(["legacy-cache", "get", "--key", "key"])
             .assert()
             .stdout("value\n");
     }
 
     async fn momento_cache_set_default_profile_positional_args() {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "set", "positional-key", "positional-value"])
+        cmd.args(["legacy-cache", "set", "positional-key", "positional-value"])
             .assert()
             .success();
     }
 
     async fn momento_cache_get_default_profile_positional_args() {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "get", "positional-key"])
+        cmd.args(["legacy-cache", "get", "positional-key"])
             .assert()
             .stdout("positional-value\n");
     }
 
     async fn momento_cache_list_default_profile(cache_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "list"])
+        cmd.args(["legacy-cache", "list"])
             .assert()
             .stdout(cache_list_output_contains_cache_predicate(cache_name));
     }
 
     async fn momento_cache_delete_default_profile(cache_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
-        cmd.args(["cache", "delete", "--name", cache_name])
+        cmd.args(["legacy-cache", "delete", "--name", cache_name])
             .assert()
             .success();
     }
 
     async fn momento_cache_create_delete_default_profile_positional_args(cache_name: &str) {
         let mut cmd1 = Command::cargo_bin("momento").unwrap();
-        cmd1.args(["cache", "create", cache_name])
+        cmd1.args(["legacy-cache", "create", cache_name])
             .assert()
             .success();
 
         let mut cmd2 = Command::cargo_bin("momento").unwrap();
-        cmd2.args(["cache", "delete", cache_name])
+        cmd2.args(["legacy-cache", "delete", cache_name])
             .assert()
             .success();
     }
 
     async fn momento_cache_create_delete_default_cache_keyword_arg(cache_name: &str) {
         let mut cmd1 = Command::cargo_bin("momento").unwrap();
-        cmd1.args(["cache", "create", "--cache", cache_name])
+        cmd1.args(["legacy-cache", "create", "--cache", cache_name])
             .assert()
             .success();
 
         let mut cmd2 = Command::cargo_bin("momento").unwrap();
-        cmd2.args(["cache", "delete", "--cache", cache_name])
+        cmd2.args(["legacy-cache", "delete", "--cache", cache_name])
             .assert()
             .success();
     }
