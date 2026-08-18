@@ -298,8 +298,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_provisioning_in_managed_mode() {
-        // managed mode, aka flex mode
+    fn test_serialize_provisioning_in_flex_mode() {
         let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
@@ -328,8 +327,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_provisioning_in_explicit_mode() {
-        // explicit mode, aka cluster mode
+    fn test_serialize_provisioning_in_cluster_mode() {
         let provisioning = CapacityPoolProvisioning::Cluster {
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
@@ -351,8 +349,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_provisioning_update_in_managed_mode_with_all_fields() {
-        // managed mode, aka flex mode
+    fn test_serialize_provisioning_update_in_flex_mode_with_all_fields() {
         let update = CapacityPoolProvisioningUpdate::Flex {
             capacity: Some(CapacityBounds {
                 min_gib: 32,
@@ -381,8 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_provisioning_update_in_explicit_mode_with_all_fields() {
-        // explicit mode, aka cluster mode
+    fn test_serialize_provisioning_update_in_cluster_mode_with_all_fields() {
         let update = CapacityPoolProvisioningUpdate::Cluster {
             instance_type: Some("r7g.xlarge".to_string()),
             shard_count: Some(3),
@@ -404,8 +400,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_provisioning_update_in_managed_mode_with_no_updates() {
-        // managed mode, aka flex mode
+    fn test_serialize_provisioning_update_in_flex_mode_with_no_updates() {
         let update = CapacityPoolProvisioningUpdate::Flex {
             capacity: None,
             replication: None,
@@ -420,8 +415,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_provisioning_update_in_explicit_mode_with_no_updates() {
-        // explicit mode, aka cluster mode
+    fn test_serialize_provisioning_update_in_cluster_mode_with_no_updates() {
         let update = CapacityPoolProvisioningUpdate::Cluster {
             instance_type: None,
             shard_count: None,
@@ -547,8 +541,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_capacity_pool_with_all_managed_fields() {
-        // managed mode, aka flex mode
+    fn test_deserialize_capacity_pool_with_all_fields_in_flex_mode() {
         let pool = parse_pool(
             r#"{
                 "name": "hello world",
@@ -609,8 +602,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_capacity_pool_with_all_explicit_fields() {
-        // explicit mode, aka cluster mode
+    fn test_deserialize_capacity_pool_with_all_fields_in_cluster_mode() {
         let pool = parse_pool(
             r#"{
                 "name": "hello world",

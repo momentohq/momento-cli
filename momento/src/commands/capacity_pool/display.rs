@@ -216,8 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn test_format_managed_provisioning_with_current_values() {
-        // managed mode, aka flex mode
+    fn test_format_flex_provisioning_with_current_values() {
         let provisioning = FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
@@ -312,8 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn test_display_capacity_pool_with_all_managed_fields() {
-        // managed mode, aka flex mode
+    fn test_display_capacity_pool_with_all_fields_in_flex_mode() {
         let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
@@ -369,8 +367,7 @@ mod tests {
     }
 
     #[test]
-    fn test_display_capacity_pool_with_no_current_values_in_managed_mode() {
-        // managed mode, aka flex mode
+    fn test_display_capacity_pool_with_no_current_values_in_flex_mode() {
         let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
@@ -410,8 +407,7 @@ mod tests {
     }
 
     #[test]
-    fn test_display_capacity_pool_with_all_explicit_fields() {
-        // explicit mode, aka cluster mode
+    fn test_display_capacity_pool_with_all_fields_in_cluster_mode() {
         let provisioning = CapacityPoolProvisioning::Cluster {
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
