@@ -38,28 +38,29 @@ impl From<Bounds> for ReplicationBounds {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct ManagedProvisioning {
+pub struct FlexProvisioning {
     pub capacity: CapacityBounds,
     pub replication: ReplicationBounds,
     pub zones: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
 pub enum CapacityPoolProvisioning {
-    Explicit {
+    #[serde(rename = "explicit")]
+    Cluster {
         instance_type: String,
         shard_count: u32,
         replicas_per_shard: u32,
         zones: Vec<String>,
     },
-    Managed(ManagedProvisioning),
+    #[serde(rename = "managed")]
+    Flex(FlexProvisioning),
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "snake_case")]
 pub enum CapacityPoolProvisioningUpdate {
-    Explicit {
+    #[serde(rename = "explicit")]
+    Cluster {
         #[serde(skip_serializing_if = "Option::is_none")]
         instance_type: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -69,7 +70,8 @@ pub enum CapacityPoolProvisioningUpdate {
         #[serde(skip_serializing_if = "Vec::is_empty")]
         zones: Vec<String>,
     },
-    Managed {
+    #[serde(rename = "managed")]
+    Flex {
         #[serde(skip_serializing_if = "Option::is_none")]
         capacity: Option<CapacityBounds>,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -118,9 +120,9 @@ pub struct CapacityPoolResponse {
     pub status: String,
     pub provisioning: CapacityPoolProvisioning,
     pub diagnostics: Option<CapacityPoolDiagnostics>,
-    /// Managed pools only: the capacity the pool concretely has right now.
+    /// Flex-/managed-mode pools only: the capacity the pool concretely has right now.
     pub current_capacity_gib: Option<u32>,
-    /// Managed pools only: the replication the pool concretely has right now.
+    /// Flex-/managed-mode pools only: the replication the pool concretely has right now.
     pub current_replicas_per_shard: Option<u32>,
     #[serde(flatten)]
     pub extra_fields: serde_json::Map<String, serde_json::Value>,
@@ -131,7 +133,7 @@ pub struct ListCapacityPoolsResponse {
     pub capacity_pools: Vec<CapacityPoolResponse>,
 }
 
-/// The single, pinned `--replicas-per-shard` that's required by explicit provisioning.
+/// The single, pinned `--replicas-per-shard` that's required by cluster-/explicit-mode provisioning.
 fn pinned(bounds: Bounds) -> Result<u32, CliError> {
     (bounds.min == bounds.max)
         .then_some(bounds.min)
@@ -153,14 +155,14 @@ pub fn determine_provisioning(
     let provisioning = match (instance_type, shard_count, capacity_gib) {
         (Some(instance_type), Some(shard_count), None) => {
             let replicas_per_shard = pinned(replicas_per_shard)?;
-            CapacityPoolProvisioning::Explicit {
+            CapacityPoolProvisioning::Cluster {
                 instance_type,
                 shard_count,
                 replicas_per_shard,
                 zones,
             }
         }
-        (None, None, Some(capacity)) => CapacityPoolProvisioning::Managed(ManagedProvisioning {
+        (None, None, Some(capacity)) => CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds::from(capacity),
             replication: ReplicationBounds::from(replicas_per_shard),
             zones,
@@ -191,7 +193,7 @@ pub fn determine_provisioning_update(
                 ));
             }
             let replicas_per_shard = replicas_per_shard.map(pinned).transpose()?;
-            CapacityPoolProvisioningUpdate::Explicit {
+            CapacityPoolProvisioningUpdate::Cluster {
                 instance_type,
                 shard_count,
                 replicas_per_shard,
@@ -205,7 +207,7 @@ pub fn determine_provisioning_update(
                      pass --mode cluster",
                 ));
             }
-            CapacityPoolProvisioningUpdate::Managed {
+            CapacityPoolProvisioningUpdate::Flex {
                 capacity: capacity_gib.map(CapacityBounds::from),
                 replication: replicas_per_shard.map(ReplicationBounds::from),
                 zones,
@@ -297,7 +299,8 @@ mod tests {
 
     #[test]
     fn test_serialize_provisioning_in_managed_mode() {
-        let provisioning = CapacityPoolProvisioning::Managed(ManagedProvisioning {
+        // managed mode, aka flex mode
+        let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
                 max_gib: 128,
@@ -326,7 +329,8 @@ mod tests {
 
     #[test]
     fn test_serialize_provisioning_in_explicit_mode() {
-        let provisioning = CapacityPoolProvisioning::Explicit {
+        // explicit mode, aka cluster mode
+        let provisioning = CapacityPoolProvisioning::Cluster {
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
@@ -348,7 +352,8 @@ mod tests {
 
     #[test]
     fn test_serialize_provisioning_update_in_managed_mode_with_all_fields() {
-        let update = CapacityPoolProvisioningUpdate::Managed {
+        // managed mode, aka flex mode
+        let update = CapacityPoolProvisioningUpdate::Flex {
             capacity: Some(CapacityBounds {
                 min_gib: 32,
                 max_gib: 128,
@@ -371,13 +376,14 @@ mod tests {
                     "zones": ["use1-az1"]
                 }
             }),
-            serde_json::to_value(update).expect("provisioning updateshould serialize")
+            serde_json::to_value(update).expect("provisioning update should serialize")
         )
     }
 
     #[test]
     fn test_serialize_provisioning_update_in_explicit_mode_with_all_fields() {
-        let update = CapacityPoolProvisioningUpdate::Explicit {
+        // explicit mode, aka cluster mode
+        let update = CapacityPoolProvisioningUpdate::Cluster {
             instance_type: Some("r7g.xlarge".to_string()),
             shard_count: Some(3),
             replicas_per_shard: Some(1),
@@ -393,13 +399,14 @@ mod tests {
                     "zones": ["use1-az2", "use1-az3"]
                 }
             }),
-            serde_json::to_value(update).expect("provisioning updateshould serialize")
+            serde_json::to_value(update).expect("provisioning update should serialize")
         );
     }
 
     #[test]
     fn test_serialize_provisioning_update_in_managed_mode_with_no_updates() {
-        let update = CapacityPoolProvisioningUpdate::Managed {
+        // managed mode, aka flex mode
+        let update = CapacityPoolProvisioningUpdate::Flex {
             capacity: None,
             replication: None,
             // Must have at least 1 availability zone, so [] is treated as No Update
@@ -408,13 +415,14 @@ mod tests {
 
         assert_eq!(
             json!({ "managed": {} }),
-            serde_json::to_value(update).expect("provisioning updateshould serialize")
+            serde_json::to_value(update).expect("provisioning update should serialize")
         );
     }
 
     #[test]
     fn test_serialize_provisioning_update_in_explicit_mode_with_no_updates() {
-        let update = CapacityPoolProvisioningUpdate::Explicit {
+        // explicit mode, aka cluster mode
+        let update = CapacityPoolProvisioningUpdate::Cluster {
             instance_type: None,
             shard_count: None,
             replicas_per_shard: None,
@@ -424,7 +432,7 @@ mod tests {
 
         assert_eq!(
             json!({ "explicit": {} }),
-            serde_json::to_value(update).expect("provisioning updateshould serialize")
+            serde_json::to_value(update).expect("provisioning update should serialize")
         );
     }
 
@@ -540,6 +548,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_capacity_pool_with_all_managed_fields() {
+        // managed mode, aka flex mode
         let pool = parse_pool(
             r#"{
                 "name": "hello world",
@@ -565,8 +574,8 @@ mod tests {
 
         assert_eq!("hello world", pool.name);
         assert_eq!("creating", pool.status);
-        let CapacityPoolProvisioning::Managed(provisioning) = &pool.provisioning else {
-            panic!("expected managed provisioning, got {:?}", pool.provisioning);
+        let CapacityPoolProvisioning::Flex(provisioning) = &pool.provisioning else {
+            panic!("expected flex provisioning, got {:?}", pool.provisioning);
         };
         assert_eq!(32, provisioning.capacity.min_gib);
         assert_eq!(128, provisioning.capacity.max_gib);
@@ -601,6 +610,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_capacity_pool_with_all_explicit_fields() {
+        // explicit mode, aka cluster mode
         let pool = parse_pool(
             r#"{
                 "name": "hello world",
@@ -622,7 +632,7 @@ mod tests {
 
         assert_eq!("hello world", pool.name);
         assert_eq!("creating", pool.status);
-        let CapacityPoolProvisioning::Explicit {
+        let CapacityPoolProvisioning::Cluster {
             instance_type,
             shard_count,
             replicas_per_shard,
@@ -630,7 +640,7 @@ mod tests {
         } = &pool.provisioning
         else {
             panic!(
-                "expected explicit provisioning, got {:?}",
+                "expected cluster-mode provisioning, got {:?}",
                 pool.provisioning
             );
         };
@@ -685,7 +695,7 @@ mod tests {
             }"#,
         );
 
-        let CapacityPoolProvisioning::Explicit {
+        let CapacityPoolProvisioning::Cluster {
             instance_type,
             shard_count,
             replicas_per_shard,
@@ -693,7 +703,7 @@ mod tests {
         } = &pool.provisioning
         else {
             panic!(
-                "expected explicit provisioning, got {:?}",
+                "expected cluster-mode provisioning, got {:?}",
                 pool.provisioning
             );
         };
@@ -741,7 +751,7 @@ mod tests {
             }"#,
         );
 
-        let CapacityPoolProvisioning::Explicit {
+        let CapacityPoolProvisioning::Cluster {
             instance_type,
             shard_count,
             replicas_per_shard,
@@ -749,7 +759,7 @@ mod tests {
         } = &pool.provisioning
         else {
             panic!(
-                "expected explicit provisioning, got {:?}",
+                "expected cluster-mode provisioning, got {:?}",
                 pool.provisioning
             );
         };
@@ -796,7 +806,7 @@ mod tests {
             }"#,
         );
 
-        let CapacityPoolProvisioning::Explicit {
+        let CapacityPoolProvisioning::Cluster {
             instance_type,
             shard_count,
             replicas_per_shard,
@@ -804,7 +814,7 @@ mod tests {
         } = &pool.provisioning
         else {
             panic!(
-                "expected explicit provisioning, got {:?}",
+                "expected cluster-mode provisioning, got {:?}",
                 pool.provisioning
             );
         };
