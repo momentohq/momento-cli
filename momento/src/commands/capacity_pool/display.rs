@@ -142,7 +142,7 @@ impl fmt::Display for CapacityPoolResponse {
                     replicas_per_shard,
                     zones,
                 } => format!(
-                    "Explicit Provisioning:\n\
+                    "Cluster Provisioning:\n\
                      - EC2 Instance Type: {instance_type}\n\
                      - Shard Count: {shard_count}\n\
                      - Replicas: {replicas_per_shard} per shard\n\
@@ -150,7 +150,7 @@ impl fmt::Display for CapacityPoolResponse {
                     zones.join(", "),
                 ),
                 CapacityPoolProvisioning::Managed(provisioning) => format!(
-                    "Managed Provisioning:\n{}",
+                    "Flex Provisioning:\n{}",
                     format_managed_provisioning(
                         provisioning,
                         self.current_capacity_gib,

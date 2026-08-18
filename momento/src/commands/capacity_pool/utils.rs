@@ -137,8 +137,8 @@ fn pinned(bounds: Bounds) -> Result<u32, CliError> {
         .then_some(bounds.min)
         .ok_or_else(|| {
             CliError::new(
-                "explicit pools take a single --replicas-per-shard (e.g. 2); \
-                 ranges are for managed pools",
+                "cluster-mode pools take a single --replicas-per-shard (e.g. 2); \
+                 ranges are for flex-mode pools",
             )
         })
 }
@@ -167,8 +167,8 @@ pub fn determine_provisioning(
         }),
         _ => {
             return Err(CliError::new(
-                "pass either --instance-type with --shard-count (explicit) \
-                 or --capacity-gib (managed)",
+                "pass either --instance-type with --shard-count (cluster mode) \
+                 or --capacity-gib (flex mode)",
             ));
         }
     };
@@ -184,10 +184,10 @@ pub fn determine_provisioning_update(
     zones: Vec<String>,
 ) -> Result<CapacityPoolProvisioningUpdate, CliError> {
     let update = match mode {
-        CapacityPoolProvisioningMode::Explicit => {
+        CapacityPoolProvisioningMode::Cluster => {
             if capacity_gib.is_some() {
                 return Err(CliError::new(
-                    "--capacity-gib is a managed-mode field; pass --mode managed",
+                    "--capacity-gib is a flex-mode field; pass --mode flex",
                 ));
             }
             let replicas_per_shard = replicas_per_shard.map(pinned).transpose()?;
@@ -198,11 +198,11 @@ pub fn determine_provisioning_update(
                 zones,
             }
         }
-        CapacityPoolProvisioningMode::Managed => {
+        CapacityPoolProvisioningMode::Flex => {
             if instance_type.is_some() || shard_count.is_some() {
                 return Err(CliError::new(
-                    "--instance-type and --shard-count are explicit-mode fields; \
-                     pass --mode explicit",
+                    "--instance-type and --shard-count are cluster-mode fields; \
+                     pass --mode cluster",
                 ));
             }
             CapacityPoolProvisioningUpdate::Managed {

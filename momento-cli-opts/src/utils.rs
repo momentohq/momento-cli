@@ -40,8 +40,8 @@ pub fn parse_positive_bounds(s: &str) -> Result<Bounds, String> {
 
 #[derive(Debug, Clone, clap::ValueEnum)]
 pub enum CapacityPoolProvisioningMode {
-    Explicit,
-    Managed,
+    Cluster,
+    Flex,
 }
 
 pub fn parse_date(s: &str) -> Result<NaiveDate, String> {
