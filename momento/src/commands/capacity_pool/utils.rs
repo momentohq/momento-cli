@@ -152,8 +152,13 @@ pub fn determine_provisioning(
     capacity_gib: Option<Bounds>,
     zones: Vec<String>,
 ) -> Result<CapacityPoolProvisioning, CliError> {
-    let provisioning = match (instance_type, shard_count, capacity_gib) {
-        (Some(instance_type), Some(shard_count), None) => {
+    let shared_args = "--replicas-per-shard\n--zones";
+    let help_text = format!(
+        "For cluster mode, pass:\n--instance-type\n--shard-count\n{shared_args}\n\n\
+         For flex mode, pass:\n--capacity-gib\n{shared_args}"
+    );
+    let provisioning = match ((instance_type, shard_count), capacity_gib) {
+        ((Some(instance_type), Some(shard_count)), None) => {
             let replicas_per_shard = pinned(replicas_per_shard)?;
             CapacityPoolProvisioning::Cluster {
                 instance_type,
@@ -162,16 +167,29 @@ pub fn determine_provisioning(
                 zones,
             }
         }
-        (None, None, Some(capacity)) => CapacityPoolProvisioning::Flex(FlexProvisioning {
+        ((None, None), Some(capacity)) => CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds::from(capacity),
             replication: ReplicationBounds::from(replicas_per_shard),
             zones,
         }),
-        _ => {
-            let shared_args = "--replicas-per-shard\n--zones";
+        ((Some(_), None), None) => {
             return Err(CliError::new(format!(
-                "\nFor cluster mode, pass all of:\n--instance-type\n--shard-count\n{shared_args}\n\n\
-                 For flex mode, pass all of:\n--capacity-gib\n{shared_args}"
+                "Missing --shard-count.\n\n{help_text}"
+            )));
+        }
+        ((None, Some(_)), None) => {
+            return Err(CliError::new(format!(
+                "Missing --instance-type.\n\n{help_text}"
+            )));
+        }
+        ((None, None), None) => {
+            return Err(CliError::new(format!(
+                "Missing argument(s).\n\n{help_text}"
+            )));
+        }
+        ((Some(_), _), Some(_)) | ((_, Some(_)), Some(_)) => {
+            return Err(CliError::new(format!(
+                "Conflicting arguments.\n\n{help_text}"
             )));
         }
     };
