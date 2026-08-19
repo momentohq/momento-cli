@@ -170,8 +170,8 @@ pub fn determine_provisioning(
         _ => {
             let shared_args = "--replicas-per-shard\n--zones";
             let help_text = format!(
-                "For cluster mode, pass:\n--instance-type\n--shard-count\n{shared_args}\n\n\
-                 For flex mode, pass:\n--capacity-gib\n{shared_args}"
+                "For cluster mode, specify all of:\n--instance-type\n--shard-count\n{shared_args}\n\n\
+                 For flex mode, specify all of:\n--capacity-gib\n{shared_args}"
             );
             return Err(CliError::new(format!(
                 "{}\n\n{help_text}",
@@ -192,20 +192,24 @@ pub fn determine_provisioning(
 }
 
 pub fn determine_provisioning_update(
-    mode: CapacityPoolProvisioningMode,
+    mode: Option<CapacityPoolProvisioningMode>,
     instance_type: Option<String>,
     shard_count: Option<u32>,
     replicas_per_shard: Option<Bounds>,
     capacity_gib: Option<Bounds>,
     zones: Vec<String>,
 ) -> Result<CapacityPoolProvisioningUpdate, CliError> {
-    let update = match mode {
-        CapacityPoolProvisioningMode::Cluster => {
-            if capacity_gib.is_some() {
-                return Err(CliError::new(
-                    "--capacity-gib is a flex-mode field; pass --mode flex",
-                ));
-            }
+    let has_cluster_field = instance_type.is_some() || shard_count.is_some();
+    let has_flex_field = capacity_gib.is_some();
+    let has_ambiguous_field = replicas_per_shard.is_some() || !zones.is_empty();
+    let update = match (
+        has_cluster_field,
+        has_flex_field,
+        has_ambiguous_field,
+        mode.clone(),
+    ) {
+        (true, false, _, None | Some(CapacityPoolProvisioningMode::Cluster))
+        | (_, false, true, Some(CapacityPoolProvisioningMode::Cluster)) => {
             let replicas_per_shard = replicas_per_shard.map(pinned).transpose()?;
             CapacityPoolProvisioningUpdate::Cluster {
                 instance_type,
@@ -214,18 +218,38 @@ pub fn determine_provisioning_update(
                 zones,
             }
         }
-        CapacityPoolProvisioningMode::Flex => {
-            if instance_type.is_some() || shard_count.is_some() {
-                return Err(CliError::new(
-                    "--instance-type and --shard-count are cluster-mode fields; \
-                     pass --mode cluster",
-                ));
-            }
+        (false, true, _, None | Some(CapacityPoolProvisioningMode::Flex))
+        | (false, _, true, Some(CapacityPoolProvisioningMode::Flex)) => {
             CapacityPoolProvisioningUpdate::Flex {
                 capacity: capacity_gib.map(CapacityBounds::from),
                 replication: replicas_per_shard.map(ReplicationBounds::from),
                 zones,
             }
+        }
+        _ => {
+            let shared_args = "--replicas-per-shard\n--zones";
+            let help_text = format!(
+                "For cluster mode, specify one or more of:\n--instance-type\n--shard-count\n\n\
+                 For flex mode, specify one or more of:\n--capacity-gib\n\n\
+                 With a mode specified, you can also specify one or more of:\n{shared_args}"
+            );
+            return Err(CliError::new(format!(
+                "{}\n\n{help_text}",
+                match (has_cluster_field, has_flex_field, has_ambiguous_field, mode,) {
+                    (false, false, true, None) => "Missing --mode.",
+                    (false, false, false, _) => "Missing field(s) to update.",
+                    (true, true, _, _)
+                    | (true, _, _, Some(CapacityPoolProvisioningMode::Flex))
+                    | (_, true, _, Some(CapacityPoolProvisioningMode::Cluster)) =>
+                        "Conflicting arguments.",
+                    (true, false, _, None | Some(CapacityPoolProvisioningMode::Cluster))
+                    | (false, true, _, None | Some(CapacityPoolProvisioningMode::Flex))
+                    | (false, false, true, Some(_)) => {
+                        // This should never happen; valid combination that should have been identified earlier.
+                        "Sorry, something went wrong!"
+                    }
+                },
+            )));
         }
     };
     Ok(update)
