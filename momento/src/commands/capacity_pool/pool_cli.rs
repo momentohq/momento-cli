@@ -28,8 +28,13 @@ pub async fn create_pool(
             }
         }
     };
-    console_data!("\nAfter you create a database, you can use the Valkey CLI to interact with your capacity pool:\n");
-    console_data!("{valkey_endpoint}");
+    console_data!("\nNow you can create a database, export your API key from ~/.momento/credentials, then use the Valkey CLI:\n");
+    console_data!(
+        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
+           valkey-cli --tls \\\n  \
+           -h {valkey_endpoint} \\\n  \
+           --user <DATABASE NAME>"
+    );
     Ok(())
 }
 
