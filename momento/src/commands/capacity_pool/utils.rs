@@ -139,6 +139,26 @@ pub struct CapacityPoolResponse {
     pub extra_fields: serde_json::Map<String, serde_json::Value>,
 }
 
+impl CapacityPoolResponse {
+    /// If provisioning bounds change, then target changes as needed on *next* reconciler tick.
+    /// Until then, hide the target for clarity.
+    pub fn hide_lagging_target(&mut self, provisioning_update: CapacityPoolProvisioningUpdate) {
+        if let CapacityPoolProvisioningUpdate::Flex {
+            capacity,
+            replication,
+            ..
+        } = provisioning_update
+        {
+            if capacity.is_some() {
+                self.allocation.target_capacity_gib = None;
+            }
+            if replication.is_some() {
+                self.allocation.target_replicas_per_shard = None;
+            }
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ListCapacityPoolsResponse {
     pub capacity_pools: Vec<CapacityPoolResponse>,
