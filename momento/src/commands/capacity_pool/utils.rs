@@ -168,10 +168,11 @@ pub fn determine_provisioning(
             zones,
         }),
         _ => {
-            return Err(CliError::new(
-                "pass either --instance-type with --shard-count (cluster mode) \
-                 or --capacity-gib (flex mode)",
-            ));
+            let shared_args = "--replicas-per-shard\n--zones";
+            return Err(CliError::new(format!(
+                "\nFor cluster mode, pass all of:\n--instance-type\n--shard-count\n{shared_args}\n\n\
+                 For flex mode, pass all of:\n--capacity-gib\n{shared_args}"
+            )));
         }
     };
     Ok(provisioning)
