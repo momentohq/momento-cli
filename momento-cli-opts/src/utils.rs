@@ -1,3 +1,5 @@
+use std::num::IntErrorKind;
+
 use chrono::NaiveDate;
 
 #[derive(Debug, Clone, Copy)]
@@ -12,10 +14,10 @@ pub fn parse_bounds(s: &str) -> Result<Bounds, String> {
         Some(parts) => parts,
     };
     let parse = |bound: &str| {
-        bound
-            .trim()
-            .parse::<u32>()
-            .map_err(|_| format!("`{bound}` is not a number; expected `N` (pinned) or `MIN..MAX`"))
+        bound.trim().parse::<u32>().map_err(|err| match err.kind() {
+            IntErrorKind::PosOverflow => format!("'{bound}' is too large (larger than {})", u32::MAX),
+            &_ => format!("'{bound}' is not a whole number; expected whole number `N` (pinned) or whole numbers `MIN..MAX`"),
+        })
     };
     let bounds = Bounds {
         min: parse(min)?,
