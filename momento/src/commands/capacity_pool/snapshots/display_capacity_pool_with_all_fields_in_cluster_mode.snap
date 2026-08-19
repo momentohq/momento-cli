@@ -4,7 +4,7 @@ expression: response.to_string()
 ---
 Name: hello world
 Status: creating
-Explicit Provisioning:
+Cluster Provisioning:
 - EC2 Instance Type: r7g.xlarge
 - Shard Count: 3
 - Replicas: 1 per shard

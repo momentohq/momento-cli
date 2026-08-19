@@ -4,7 +4,7 @@ expression: response.to_string()
 ---
 Name: hello world
 Status: creating
-Managed Provisioning:
+Flex Provisioning:
 - Capacity: 32..128 GiB
 - Replicas: 1..2 per shard
 - Availability Zones: use1-az1, use1-az2

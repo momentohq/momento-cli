@@ -1,13 +1,13 @@
 use super::utils::{
     CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics, CapacityPoolProvisioning,
-    CapacityPoolResponse, ManagedProvisioning,
+    CapacityPoolResponse, FlexProvisioning,
 };
 
 use chrono::prelude::DateTime;
 use std::fmt;
 
-fn format_managed_provisioning(
-    provisioning: &ManagedProvisioning,
+fn format_flex_provisioning(
+    provisioning: &FlexProvisioning,
     current_capacity_gib: Option<u32>,
     current_replicas_per_shard: Option<u32>,
 ) -> String {
@@ -136,22 +136,22 @@ impl fmt::Display for CapacityPoolResponse {
             f,
             "\n{}",
             match &self.provisioning {
-                CapacityPoolProvisioning::Explicit {
+                CapacityPoolProvisioning::Cluster {
                     instance_type,
                     shard_count,
                     replicas_per_shard,
                     zones,
                 } => format!(
-                    "Explicit Provisioning:\n\
+                    "Cluster Provisioning:\n\
                      - EC2 Instance Type: {instance_type}\n\
                      - Shard Count: {shard_count}\n\
                      - Replicas: {replicas_per_shard} per shard\n\
                      - Availability Zones: {}",
                     zones.join(", "),
                 ),
-                CapacityPoolProvisioning::Managed(provisioning) => format!(
-                    "Managed Provisioning:\n{}",
-                    format_managed_provisioning(
+                CapacityPoolProvisioning::Flex(provisioning) => format!(
+                    "Flex Provisioning:\n{}",
+                    format_flex_provisioning(
                         provisioning,
                         self.current_capacity_gib,
                         self.current_replicas_per_shard
@@ -216,8 +216,8 @@ mod tests {
     }
 
     #[test]
-    fn test_format_managed_provisioning_with_current_values() {
-        let provisioning = ManagedProvisioning {
+    fn test_format_flex_provisioning_with_current_values() {
+        let provisioning = FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
                 max_gib: 128,
@@ -230,11 +230,7 @@ mod tests {
         };
 
         snapshot_settings().bind(|| {
-            insta::assert_snapshot!(format_managed_provisioning(
-                &provisioning,
-                Some(40),
-                Some(2)
-            ))
+            insta::assert_snapshot!(format_flex_provisioning(&provisioning, Some(40), Some(2)))
         });
     }
 
@@ -315,8 +311,8 @@ mod tests {
     }
 
     #[test]
-    fn test_display_capacity_pool_with_all_managed_fields() {
-        let provisioning = CapacityPoolProvisioning::Managed(ManagedProvisioning {
+    fn test_display_capacity_pool_with_all_fields_in_flex_mode() {
+        let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
                 max_gib: 128,
@@ -371,8 +367,8 @@ mod tests {
     }
 
     #[test]
-    fn test_display_capacity_pool_with_no_current_values_in_managed_mode() {
-        let provisioning = CapacityPoolProvisioning::Managed(ManagedProvisioning {
+    fn test_display_capacity_pool_with_no_current_values_in_flex_mode() {
+        let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
                 max_gib: 128,
@@ -411,8 +407,8 @@ mod tests {
     }
 
     #[test]
-    fn test_display_capacity_pool_with_all_explicit_fields() {
-        let provisioning = CapacityPoolProvisioning::Explicit {
+    fn test_display_capacity_pool_with_all_fields_in_cluster_mode() {
+        let provisioning = CapacityPoolProvisioning::Cluster {
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
@@ -467,7 +463,7 @@ mod tests {
 
     #[test]
     fn test_display_capacity_pool_with_empty_diagnostics() {
-        let provisioning = CapacityPoolProvisioning::Explicit {
+        let provisioning = CapacityPoolProvisioning::Cluster {
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
@@ -492,7 +488,7 @@ mod tests {
 
     #[test]
     fn test_display_capacity_pool_with_no_diagnostics() {
-        let provisioning = CapacityPoolProvisioning::Explicit {
+        let provisioning = CapacityPoolProvisioning::Cluster {
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
@@ -517,7 +513,7 @@ mod tests {
 
     #[test]
     fn test_display_capacity_pool_with_no_additional_fields() {
-        let provisioning = CapacityPoolProvisioning::Explicit {
+        let provisioning = CapacityPoolProvisioning::Cluster {
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
