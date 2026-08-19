@@ -398,10 +398,7 @@ pub enum FunctionCommand {
 
 #[derive(Debug, Parser)]
 pub enum CapacityPoolCommand {
-    #[command(
-    about = "Create a Momento capacity pool",
-    group(clap::ArgGroup::new("mode").required(true)),
-    )]
+    #[command(about = "Create a Momento capacity pool")]
     Create {
         #[arg(
             long,
@@ -413,15 +410,12 @@ pub enum CapacityPoolCommand {
         name: String,
         #[arg(
             long,
-            group = "mode",
-            requires = "shard_count",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Cluster mode: EC2 instance type backing the pool's cluster"
         )]
         instance_type: Option<String>,
         #[arg(
             long,
-            requires = "instance_type",
             value_parser = value_parser!(u32).range(1..),
             help = "Cluster mode: number of shards in the backing cluster"
         )]
@@ -435,7 +429,6 @@ pub enum CapacityPoolCommand {
         replicas_per_shard: Bounds,
         #[arg(
             long,
-            group = "mode",
             value_parser = parse_positive_bounds,
             help = "Flex mode: capacity bounds in GiB — `500` pins, \
                     `100..500` lets Momento auto-scale within the range"
