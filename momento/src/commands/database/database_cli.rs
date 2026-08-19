@@ -7,14 +7,15 @@ use http::Method;
 use serde_json;
 
 pub async fn create_database(
-    endpoint: String,
+    momento_endpoint: String,
+    valkey_endpoint: String,
     auth_token: String,
     pool_name: String,
     database_name: String,
 ) -> Result<(), CliError> {
     match call_database_api(
         Method::POST,
-        endpoint.clone(),
+        momento_endpoint,
         auth_token,
         database_name.clone(),
         Some(serde_json::json!({
@@ -41,7 +42,7 @@ pub async fn create_database(
     console_data!(
         "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
            valkey-cli --tls \\\n  \
-           -h {endpoint} \\\n  \
+           -h {valkey_endpoint} \\\n  \
            --user {database_name}"
     );
     Ok(())

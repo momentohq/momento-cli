@@ -10,13 +10,14 @@ use http::Method;
 use serde_json;
 
 pub async fn create_pool(
-    endpoint: String,
+    momento_endpoint: String,
+    valkey_endpoint: String,
     auth_token: String,
     name: String,
     provisioning: CapacityPoolProvisioning,
 ) -> Result<(), CliError> {
     let data = serde_json::json!({"provisioning": provisioning});
-    match call_pool_api(Method::POST, endpoint.clone(), auth_token, name, Some(data)).await? {
+    match call_pool_api(Method::POST, momento_endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!("Creating capacity pool!\n\n{pool}");
         }
@@ -28,7 +29,7 @@ pub async fn create_pool(
         }
     };
     console_data!("\nAfter you create a database, you can use the Valkey CLI to interact with your capacity pool:\n");
-    console_data!("{endpoint}");
+    console_data!("{valkey_endpoint}");
     Ok(())
 }
 

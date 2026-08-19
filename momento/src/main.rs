@@ -360,6 +360,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
                 let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+                let cache_endpoint = api_endpoint
+                    .strip_prefix("https://api.")
+                    .map(String::from)
+                    .unwrap_or(api_endpoint.clone()); // TODO get this directly from SDK
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
@@ -380,6 +384,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )?;
                         commands::capacity_pool::pool_cli::create_pool(
                             api_endpoint,
+                            cache_endpoint,
                             auth_token,
                             name,
                             provisioning,
@@ -450,12 +455,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
                 let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+                let cache_endpoint = api_endpoint
+                    .strip_prefix("https://api.")
+                    .map(String::from)
+                    .unwrap_or(api_endpoint.clone()); // TODO get this directly from SDK
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
                     momento_cli_opts::DatabaseCommand::Create { pool_name, name } => {
                         commands::database::database_cli::create_database(
                             api_endpoint,
+                            cache_endpoint,
                             auth_token,
                             pool_name,
                             name,
