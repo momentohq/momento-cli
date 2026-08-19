@@ -359,11 +359,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let (creds, _) = get_creds_and_config(&args.profile).await?;
                 let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
-                let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+                let api_endpoint = credential_provider.cache_http_endpoint();
                 let cache_endpoint = api_endpoint
                     .strip_prefix("https://api.")
-                    .map(String::from)
-                    .unwrap_or(api_endpoint.clone()); // TODO get this directly from SDK
+                    .unwrap_or(api_endpoint); // TODO get this directly from SDK
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
@@ -454,11 +453,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let (creds, _) = get_creds_and_config(&args.profile).await?;
                 let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
-                let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+                let api_endpoint = credential_provider.cache_http_endpoint();
                 let cache_endpoint = api_endpoint
                     .strip_prefix("https://api.")
-                    .map(String::from)
-                    .unwrap_or(api_endpoint.clone()); // TODO get this directly from SDK
+                    .unwrap_or(api_endpoint); // TODO get this directly from SDK
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {

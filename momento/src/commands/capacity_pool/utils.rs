@@ -248,7 +248,7 @@ pub fn determine_provisioning_update(
     Ok(update)
 }
 
-fn build_request_url(endpoint: String, pool_name: Option<String>) -> String {
+fn build_request_url(endpoint: &str, pool_name: Option<String>) -> String {
     match pool_name {
         None => format!("{endpoint}/capacity_pool"),
         Some(name) => format!("{endpoint}/capacity_pool/{name}"),
@@ -257,7 +257,7 @@ fn build_request_url(endpoint: String, pool_name: Option<String>) -> String {
 
 pub async fn call_pool_api(
     method: Method,
-    endpoint: String,
+    endpoint: &str,
     auth_token: String,
     pool_name: String,
     data: Option<serde_json::Value>,
@@ -273,7 +273,7 @@ pub async fn call_pool_api(
 }
 
 pub async fn call_pool_delete_api(
-    endpoint: String,
+    endpoint: &str,
     auth_token: String,
     pool_name: String,
 ) -> Result<String, CliError> {
@@ -288,7 +288,7 @@ pub async fn call_pool_delete_api(
 }
 
 pub async fn call_pool_list_api(
-    endpoint: String,
+    endpoint: &str,
     auth_token: String,
 ) -> Result<MomentoHttpResponse<ListCapacityPoolsResponse>, CliError> {
     call_momento_http_api(

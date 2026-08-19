@@ -10,8 +10,8 @@ use http::Method;
 use serde_json;
 
 pub async fn create_pool(
-    momento_endpoint: String,
-    valkey_endpoint: String,
+    momento_endpoint: &str,
+    valkey_endpoint: &str,
     auth_token: String,
     name: String,
     provisioning: CapacityPoolProvisioning,
@@ -33,11 +33,7 @@ pub async fn create_pool(
     Ok(())
 }
 
-pub async fn get_status(
-    endpoint: String,
-    auth_token: String,
-    name: String,
-) -> Result<(), CliError> {
+pub async fn get_status(endpoint: &str, auth_token: String, name: String) -> Result<(), CliError> {
     match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(pool) => {
             console_data!("{}", pool.status);
@@ -50,7 +46,7 @@ pub async fn get_status(
 }
 
 pub async fn describe_pool(
-    endpoint: String,
+    endpoint: &str,
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
@@ -66,7 +62,7 @@ pub async fn describe_pool(
 }
 
 pub async fn update_pool(
-    endpoint: String,
+    endpoint: &str,
     auth_token: String,
     name: String,
     provisioning_update: CapacityPoolProvisioningUpdate,
@@ -87,11 +83,7 @@ pub async fn update_pool(
     Ok(())
 }
 
-pub async fn delete_pool(
-    endpoint: String,
-    auth_token: String,
-    name: String,
-) -> Result<(), CliError> {
+pub async fn delete_pool(endpoint: &str, auth_token: String, name: String) -> Result<(), CliError> {
     let response_text = call_pool_delete_api(endpoint, auth_token, name.clone()).await?;
     console_data!("Deleting capacity pool {name}!");
     if !response_text.is_empty() {
@@ -100,7 +92,7 @@ pub async fn delete_pool(
     Ok(())
 }
 
-pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliError> {
+pub async fn list_pools(endpoint: &str, auth_token: String) -> Result<(), CliError> {
     let response = call_pool_list_api(endpoint, auth_token).await?;
     match response {
         Parsed(ListCapacityPoolsResponse {

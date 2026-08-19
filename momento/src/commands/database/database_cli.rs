@@ -7,8 +7,8 @@ use http::Method;
 use serde_json;
 
 pub async fn create_database(
-    momento_endpoint: String,
-    valkey_endpoint: String,
+    momento_endpoint: &str,
+    valkey_endpoint: &str,
     auth_token: String,
     pool_name: String,
     database_name: String,
@@ -49,7 +49,7 @@ pub async fn create_database(
 }
 
 pub async fn describe_database(
-    endpoint: String,
+    endpoint: &str,
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
@@ -72,7 +72,7 @@ pub async fn describe_database(
 }
 
 pub async fn delete_database(
-    endpoint: String,
+    endpoint: &str,
     auth_token: String,
     database_name: String,
 ) -> Result<(), CliError> {
@@ -82,7 +82,7 @@ pub async fn delete_database(
     Ok(())
 }
 
-pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), CliError> {
+pub async fn list_databases(endpoint: &str, auth_token: String) -> Result<(), CliError> {
     let response = call_database_list_api(endpoint, auth_token).await?;
     match response {
         Parsed(ListDatabasesResponse {
