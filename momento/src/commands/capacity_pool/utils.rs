@@ -152,12 +152,7 @@ pub fn determine_provisioning(
     capacity_gib: Option<Bounds>,
     zones: Vec<String>,
 ) -> Result<CapacityPoolProvisioning, CliError> {
-    let shared_args = "--replicas-per-shard\n--zones";
-    let help_text = format!(
-        "For cluster mode, pass:\n--instance-type\n--shard-count\n{shared_args}\n\n\
-         For flex mode, pass:\n--capacity-gib\n{shared_args}"
-    );
-    let provisioning = match ((instance_type, shard_count), capacity_gib) {
+    let provisioning = match ((instance_type.clone(), shard_count), capacity_gib) {
         ((Some(instance_type), Some(shard_count)), None) => {
             let replicas_per_shard = pinned(replicas_per_shard)?;
             CapacityPoolProvisioning::Cluster {
@@ -172,24 +167,24 @@ pub fn determine_provisioning(
             replication: ReplicationBounds::from(replicas_per_shard),
             zones,
         }),
-        ((Some(_), None), None) => {
+        _ => {
+            let shared_args = "--replicas-per-shard\n--zones";
+            let help_text = format!(
+                "For cluster mode, pass:\n--instance-type\n--shard-count\n{shared_args}\n\n\
+                 For flex mode, pass:\n--capacity-gib\n{shared_args}"
+            );
             return Err(CliError::new(format!(
-                "Missing --shard-count.\n\n{help_text}"
-            )));
-        }
-        ((None, Some(_)), None) => {
-            return Err(CliError::new(format!(
-                "Missing --instance-type.\n\n{help_text}"
-            )));
-        }
-        ((None, None), None) => {
-            return Err(CliError::new(format!(
-                "Missing argument(s).\n\n{help_text}"
-            )));
-        }
-        ((Some(_), _), Some(_)) | ((_, Some(_)), Some(_)) => {
-            return Err(CliError::new(format!(
-                "Conflicting arguments.\n\n{help_text}"
+                "{}\n\n{help_text}",
+                match ((instance_type, shard_count), capacity_gib) {
+                    ((Some(_), None), None) => "Missing --shard-count.",
+                    ((None, Some(_)), None) => "Missing --instance-type.",
+                    ((None, None), None) => "Missing argument(s).",
+                    ((Some(_), _), Some(_)) | ((_, Some(_)), Some(_)) => "Conflicting arguments.",
+                    ((Some(_), Some(_)), None) | ((None, None), Some(_)) => {
+                        // This should never happen; valid combination that should have been identified earlier.
+                        "Sorry, something went wrong!"
+                    }
+                }
             )));
         }
     };
