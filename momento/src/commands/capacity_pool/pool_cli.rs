@@ -3,7 +3,10 @@ use super::utils::{
     CapacityPoolProvisioningUpdate,
 };
 use crate::commands::capacity_pool::utils::ListCapacityPoolsResponse;
-use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::commands::utils::{
+    print_valkey_cli_sample,
+    MomentoHttpResponse::{Parsed, Unparseable},
+};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
@@ -29,12 +32,7 @@ pub async fn create_pool(
         }
     };
     console_data!("\nNow you can create a database, export your API key from ~/.momento/credentials, then use the Valkey CLI:\n");
-    console_data!(
-        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
-           valkey-cli --tls \\\n  \
-           -h {valkey_endpoint} \\\n  \
-           --user <DATABASE NAME>"
-    );
+    print_valkey_cli_sample(valkey_endpoint, "<DATABASE NAME>");
     Ok(())
 }
 
@@ -65,12 +63,7 @@ pub async fn describe_pool(
         }
     };
     console_data!("\nExport your API key from ~/.momento/credentials and use the Valkey CLI to interact with any database:\n");
-    console_data!(
-        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
-           valkey-cli --tls \\\n  \
-           -h {valkey_endpoint} \\\n  \
-           --user <DATABASE NAME>"
-    );
+    print_valkey_cli_sample(valkey_endpoint, "<DATABASE NAME>");
     Ok(())
 }
 

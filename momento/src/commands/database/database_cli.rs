@@ -1,6 +1,9 @@
 use super::utils::{call_database_api, call_database_delete_api, call_database_list_api};
 use crate::commands::database::utils::ListDatabasesResponse;
-use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::commands::utils::{
+    print_valkey_cli_sample,
+    MomentoHttpResponse::{Parsed, Unparseable},
+};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
@@ -39,12 +42,7 @@ pub async fn create_database(
         }
     };
     console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
-    console_data!(
-        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
-           valkey-cli --tls \\\n  \
-           -h {valkey_endpoint} \\\n  \
-           --user {database_name}"
-    );
+    print_valkey_cli_sample(valkey_endpoint, &database_name);
     Ok(())
 }
 
@@ -73,12 +71,7 @@ pub async fn describe_database(
             }
         };
     console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
-    console_data!(
-        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
-           valkey-cli --tls \\\n  \
-           -h {valkey_endpoint} \\\n  \
-           --user {database_name}"
-    );
+    print_valkey_cli_sample(valkey_endpoint, &database_name);
     Ok(())
 }
 
