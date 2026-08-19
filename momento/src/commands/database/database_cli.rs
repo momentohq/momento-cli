@@ -49,25 +49,36 @@ pub async fn create_database(
 }
 
 pub async fn describe_database(
-    endpoint: &str,
+    momento_endpoint: &str,
+    valkey_endpoint: &str,
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
-    match call_database_api(Method::GET, endpoint, auth_token, name, None).await? {
-        Parsed(database) => {
-            console_data!(
-                "Your database:\n\nName: {}\nCapacity Pool: {}",
-                database.name,
-                database.pool_name
-            );
-        }
-        Unparseable(response_text) => {
-            console_data!("Your database:");
-            if !response_text.is_empty() {
-                console_data!("\n\n{response_text}");
+    let database_name =
+        match call_database_api(Method::GET, momento_endpoint, auth_token, name, None).await? {
+            Parsed(database) => {
+                console_data!(
+                    "Your database:\n\nName: {}\nCapacity Pool: {}",
+                    database.name,
+                    database.pool_name
+                );
+                database.name
             }
-        }
-    };
+            Unparseable(response_text) => {
+                console_data!("Your database:");
+                if !response_text.is_empty() {
+                    console_data!("\n\n{response_text}");
+                }
+                "<DATABASE NAME>".to_string()
+            }
+        };
+    console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
+    console_data!(
+        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
+           valkey-cli --tls \\\n  \
+           -h {valkey_endpoint} \\\n  \
+           --user {database_name}"
+    );
     Ok(())
 }
 

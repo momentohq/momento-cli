@@ -401,6 +401,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     momento_cli_opts::CapacityPoolCommand::Describe { name } => {
                         commands::capacity_pool::pool_cli::describe_pool(
                             api_endpoint,
+                            cache_endpoint,
                             auth_token,
                             name,
                         )
@@ -473,6 +474,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     momento_cli_opts::DatabaseCommand::Describe { name } => {
                         commands::database::database_cli::describe_database(
                             api_endpoint,
+                            cache_endpoint,
                             auth_token,
                             name,
                         )

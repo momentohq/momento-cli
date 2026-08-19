@@ -51,11 +51,12 @@ pub async fn get_status(endpoint: &str, auth_token: String, name: String) -> Res
 }
 
 pub async fn describe_pool(
-    endpoint: &str,
+    momento_endpoint: &str,
+    valkey_endpoint: &str,
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
-    match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
+    match call_pool_api(Method::GET, momento_endpoint, auth_token, name, None).await? {
         Parsed(pool) => {
             console_data!("Your capacity pool:\n\n{pool}");
         }
@@ -63,6 +64,13 @@ pub async fn describe_pool(
             console_data!("Your capacity pool:\n\n{response_text}");
         }
     };
+    console_data!("\nExport your API key from ~/.momento/credentials and use the Valkey CLI to interact with any database:\n");
+    console_data!(
+        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
+           valkey-cli --tls \\\n  \
+           -h {valkey_endpoint} \\\n  \
+           --user <DATABASE NAME>"
+    );
     Ok(())
 }
 
