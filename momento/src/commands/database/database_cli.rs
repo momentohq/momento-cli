@@ -25,13 +25,16 @@ pub async fn create_database(
     {
         Parsed(database) => {
             console_data!(
-                "Creating database! Name: {}, Capacity Pool: {}",
+                "Creating database!\n\nName: {}\nCapacity Pool: {}",
                 database.name,
                 database.pool_name,
             );
         }
         Unparseable(response_text) => {
-            console_data!("Creating database! {response_text}");
+            console_data!("Creating database!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
         }
     };
     console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
@@ -52,13 +55,16 @@ pub async fn describe_database(
     match call_database_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(database) => {
             console_data!(
-                "Your database:\nName: {}, Capacity Pool: {}",
+                "Your database:\n\nName: {}\nCapacity Pool: {}",
                 database.name,
                 database.pool_name
             );
         }
         Unparseable(response_text) => {
-            console_data!("Your database:\n{response_text}");
+            console_data!("Your database:");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
         }
     };
     Ok(())
@@ -87,7 +93,7 @@ pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), 
                 console_data!("Databases:");
                 databases_list.iter().for_each(|database| {
                     console_data!(
-                        "\nName: {}, Capacity Pool: {}",
+                        "\nName: {}\nCapacity Pool: {}",
                         database.name,
                         database.pool_name
                     );
@@ -95,7 +101,7 @@ pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), 
             }
         }
         Unparseable(response_text) => {
-            console_data!("Listing databases:\n{response_text}");
+            console_data!("Listing databases:\n\n{response_text}");
         }
     };
     Ok(())
