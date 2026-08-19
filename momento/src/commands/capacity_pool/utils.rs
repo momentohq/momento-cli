@@ -115,15 +115,26 @@ impl From<serde_json::Value> for CapacityPoolDiagnosticEntry {
 pub struct CapacityPoolDiagnostics(pub Vec<CapacityPoolDiagnosticEntry>);
 
 #[derive(Debug, Deserialize)]
+pub struct FlexAllocation {
+    /// The capacity the pool demonstrably provided in its last settled state.
+    pub current_capacity_gib: Option<u32>,
+    /// The replication the pool demonstrably provided in its last settled state.
+    pub current_replicas_per_shard: Option<u32>,
+    /// The capacity this pool is converging to; equal to current_capacity_gib except while a scale is in flight.
+    pub target_capacity_gib: Option<u32>,
+    /// The replication the pool is converging to; equal to current_replicas_per_shard except while a scale is in flight.
+    pub target_replicas_per_shard: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CapacityPoolResponse {
     pub name: String,
     pub status: String,
     pub provisioning: CapacityPoolProvisioning,
     pub diagnostics: Option<CapacityPoolDiagnostics>,
-    /// Flex-/managed-mode pools only: the capacity the pool concretely has right now.
-    pub current_capacity_gib: Option<u32>,
-    /// Flex-/managed-mode pools only: the replication the pool concretely has right now.
-    pub current_replicas_per_shard: Option<u32>,
+    #[serde(flatten)]
+    /// Flex-/managed-mode pools only
+    pub allocation: FlexAllocation,
     #[serde(flatten)]
     pub extra_fields: serde_json::Map<String, serde_json::Value>,
 }
@@ -575,8 +586,8 @@ mod tests {
         assert_eq!(1, provisioning.replication.min_replicas_per_shard);
         assert_eq!(2, provisioning.replication.max_replicas_per_shard);
         assert_eq!(vec!["use1-az1", "use1-az2"], provisioning.zones);
-        assert_eq!(Some(40), pool.current_capacity_gib);
-        assert_eq!(Some(2), pool.current_replicas_per_shard);
+        assert_eq!(Some(40), pool.allocation.current_capacity_gib);
+        assert_eq!(Some(2), pool.allocation.current_replicas_per_shard);
 
         assert_eq!(
             vec![CapacityPoolDiagnosticEntry::Parsed {
@@ -640,8 +651,8 @@ mod tests {
         assert_eq!(3, *shard_count);
         assert_eq!(1, *replicas_per_shard);
         assert_eq!(vec!["use1-az3", "use1-az4", "use1-az5"], *zones);
-        assert_eq!(None, pool.current_capacity_gib);
-        assert_eq!(None, pool.current_replicas_per_shard);
+        assert_eq!(None, pool.allocation.current_capacity_gib);
+        assert_eq!(None, pool.allocation.current_replicas_per_shard);
 
         assert_eq!(
             vec![CapacityPoolDiagnosticEntry::Parsed {
@@ -703,8 +714,8 @@ mod tests {
         assert_eq!(&3, shard_count);
         assert_eq!(&1, replicas_per_shard);
         assert_eq!(&vec!["use1-az1".to_string()], zones);
-        assert_eq!(None, pool.current_capacity_gib);
-        assert_eq!(None, pool.current_replicas_per_shard);
+        assert_eq!(None, pool.allocation.current_capacity_gib);
+        assert_eq!(None, pool.allocation.current_replicas_per_shard);
 
         assert_eq!(
             field_map([
@@ -759,8 +770,8 @@ mod tests {
         assert_eq!(&3, shard_count);
         assert_eq!(&1, replicas_per_shard);
         assert_eq!(&vec!["use1-az1".to_string()], zones);
-        assert_eq!(None, pool.current_capacity_gib);
-        assert_eq!(None, pool.current_replicas_per_shard);
+        assert_eq!(None, pool.allocation.current_capacity_gib);
+        assert_eq!(None, pool.allocation.current_replicas_per_shard);
 
         assert_eq!(
             field_map([
@@ -814,8 +825,8 @@ mod tests {
         assert_eq!(&3, shard_count);
         assert_eq!(&1, replicas_per_shard);
         assert_eq!(&vec!["use1-az1".to_string()], zones);
-        assert_eq!(None, pool.current_capacity_gib);
-        assert_eq!(None, pool.current_replicas_per_shard);
+        assert_eq!(None, pool.allocation.current_capacity_gib);
+        assert_eq!(None, pool.allocation.current_replicas_per_shard);
         assert_eq!(
             vec![CapacityPoolDiagnosticEntry::Parsed {
                 kind: "stuck".to_string(),
