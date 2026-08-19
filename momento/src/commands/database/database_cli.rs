@@ -14,9 +14,9 @@ pub async fn create_database(
 ) -> Result<(), CliError> {
     match call_database_api(
         Method::POST,
-        endpoint,
+        endpoint.clone(),
         auth_token,
-        database_name,
+        database_name.clone(),
         Some(serde_json::json!({
             "pool_name": pool_name
         })),
@@ -34,6 +34,13 @@ pub async fn create_database(
             console_data!("Creating database! {response_text}");
         }
     };
+    console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
+    console_data!(
+        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
+           valkey-cli --tls \\\n  \
+           -h {endpoint} \\\n  \
+           --user {database_name}"
+    );
     Ok(())
 }
 

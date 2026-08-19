@@ -16,7 +16,7 @@ pub async fn create_pool(
     provisioning: CapacityPoolProvisioning,
 ) -> Result<(), CliError> {
     let data = serde_json::json!({"provisioning": provisioning});
-    match call_pool_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
+    match call_pool_api(Method::POST, endpoint.clone(), auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!("Creating capacity pool!\n\n{pool}");
         }
@@ -27,6 +27,8 @@ pub async fn create_pool(
             }
         }
     };
+    console_data!("\nAfter you create a database, you can use the Valkey CLI to interact with your capacity pool:\n");
+    console_data!("{endpoint}");
     Ok(())
 }
 
