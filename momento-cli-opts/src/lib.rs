@@ -402,7 +402,7 @@ pub enum CapacityPoolCommand {
     about = "Create a Momento capacity pool",
     group(clap::ArgGroup::new("mode").required(true)),
     )]
-    CreatePool {
+    Create {
         #[arg(
             long,
             short = 'n',
@@ -465,7 +465,7 @@ pub enum CapacityPoolCommand {
         name: String,
     },
     #[command(about = "Get the details of your capacity pool")]
-    DescribePool {
+    Describe {
         #[arg(
             long,
             short,
@@ -483,7 +483,7 @@ pub enum CapacityPoolCommand {
     .multiple(true)
     ),
     )]
-    UpdatePool {
+    Update {
         #[arg(
             long,
             short,
@@ -543,7 +543,7 @@ pub enum CapacityPoolCommand {
         zones: Vec<String>,
     },
     #[command(about = "Delete a Momento capacity pool")]
-    DeletePool {
+    Delete {
         #[arg(
             long,
             short,
@@ -554,13 +554,13 @@ pub enum CapacityPoolCommand {
         name: String,
     },
     #[command(about = "List all your Momento capacity pools")]
-    ListPools {},
+    List {},
 }
 
 #[derive(Debug, Parser)]
 pub enum DatabaseCommand {
     #[command(about = "Create a Momento database")]
-    CreateDatabase {
+    Create {
         #[arg(
             long,
             short = 'n',
@@ -568,7 +568,7 @@ pub enum DatabaseCommand {
             help = "Name of the database you want to create",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
@@ -578,7 +578,7 @@ pub enum DatabaseCommand {
         pool_name: String,
     },
     #[command(about = "Get the details of your Momento database")]
-    DescribeDatabase {
+    Describe {
         #[arg(
             long,
             short = 'n',
@@ -586,10 +586,10 @@ pub enum DatabaseCommand {
             help = "Name of the database you want to describe",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
     },
     #[command(about = "Delete a Momento database")]
-    DeleteDatabase {
+    Delete {
         #[arg(
             long,
             short = 'n',
@@ -597,10 +597,10 @@ pub enum DatabaseCommand {
             help = "Name of the database you want to delete",
             value_name = "DATABASE"
         )]
-        database_name: String,
+        name: String,
     },
     #[command(about = "List all your Momento databases")]
-    ListDatabases {},
+    List {},
 }
 
 #[derive(Debug, Parser)]
