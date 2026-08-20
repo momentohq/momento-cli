@@ -1,0 +1,7 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: "format_flex_provisioning(&provisioning, &allocation)"
+---
+- Capacity: 32..128 GiB (currently 40, target 128)
+- Replicas: 1..2 per shard (currently 2, target 1)
+- Availability Zones: use1-az1

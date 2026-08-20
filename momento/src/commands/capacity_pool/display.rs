@@ -1,33 +1,41 @@
 use super::utils::{
     CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics, CapacityPoolProvisioning,
-    CapacityPoolResponse, FlexProvisioning,
+    CapacityPoolResponse, FlexAllocation, FlexProvisioning,
 };
 
 use chrono::prelude::DateTime;
 use std::fmt;
 
+fn annotate_allocation(range: String, current: Option<u32>, target: Option<u32>) -> String {
+    match (current, target) {
+        (None, None) => range,
+        (None, Some(target)) => format!("{range} (target {target})"),
+        (Some(current), None) => format!("{range} (currently {current})"),
+        (Some(current), Some(target)) => format!("{range} (currently {current}, target {target})"),
+    }
+}
+
 fn format_flex_provisioning(
     provisioning: &FlexProvisioning,
-    current_capacity_gib: Option<u32>,
-    current_replicas_per_shard: Option<u32>,
+    allocation: &FlexAllocation,
 ) -> String {
-    let capacity_range = format!(
-        "{}..{} GiB",
-        provisioning.capacity.min_gib, provisioning.capacity.max_gib
+    let capacity = annotate_allocation(
+        format!(
+            "{}..{} GiB",
+            provisioning.capacity.min_gib, provisioning.capacity.max_gib
+        ),
+        allocation.current_capacity_gib,
+        allocation.target_capacity_gib,
     );
-    let capacity = match current_capacity_gib {
-        None => capacity_range,
-        Some(capacity) => format!("{capacity_range} (currently {capacity})"),
-    };
-    let replication_range = format!(
-        "{}..{} per shard",
-        provisioning.replication.min_replicas_per_shard,
-        provisioning.replication.max_replicas_per_shard,
+    let replication = annotate_allocation(
+        format!(
+            "{}..{} per shard",
+            provisioning.replication.min_replicas_per_shard,
+            provisioning.replication.max_replicas_per_shard,
+        ),
+        allocation.current_replicas_per_shard,
+        allocation.target_replicas_per_shard,
     );
-    let replication = match current_replicas_per_shard {
-        None => replication_range,
-        Some(replicas) => format!("{replication_range} (currently {replicas})"),
-    };
     format!(
         "- Capacity: {capacity}\n\
          - Replicas: {replication}\n\
@@ -151,11 +159,7 @@ impl fmt::Display for CapacityPoolResponse {
                 ),
                 CapacityPoolProvisioning::Flex(provisioning) => format!(
                     "Flex Provisioning:\n{}",
-                    format_flex_provisioning(
-                        provisioning,
-                        self.current_capacity_gib,
-                        self.current_replicas_per_shard
-                    )
+                    format_flex_provisioning(provisioning, &self.allocation)
                 ),
             }
         )?;
@@ -228,10 +232,63 @@ mod tests {
             },
             zones: vec!["use1-az1".to_string()],
         };
+        let allocation = FlexAllocation {
+            current_capacity_gib: Some(40),
+            current_replicas_per_shard: Some(2),
+            target_capacity_gib: None,
+            target_replicas_per_shard: None,
+        };
 
-        snapshot_settings().bind(|| {
-            insta::assert_snapshot!(format_flex_provisioning(&provisioning, Some(40), Some(2)))
-        });
+        snapshot_settings()
+            .bind(|| insta::assert_snapshot!(format_flex_provisioning(&provisioning, &allocation)));
+    }
+
+    #[test]
+    fn test_format_flex_provisioning_with_target_values() {
+        let provisioning = FlexProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            zones: vec!["use1-az1".to_string()],
+        };
+        let allocation = FlexAllocation {
+            current_capacity_gib: None,
+            current_replicas_per_shard: None,
+            target_capacity_gib: Some(128),
+            target_replicas_per_shard: Some(1),
+        };
+
+        snapshot_settings()
+            .bind(|| insta::assert_snapshot!(format_flex_provisioning(&provisioning, &allocation)));
+    }
+
+    #[test]
+    fn test_format_flex_provisioning_with_current_and_target_values() {
+        let provisioning = FlexProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            zones: vec!["use1-az1".to_string()],
+        };
+        let allocation = FlexAllocation {
+            current_capacity_gib: Some(40),
+            current_replicas_per_shard: Some(2),
+            target_capacity_gib: Some(128),
+            target_replicas_per_shard: Some(1),
+        };
+
+        snapshot_settings()
+            .bind(|| insta::assert_snapshot!(format_flex_provisioning(&provisioning, &allocation)));
     }
 
     #[test]
@@ -354,8 +411,12 @@ mod tests {
             provisioning,
             status: "creating".to_string(),
             diagnostics: Some(diagnostics),
-            current_capacity_gib: Some(40),
-            current_replicas_per_shard: Some(2),
+            allocation: FlexAllocation {
+                current_capacity_gib: Some(40),
+                current_replicas_per_shard: Some(2),
+                target_capacity_gib: Some(128),
+                target_replicas_per_shard: Some(1),
+            },
             extra_fields: field_map([
                 ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
                 ("hello", json!("world")),
@@ -398,8 +459,12 @@ mod tests {
             status: "creating".to_string(),
             diagnostics: Some(diagnostics),
             // create-pool sends back only the requested ranges, no current/concrete values
-            current_capacity_gib: None,
-            current_replicas_per_shard: None,
+            allocation: FlexAllocation {
+                current_capacity_gib: None,
+                current_replicas_per_shard: None,
+                target_capacity_gib: None,
+                target_replicas_per_shard: None,
+            },
             extra_fields: field_map([("answer", json!(42))]),
         };
 
@@ -449,8 +514,12 @@ mod tests {
             provisioning,
             status: "creating".to_string(),
             diagnostics: Some(diagnostics),
-            current_capacity_gib: None,
-            current_replicas_per_shard: None,
+            allocation: FlexAllocation {
+                current_capacity_gib: None,
+                current_replicas_per_shard: None,
+                target_capacity_gib: None,
+                target_replicas_per_shard: None,
+            },
             extra_fields: field_map([
                 ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
                 ("hello", json!("world")),
@@ -474,8 +543,12 @@ mod tests {
             provisioning,
             status: "creating".to_string(),
             diagnostics: Some(CapacityPoolDiagnostics(vec![])),
-            current_capacity_gib: None,
-            current_replicas_per_shard: None,
+            allocation: FlexAllocation {
+                current_capacity_gib: None,
+                current_replicas_per_shard: None,
+                target_capacity_gib: None,
+                target_replicas_per_shard: None,
+            },
             extra_fields: field_map([
                 ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
                 ("hello", json!("world")),
@@ -499,8 +572,12 @@ mod tests {
             provisioning,
             status: "creating".to_string(),
             diagnostics: None,
-            current_capacity_gib: None,
-            current_replicas_per_shard: None,
+            allocation: FlexAllocation {
+                current_capacity_gib: None,
+                current_replicas_per_shard: None,
+                target_capacity_gib: None,
+                target_replicas_per_shard: None,
+            },
             extra_fields: field_map([
                 ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
                 ("hello", json!("world")),
@@ -537,8 +614,12 @@ mod tests {
             provisioning,
             status: "creating".to_string(),
             diagnostics: Some(diagnostics),
-            current_capacity_gib: None,
-            current_replicas_per_shard: None,
+            allocation: FlexAllocation {
+                current_capacity_gib: None,
+                current_replicas_per_shard: None,
+                target_capacity_gib: None,
+                target_replicas_per_shard: None,
+            },
             extra_fields: serde_json::Map::new(),
         };
 

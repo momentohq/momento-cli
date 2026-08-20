@@ -70,7 +70,8 @@ pub async fn update_pool(
 ) -> Result<(), CliError> {
     let data = serde_json::json!({"provisioning": provisioning_update});
     match call_pool_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
-        Parsed(pool) => {
+        Parsed(mut pool) => {
+            pool.hide_lagging_target(provisioning_update);
             console_data!("Updating capacity pool!\n\n{pool}");
         }
         Unparseable(response_text) => {

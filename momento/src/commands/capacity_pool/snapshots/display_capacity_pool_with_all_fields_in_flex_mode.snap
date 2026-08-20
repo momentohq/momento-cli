@@ -5,8 +5,8 @@ expression: response.to_string()
 Name: hello world
 Status: creating
 Flex Provisioning:
-- Capacity: 32..128 GiB (currently 40)
-- Replicas: 1..2 per shard (currently 2)
+- Capacity: 32..128 GiB (currently 40, target 128)
+- Replicas: 1..2 per shard (currently 2, target 1)
 - Availability Zones: use1-az1, use1-az2
 Diagnostics:
 - scale_blocked_by_utilization
