@@ -5,5 +5,6 @@ pub mod cloud_linter;
 pub mod configure;
 pub mod database;
 pub mod functions;
+pub mod preview_cache;
 pub mod topic;
 pub mod utils;

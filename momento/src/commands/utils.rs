@@ -1,20 +1,10 @@
 use crate::error::CliError;
-use crate::utils::console::console_data;
 
 use http::Method;
 use log::{info, warn};
 use reqwest;
 use serde::{de::DeserializeOwned, Deserialize};
 use std::fmt::Debug;
-
-pub fn print_valkey_cli_sample(valkey_hostname: String, database_name: &str) {
-    console_data!(
-        "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
-           valkey-cli --tls \\\n  \
-           -h {valkey_hostname} \\\n  \
-           --user {database_name}"
-    );
-}
 
 pub enum MomentoHttpData {
     Json(serde_json::Value),

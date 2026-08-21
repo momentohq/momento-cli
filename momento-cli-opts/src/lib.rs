@@ -740,6 +740,41 @@ https://github.com/momentohq/functions/"
         #[command(subcommand)]
         operation: DatabaseCommand,
     },
+    #[command(about = "**PREVIEW** Interact with your Momento caches")]
+    Cache {
+        #[arg(
+            long,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[arg(
+            long = "name",
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to interact with",
+            value_name = "DATABASE"
+        )]
+        database_name: String,
+
+        #[arg(
+            trailing_var_arg = true,
+            required = true,
+            num_args = 1..,
+            help = "Valkey command you want to run, e.g. `SET answer 42`",
+            value_name = "VALKEY_COMMAND"
+        )]
+        command: Vec<String>,
+    },
 }
 
 #[derive(clap::ValueEnum, PartialEq, Eq, Debug, Clone, Copy)]

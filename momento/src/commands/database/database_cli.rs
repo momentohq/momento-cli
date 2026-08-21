@@ -1,26 +1,22 @@
 use super::utils::{call_database_api, call_database_delete_api, call_database_list_api};
 use crate::commands::database::utils::ListDatabasesResponse;
-use crate::commands::utils::{
-    print_valkey_cli_sample,
-    MomentoHttpResponse::{Parsed, Unparseable},
-};
+use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
 use serde_json;
 
 pub async fn create_database(
-    api_endpoint: String,
-    valkey_hostname: String,
+    endpoint: String,
     auth_token: String,
     pool_name: String,
     database_name: String,
 ) -> Result<(), CliError> {
     match call_database_api(
         Method::POST,
-        api_endpoint,
+        endpoint,
         auth_token,
-        database_name.clone(),
+        database_name,
         Some(serde_json::json!({
             "pool_name": pool_name
         })),
@@ -29,49 +25,35 @@ pub async fn create_database(
     {
         Parsed(database) => {
             console_data!(
-                "Creating database!\n\nName: {}\nCapacity Pool: {}",
+                "Creating database! Name: {}, Capacity Pool: {}",
                 database.name,
                 database.pool_name,
             );
         }
         Unparseable(response_text) => {
-            console_data!("Creating database!");
-            if !response_text.is_empty() {
-                console_data!("\n\n{response_text}");
-            }
+            console_data!("Creating database! {response_text}");
         }
     };
-    console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
-    print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
 
 pub async fn describe_database(
-    api_endpoint: String,
-    valkey_hostname: String,
+    endpoint: String,
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
-    let database_name =
-        match call_database_api(Method::GET, api_endpoint, auth_token, name, None).await? {
-            Parsed(database) => {
-                console_data!(
-                    "Your database:\n\nName: {}\nCapacity Pool: {}",
-                    database.name,
-                    database.pool_name
-                );
-                database.name
-            }
-            Unparseable(response_text) => {
-                console_data!("Your database:");
-                if !response_text.is_empty() {
-                    console_data!("\n\n{response_text}");
-                }
-                "<DATABASE NAME>".to_string()
-            }
-        };
-    console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
-    print_valkey_cli_sample(valkey_hostname, &database_name);
+    match call_database_api(Method::GET, endpoint, auth_token, name, None).await? {
+        Parsed(database) => {
+            console_data!(
+                "Your database:\nName: {}, Capacity Pool: {}",
+                database.name,
+                database.pool_name
+            );
+        }
+        Unparseable(response_text) => {
+            console_data!("Your database:\n{response_text}");
+        }
+    };
     Ok(())
 }
 
@@ -98,7 +80,7 @@ pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), 
                 console_data!("Databases:");
                 databases_list.iter().for_each(|database| {
                     console_data!(
-                        "\nName: {}\nCapacity Pool: {}",
+                        "\nName: {}, Capacity Pool: {}",
                         database.name,
                         database.pool_name
                     );
@@ -106,7 +88,7 @@ pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), 
             }
         }
         Unparseable(response_text) => {
-            console_data!("Listing databases:\n\n{response_text}");
+            console_data!("Listing databases:\n{response_text}");
         }
     };
     Ok(())
