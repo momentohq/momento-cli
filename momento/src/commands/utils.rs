@@ -7,11 +7,11 @@ use reqwest;
 use serde::{de::DeserializeOwned, Deserialize};
 use std::fmt::Debug;
 
-pub fn print_valkey_cli_sample(valkey_endpoint: &str, database_name: &str) {
+pub fn print_valkey_cli_sample(valkey_hostname: String, database_name: &str) {
     console_data!(
         "VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
            valkey-cli --tls \\\n  \
-           -h {valkey_endpoint} \\\n  \
+           -h {valkey_hostname} \\\n  \
            --user {database_name}"
     );
 }

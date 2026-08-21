@@ -17,7 +17,7 @@ pub struct ListDatabasesResponse {
     pub databases: Vec<DatabaseResponse>,
 }
 
-fn build_request_url(endpoint: &str, database_name: Option<String>) -> String {
+fn build_request_url(endpoint: String, database_name: Option<String>) -> String {
     match database_name {
         None => format!("{endpoint}/database"),
         Some(name) => format!("{endpoint}/database/{name}"),
@@ -26,7 +26,7 @@ fn build_request_url(endpoint: &str, database_name: Option<String>) -> String {
 
 pub async fn call_database_api(
     method: Method,
-    endpoint: &str,
+    endpoint: String,
     auth_token: String,
     database_name: String,
     data: Option<serde_json::Value>,
@@ -42,7 +42,7 @@ pub async fn call_database_api(
 }
 
 pub async fn call_database_delete_api(
-    endpoint: &str,
+    endpoint: String,
     auth_token: String,
     database_name: String,
 ) -> Result<String, CliError> {
@@ -57,7 +57,7 @@ pub async fn call_database_delete_api(
 }
 
 pub async fn call_database_list_api(
-    endpoint: &str,
+    endpoint: String,
     auth_token: String,
 ) -> Result<MomentoHttpResponse<ListDatabasesResponse>, CliError> {
     call_momento_http_api(

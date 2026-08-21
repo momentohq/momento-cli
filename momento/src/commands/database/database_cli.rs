@@ -10,15 +10,15 @@ use http::Method;
 use serde_json;
 
 pub async fn create_database(
-    momento_endpoint: &str,
-    valkey_endpoint: &str,
+    api_endpoint: String,
+    valkey_hostname: String,
     auth_token: String,
     pool_name: String,
     database_name: String,
 ) -> Result<(), CliError> {
     match call_database_api(
         Method::POST,
-        momento_endpoint,
+        api_endpoint,
         auth_token,
         database_name.clone(),
         Some(serde_json::json!({
@@ -42,18 +42,18 @@ pub async fn create_database(
         }
     };
     console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
-    print_valkey_cli_sample(valkey_endpoint, &database_name);
+    print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
 
 pub async fn describe_database(
-    momento_endpoint: &str,
-    valkey_endpoint: &str,
+    api_endpoint: String,
+    valkey_hostname: String,
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
     let database_name =
-        match call_database_api(Method::GET, momento_endpoint, auth_token, name, None).await? {
+        match call_database_api(Method::GET, api_endpoint, auth_token, name, None).await? {
             Parsed(database) => {
                 console_data!(
                     "Your database:\n\nName: {}\nCapacity Pool: {}",
@@ -71,12 +71,12 @@ pub async fn describe_database(
             }
         };
     console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
-    print_valkey_cli_sample(valkey_endpoint, &database_name);
+    print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
 
 pub async fn delete_database(
-    endpoint: &str,
+    endpoint: String,
     auth_token: String,
     database_name: String,
 ) -> Result<(), CliError> {
@@ -86,7 +86,7 @@ pub async fn delete_database(
     Ok(())
 }
 
-pub async fn list_databases(endpoint: &str, auth_token: String) -> Result<(), CliError> {
+pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), CliError> {
     let response = call_database_list_api(endpoint, auth_token).await?;
     match response {
         Parsed(ListDatabasesResponse {
