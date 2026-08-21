@@ -36,6 +36,13 @@ pub async fn run_valkey_command(
         &["--user", &database_name],
     ];
     let printable_command = build_printable_command(&options, subcommand.clone());
+    if let Err(_) = Command::new("valkey-cli").arg("--version").output() {
+        console_data!(
+            "Please install valkey-cli, then try again \
+             or run the command directly:\n\n{printable_command}"
+        );
+        return Ok(());
+    };
     info!("Running Valkey command:\n{printable_command}\n");
     match Command::new("valkey-cli")
         .args(options.iter().flat_map(|flag| flag.iter()))
