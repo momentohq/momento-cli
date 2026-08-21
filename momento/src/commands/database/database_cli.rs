@@ -1,5 +1,5 @@
 use super::utils::{call_database_api, call_database_delete_api, call_database_list_api};
-use crate::commands::database::utils::ListDatabasesResponse;
+use crate::commands::database::utils::{print_valkey_cli_sample, ListDatabasesResponse};
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
 
@@ -7,16 +7,17 @@ use http::Method;
 use serde_json;
 
 pub async fn create_database(
-    endpoint: String,
+    api_endpoint: String,
+    valkey_hostname: String,
     auth_token: String,
     pool_name: String,
     database_name: String,
 ) -> Result<(), CliError> {
     match call_database_api(
         Method::POST,
-        endpoint,
+        api_endpoint,
         auth_token,
-        database_name,
+        database_name.clone(),
         Some(serde_json::json!({
             "pool_name": pool_name
         })),
@@ -25,35 +26,47 @@ pub async fn create_database(
     {
         Parsed(database) => {
             console_data!(
-                "Creating database! Name: {}, Capacity Pool: {}",
+                "Creating database!\n\nName: {}\nCapacity Pool: {}",
                 database.name,
                 database.pool_name,
             );
         }
         Unparseable(response_text) => {
-            console_data!("Creating database! {response_text}");
+            console_data!("Creating database!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
         }
     };
+    print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
 
 pub async fn describe_database(
-    endpoint: String,
+    api_endpoint: String,
+    valkey_hostname: String,
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
-    match call_database_api(Method::GET, endpoint, auth_token, name, None).await? {
-        Parsed(database) => {
-            console_data!(
-                "Your database:\nName: {}, Capacity Pool: {}",
-                database.name,
-                database.pool_name
-            );
-        }
-        Unparseable(response_text) => {
-            console_data!("Your database:\n{response_text}");
-        }
-    };
+    let database_name =
+        match call_database_api(Method::GET, api_endpoint, auth_token, name, None).await? {
+            Parsed(database) => {
+                console_data!(
+                    "Your database:\n\nName: {}\nCapacity Pool: {}",
+                    database.name,
+                    database.pool_name
+                );
+                database.name
+            }
+            Unparseable(response_text) => {
+                console_data!("Your database:");
+                if !response_text.is_empty() {
+                    console_data!("\n\n{response_text}");
+                }
+                "<DATABASE NAME>".to_string()
+            }
+        };
+    print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
 
@@ -68,28 +81,42 @@ pub async fn delete_database(
     Ok(())
 }
 
-pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), CliError> {
-    let response = call_database_list_api(endpoint, auth_token).await?;
-    match response {
+pub async fn list_databases(
+    api_endpoint: String,
+    valkey_hostname: String,
+    auth_token: String,
+) -> Result<(), CliError> {
+    let response = call_database_list_api(api_endpoint, auth_token).await?;
+    let database_name = match response {
         Parsed(ListDatabasesResponse {
             databases: databases_list,
         }) => {
             if databases_list.is_empty() {
                 console_data!("No databases found");
+                None
             } else {
                 console_data!("Databases:");
                 databases_list.iter().for_each(|database| {
                     console_data!(
-                        "\nName: {}, Capacity Pool: {}",
+                        "\nName: {}\nCapacity Pool: {}",
                         database.name,
                         database.pool_name
                     );
                 });
+                if databases_list.len() == 1 {
+                    Some(databases_list[0].name.clone())
+                } else {
+                    Some("<DATABASE NAME>".to_string())
+                }
             }
         }
         Unparseable(response_text) => {
-            console_data!("Listing databases:\n{response_text}");
+            console_data!("Listing databases:\n\n{response_text}");
+            Some("<DATABASE NAME>".to_string())
         }
     };
+    if let Some(database_name) = database_name {
+        print_valkey_cli_sample(valkey_hostname, &database_name);
+    }
     Ok(())
 }

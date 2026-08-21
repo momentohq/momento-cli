@@ -1,8 +1,9 @@
 use crate::commands::utils::{
     call_momento_http_api, call_momento_http_api_raw, MomentoHttpData, MomentoHttpResponse,
 };
-
 use crate::error::CliError;
+use crate::utils::console::console_data;
+
 use http::Method;
 use serde::Deserialize;
 
@@ -68,4 +69,15 @@ pub async fn call_database_list_api(
         None,
     )
     .await
+}
+
+pub fn print_valkey_cli_sample(valkey_hostname: String, database_name: &str) {
+    console_data!(
+        "\nExport your API key from ~/.momento/credentials, then use your favorite RESP client:\n\
+        \n\
+         VALKEYCLI_AUTH=$MOMENTO_API_KEY \\\n  \
+           valkey-cli --tls \\\n  \
+           -h {valkey_hostname} \\\n  \
+           --user {database_name}"
+    );
 }

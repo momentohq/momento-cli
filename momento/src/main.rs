@@ -450,12 +450,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
                 let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+                let valkey_hostname = credential_provider.valkey_hostname().to_string();
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
                     momento_cli_opts::DatabaseCommand::Create { pool_name, name } => {
                         commands::database::database_cli::create_database(
                             api_endpoint,
+                            valkey_hostname,
                             auth_token,
                             pool_name,
                             name,
@@ -465,6 +467,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     momento_cli_opts::DatabaseCommand::Describe { name } => {
                         commands::database::database_cli::describe_database(
                             api_endpoint,
+                            valkey_hostname,
                             auth_token,
                             name,
                         )
@@ -479,8 +482,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         .await?
                     }
                     momento_cli_opts::DatabaseCommand::List {} => {
-                        commands::database::database_cli::list_databases(api_endpoint, auth_token)
-                            .await?
+                        commands::database::database_cli::list_databases(
+                            api_endpoint,
+                            valkey_hostname,
+                            auth_token,
+                        )
+                        .await?
                     }
                 }
             }
