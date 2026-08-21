@@ -360,7 +360,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
                 let api_endpoint = credential_provider.cache_http_endpoint().to_string();
-                let valkey_hostname = credential_provider.valkey_hostname().to_string();
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
@@ -381,7 +380,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )?;
                         commands::capacity_pool::pool_cli::create_pool(
                             api_endpoint,
-                            valkey_hostname,
                             auth_token,
                             name,
                             provisioning,
@@ -399,7 +397,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     momento_cli_opts::CapacityPoolCommand::Describe { name } => {
                         commands::capacity_pool::pool_cli::describe_pool(
                             api_endpoint,
-                            valkey_hostname,
                             auth_token,
                             name,
                         )

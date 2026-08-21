@@ -3,24 +3,20 @@ use super::utils::{
     CapacityPoolProvisioningUpdate,
 };
 use crate::commands::capacity_pool::utils::ListCapacityPoolsResponse;
-use crate::commands::utils::{
-    print_valkey_cli_sample,
-    MomentoHttpResponse::{Parsed, Unparseable},
-};
+use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
 use serde_json;
 
 pub async fn create_pool(
-    api_endpoint: String,
-    valkey_hostname: String,
+    endpoint: String,
     auth_token: String,
     name: String,
     provisioning: CapacityPoolProvisioning,
 ) -> Result<(), CliError> {
     let data = serde_json::json!({"provisioning": provisioning});
-    match call_pool_api(Method::POST, api_endpoint, auth_token, name, Some(data)).await? {
+    match call_pool_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!("Creating capacity pool!\n\n{pool}");
         }
@@ -31,8 +27,6 @@ pub async fn create_pool(
             }
         }
     };
-    console_data!("\nNow you can create a database, export your API key from ~/.momento/credentials, and use your favorite RESP client:\n");
-    print_valkey_cli_sample(valkey_hostname, "<DATABASE NAME>");
     Ok(())
 }
 
@@ -53,12 +47,11 @@ pub async fn get_status(
 }
 
 pub async fn describe_pool(
-    api_endpoint: String,
-    valkey_hostname: String,
+    endpoint: String,
     auth_token: String,
     name: String,
 ) -> Result<(), CliError> {
-    match call_pool_api(Method::GET, api_endpoint, auth_token, name, None).await? {
+    match call_pool_api(Method::GET, endpoint, auth_token, name, None).await? {
         Parsed(pool) => {
             console_data!("Your capacity pool:\n\n{pool}");
         }
@@ -66,10 +59,6 @@ pub async fn describe_pool(
             console_data!("Your capacity pool:\n\n{response_text}");
         }
     };
-    console_data!(
-        "\nExport your API key from ~/.momento/credentials, then use your favorite RESP client:\n"
-    );
-    print_valkey_cli_sample(valkey_hostname, "<DATABASE NAME>");
     Ok(())
 }
 

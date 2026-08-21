@@ -1,9 +1,6 @@
 use super::utils::{call_database_api, call_database_delete_api, call_database_list_api};
-use crate::commands::database::utils::ListDatabasesResponse;
-use crate::commands::utils::{
-    print_valkey_cli_sample,
-    MomentoHttpResponse::{Parsed, Unparseable},
-};
+use crate::commands::database::utils::{print_valkey_cli_sample, ListDatabasesResponse};
+use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
@@ -41,7 +38,6 @@ pub async fn create_database(
             }
         }
     };
-    console_data!("\nExport your API key from ~/.momento/credentials, then use the your favorite RESP client:\n");
     print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
@@ -70,9 +66,6 @@ pub async fn describe_database(
                 "<DATABASE NAME>".to_string()
             }
         };
-    console_data!(
-        "\nExport your API key from ~/.momento/credentials, then use your favorite RESP client:\n"
-    );
     print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
