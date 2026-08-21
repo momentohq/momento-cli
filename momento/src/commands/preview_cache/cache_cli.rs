@@ -65,7 +65,12 @@ pub async fn run_valkey_command(
             );
             match output.status.code() {
                 None => Ok(()),
-                Some(code) => exit(code),
+                Some(code) => {
+                    console_data!(
+                        "You can try running the command directly:\n\n{printable_command}"
+                    );
+                    exit(code)
+                }
             }
         }
         Err(err) => Err(CliError::new(format!("{err}"))),
