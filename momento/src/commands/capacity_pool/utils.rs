@@ -335,6 +335,567 @@ mod tests {
         serde_json::from_str(json).expect("should parse a capacity pool")
     }
 
+    fn bounds(min: u32, max: u32) -> Bounds {
+        Bounds { min, max }
+    }
+
+    fn strings<const N: usize>(values: [&str; N]) -> Vec<String> {
+        values.into_iter().map(String::from).collect()
+    }
+
+    fn assert_reason(err: &CliError, want: &str) {
+        assert_reason_for("", err, want);
+    }
+
+    fn assert_reason_for(test_case: &str, err: &CliError, want: &str) {
+        // first line only; don't compare to full, standardized help text
+        let reason = err.msg.lines().next().unwrap_or_default();
+        assert!(
+            reason.contains(want),
+            "{}expected first line to contain {want:?}; full message:\n{}",
+            if !test_case.is_empty() {
+                format!("{test_case}: ")
+            } else {
+                "".to_string()
+            },
+            err.msg
+        );
+    }
+
+    // ========== ========== ===========
+    // determine_provisioning (create)
+    // ========== ========== ===========
+
+    #[test]
+    fn test_determine_provisioning_in_cluster_mode() {
+        let provisioning = determine_provisioning(
+            Some("r7g.xlarge".to_string()),
+            Some(3),
+            bounds(2, 2),
+            None,
+            strings(["use1-az1", "use1-az2"]),
+        )
+        .expect("cluster-mode args should provision");
+
+        let CapacityPoolProvisioning::Cluster {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = provisioning
+        else {
+            panic!("expected cluster-mode provisioning, got {provisioning:?}");
+        };
+        assert_eq!("r7g.xlarge", instance_type);
+        assert_eq!(3, shard_count);
+        assert_eq!(2, replicas_per_shard);
+        assert_eq!(strings(["use1-az1", "use1-az2"]), zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_in_flex_mode() {
+        let provisioning = determine_provisioning(
+            None,
+            None,
+            bounds(1, 3),
+            Some(bounds(100, 500)),
+            strings(["use1-az1"]),
+        )
+        .expect("flex-mode args should provision");
+
+        let CapacityPoolProvisioning::Flex(flex) = provisioning else {
+            panic!("expected flex provisioning, got {provisioning:?}");
+        };
+        assert_eq!(100, flex.capacity.min_gib);
+        assert_eq!(500, flex.capacity.max_gib);
+        assert_eq!(1, flex.replication.min_replicas_per_shard);
+        assert_eq!(3, flex.replication.max_replicas_per_shard);
+        assert_eq!(strings(["use1-az1"]), flex.zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_requires_all_fields_in_cluster_mode() {
+        let err = determine_provisioning(
+            Some("r7g.xlarge".to_string()),
+            None,
+            bounds(2, 2),
+            None,
+            strings(["use1-az1"]),
+        )
+        .expect_err("--instance-type without --shard-count should be rejected");
+        assert_reason(&err, "Missing --shard-count");
+
+        let err = determine_provisioning(None, Some(3), bounds(2, 2), None, strings(["use1-az1"]))
+            .expect_err("--shard-count without --instance-type should be rejected");
+        assert_reason(&err, "Missing --instance-type");
+    }
+
+    #[test]
+    fn test_determine_provisioning_requires_mode() {
+        let err = determine_provisioning(None, None, bounds(2, 2), None, strings(["use1-az1"]))
+            .expect_err("no mode args at all should be rejected");
+
+        assert_reason(&err, "Missing arg");
+        assert!(
+            err.msg.contains("cluster") && err.msg.contains("flex"),
+            "error should name both modes, got: {}",
+            err.msg
+        );
+    }
+
+    #[test]
+    fn test_determine_provisioning_rejects_conflicting_fields() {
+        for (instance_type, shard_count) in [
+            (Some("r7g.xlarge".to_string()), None),
+            (None, Some(3)),
+            (Some("r7g.xlarge".to_string()), Some(3)),
+        ] {
+            let case = format!("instance_type={instance_type:?} shard_count={shard_count:?}");
+            let err = determine_provisioning(
+                instance_type,
+                shard_count,
+                bounds(2, 2),
+                Some(bounds(100, 500)),
+                strings(["use1-az1"]),
+            )
+            .expect_err(&format!("{case} with --capacity-gib should be rejected"));
+
+            assert_reason_for(&case, &err, "Conflicting arg");
+            assert!(
+                err.msg.contains("mode"),
+                "error should mention field(s) not matching mode, got: {}",
+                err.msg
+            );
+        }
+    }
+
+    #[test]
+    fn test_determine_provisioning_requires_pinned_replication_in_cluster_mode() {
+        let err = determine_provisioning(
+            Some("r7g.xlarge".to_string()),
+            Some(3),
+            bounds(1, 3),
+            None,
+            strings(["use1-az1"]),
+        )
+        .expect_err("a replication range should be rejected in cluster mode");
+
+        assert!(
+            err.msg.contains("--replicas-per-shard") && err.msg.contains("mode"),
+            "error should ask for a pinned --replicas-per-shard in this mode, got: {}",
+            err.msg
+        );
+    }
+
+    // ========== ========== ===========
+    // determine_provisioning_update, with --mode specified
+    // ========== ========== ===========
+
+    #[test]
+    fn test_determine_provisioning_update_in_cluster_mode_with_one_field() {
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Cluster),
+            None,
+            Some(5),
+            None,
+            None,
+            vec![],
+        )
+        .expect("a single cluster-mode field should be a valid update");
+
+        let CapacityPoolProvisioningUpdate::Cluster {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = update
+        else {
+            panic!("expected a cluster-mode update, got {update:?}");
+        };
+        assert_eq!(None, instance_type);
+        assert_eq!(Some(5), shard_count);
+        assert_eq!(None, replicas_per_shard);
+        assert_eq!(Vec::<String>::new(), zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_in_cluster_mode_with_all_fields() {
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Cluster),
+            Some("r7g.xlarge".to_string()),
+            Some(3),
+            Some(bounds(2, 2)),
+            None,
+            strings(["use1-az1", "use1-az2"]),
+        )
+        .expect("all cluster-mode fields should be a valid update");
+
+        let CapacityPoolProvisioningUpdate::Cluster {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = update
+        else {
+            panic!("expected a cluster-mode update, got {update:?}");
+        };
+        assert_eq!(Some("r7g.xlarge".to_string()), instance_type);
+        assert_eq!(Some(3), shard_count);
+        assert_eq!(Some(2), replicas_per_shard);
+        assert_eq!(strings(["use1-az1", "use1-az2"]), zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_in_flex_mode_with_one_field() {
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Flex),
+            None,
+            None,
+            None,
+            Some(bounds(100, 500)),
+            vec![],
+        )
+        .expect("a single flex-mode field should be a valid update");
+
+        let CapacityPoolProvisioningUpdate::Flex {
+            capacity,
+            replication,
+            zones,
+        } = update
+        else {
+            panic!("expected a flex-mode update, got {update:?}");
+        };
+        let capacity = capacity.expect("capacity should be updated");
+        assert_eq!(100, capacity.min_gib);
+        assert_eq!(500, capacity.max_gib);
+        assert!(replication.is_none(), "replication should be unchanged");
+        assert_eq!(Vec::<String>::new(), zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_in_flex_mode_with_all_fields() {
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Flex),
+            None,
+            None,
+            Some(bounds(1, 3)),
+            Some(bounds(100, 500)),
+            strings(["use1-az1"]),
+        )
+        .expect("all flex-mode fields should be a valid update");
+
+        let CapacityPoolProvisioningUpdate::Flex {
+            capacity,
+            replication,
+            zones,
+        } = update
+        else {
+            panic!("expected a flex-mode update, got {update:?}");
+        };
+        let capacity = capacity.expect("capacity should be updated");
+        assert_eq!(100, capacity.min_gib);
+        assert_eq!(500, capacity.max_gib);
+        let replication = replication.expect("replication should be updated");
+        assert_eq!(1, replication.min_replicas_per_shard);
+        assert_eq!(3, replication.max_replicas_per_shard);
+        assert_eq!(strings(["use1-az1"]), zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_with_only_zones() {
+        let zones = strings(["use1-az1", "use1-az2"]);
+
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Cluster),
+            None,
+            None,
+            None,
+            None,
+            zones.clone(),
+        )
+        .expect("a zones-only update should be valid with cluster mode specified");
+        let CapacityPoolProvisioningUpdate::Cluster { zones: got, .. } = update else {
+            panic!("expected a cluster-mode update, got {update:?}");
+        };
+        assert_eq!(zones, got);
+
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Flex),
+            None,
+            None,
+            None,
+            None,
+            zones.clone(),
+        )
+        .expect("a zones-only update should be valid with flex mode specified");
+        let CapacityPoolProvisioningUpdate::Flex { zones: got, .. } = update else {
+            panic!("expected a flex-mode update, got {update:?}");
+        };
+        assert_eq!(zones, got);
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_with_only_replication() {
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Cluster),
+            None,
+            None,
+            Some(bounds(2, 2)),
+            None,
+            vec![],
+        )
+        .expect("a replicas-only update should be valid with cluster mode specified");
+        let CapacityPoolProvisioningUpdate::Cluster {
+            replicas_per_shard, ..
+        } = update
+        else {
+            panic!("expected a cluster-mode update, got {update:?}");
+        };
+        assert_eq!(Some(2), replicas_per_shard);
+
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Flex),
+            None,
+            None,
+            Some(bounds(1, 3)),
+            None,
+            vec![],
+        )
+        .expect("a replicas-only update should be valid with flex mode specified");
+        let CapacityPoolProvisioningUpdate::Flex { replication, .. } = update else {
+            panic!("expected a flex-mode update, got {update:?}");
+        };
+        let replication = replication.expect("replication should be updated");
+        assert_eq!(1, replication.min_replicas_per_shard);
+        assert_eq!(3, replication.max_replicas_per_shard);
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_with_no_fields() {
+        for mode in [
+            CapacityPoolProvisioningMode::Cluster,
+            CapacityPoolProvisioningMode::Flex,
+        ] {
+            let case = format!("{mode:?} mode");
+            let err = determine_provisioning_update(Some(mode), None, None, None, None, vec![])
+                .expect_err(&format!(
+                    "{case}: an update with no fields should be rejected"
+                ));
+
+            assert_reason_for(&case, &err, "Missing field");
+        }
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_rejects_flex_fields_in_cluster_mode() {
+        let err = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Cluster),
+            None,
+            None,
+            None,
+            Some(bounds(100, 500)),
+            vec![],
+        )
+        .expect_err("--capacity-gib should be rejected in cluster mode");
+
+        assert_reason(&err, "Conflicting arg");
+        assert!(
+            err.msg.contains("--capacity-gib") && err.msg.contains("mode"),
+            "error should mention --capacity-gib doesn't match the mode, got: {}",
+            err.msg
+        );
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_rejects_cluster_fields_in_flex_mode() {
+        for (instance_type, shard_count) in [
+            (Some("r7g.xlarge".to_string()), None),
+            (None, Some(3)),
+            (Some("r7g.xlarge".to_string()), Some(3)),
+        ] {
+            let case = format!("instance_type={instance_type:?} shard_count={shard_count:?}");
+            let err = determine_provisioning_update(
+                Some(CapacityPoolProvisioningMode::Flex),
+                instance_type,
+                shard_count,
+                None,
+                None,
+                vec![],
+            )
+            .expect_err(&format!("{case} should be rejected in flex mode"));
+
+            assert_reason_for(&case, &err, "Conflicting arg");
+            assert!(
+                err.msg.contains("mode"),
+                "error should mention field(s) not matching mode, got: {}",
+                err.msg
+            );
+        }
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_rejects_conflicting_fields_in_either_mode() {
+        for mode in [
+            CapacityPoolProvisioningMode::Cluster,
+            CapacityPoolProvisioningMode::Flex,
+        ] {
+            let case = format!("{mode:?} mode");
+            let err = determine_provisioning_update(
+                Some(mode),
+                None,
+                Some(3),
+                None,
+                Some(bounds(100, 500)),
+                vec![],
+            )
+            .expect_err(&format!(
+                "{case}: cluster-mode and flex-mode fields together should be rejected"
+            ));
+
+            assert_reason_for(&case, &err, "Conflicting arg");
+            assert!(
+                err.msg.contains("mode"),
+                "error should mention field(s) not matching mode, got: {}",
+                err.msg
+            );
+        }
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_requires_pinned_replication_in_cluster_mode() {
+        let err = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Cluster),
+            None,
+            None,
+            Some(bounds(1, 3)),
+            None,
+            vec![],
+        )
+        .expect_err("a replication range should be rejected in cluster mode");
+
+        assert!(
+            err.msg.contains("--replicas-per-shard") && err.msg.contains("mode"),
+            "error should ask for a pinned --replicas-per-shard in this mode, got: {}",
+            err.msg
+        );
+    }
+
+    // ========== ========== ===========
+    // determine_provisioning_update, with --mode inferred
+    // ========== ========== ===========
+
+    #[test]
+    fn test_determine_provisioning_update_infers_cluster_mode() {
+        let update = determine_provisioning_update(
+            None,
+            Some("r7g.xlarge".to_string()),
+            None,
+            Some(bounds(2, 2)),
+            None,
+            strings(["use1-az1"]),
+        )
+        .expect("cluster-mode fields should imply cluster mode");
+
+        let CapacityPoolProvisioningUpdate::Cluster {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = update
+        else {
+            panic!("expected a cluster-mode update, got {update:?}");
+        };
+        assert_eq!(Some("r7g.xlarge".to_string()), instance_type);
+        assert_eq!(None, shard_count);
+        assert_eq!(Some(2), replicas_per_shard);
+        assert_eq!(strings(["use1-az1"]), zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_infers_flex_mode() {
+        let update = determine_provisioning_update(
+            None,
+            None,
+            None,
+            Some(bounds(1, 3)),
+            Some(bounds(100, 500)),
+            strings(["use1-az1"]),
+        )
+        .expect("flex-mode fields should imply flex mode");
+
+        let CapacityPoolProvisioningUpdate::Flex {
+            capacity,
+            replication,
+            zones,
+        } = update
+        else {
+            panic!("expected a flex-mode update, got {update:?}");
+        };
+        let capacity = capacity.expect("capacity should be updated");
+        assert_eq!(100, capacity.min_gib);
+        assert_eq!(500, capacity.max_gib);
+        let replication = replication.expect("replication should be updated");
+        assert_eq!(1, replication.min_replicas_per_shard);
+        assert_eq!(3, replication.max_replicas_per_shard);
+        assert_eq!(strings(["use1-az1"]), zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_requires_mode_for_ambiguous_fields() {
+        for (replicas_per_shard, zones) in [
+            (Some(bounds(2, 2)), vec![]),
+            (None, strings(["use1-az1"])),
+            (Some(bounds(1, 3)), strings(["use1-az1"])),
+        ] {
+            let case = format!("replicas_per_shard={replicas_per_shard:?} zones={zones:?}");
+            let err =
+                determine_provisioning_update(None, None, None, replicas_per_shard, None, zones)
+                    .expect_err(&format!("{case} without --mode should be rejected"));
+
+            assert_reason_for(&case, &err, "Missing --mode");
+        }
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_with_no_fields_no_mode() {
+        let err = determine_provisioning_update(None, None, None, None, None, vec![])
+            .expect_err("an update with no fields and no mode should be rejected");
+
+        assert_reason(&err, "Missing field");
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_rejects_conflicting_fields_with_no_mode() {
+        let err = determine_provisioning_update(
+            None,
+            None,
+            Some(3),
+            None,
+            Some(bounds(100, 500)),
+            vec![],
+        )
+        .expect_err("cluster-mode and flex-mode fields together should be rejected");
+
+        assert_reason(&err, "Conflicting arg");
+    }
+
+    #[test]
+    fn test_determine_provisioning_update_requires_pinned_replication_in_inferred_cluster_mode() {
+        let err =
+            determine_provisioning_update(None, None, Some(3), Some(bounds(1, 3)), None, vec![])
+                .expect_err("a replication range should be rejected once cluster mode is inferred");
+
+        assert!(
+            err.msg.contains("--replicas-per-shard") && err.msg.contains("mode"),
+            "error should ask for a pinned --replicas-per-shard in this mode, got: {}",
+            err.msg
+        );
+    }
+
+    // ========== ========== ===========
+    // Serialization
+    // ========== ========== ===========
+
     #[test]
     fn test_serialize_provisioning_in_flex_mode() {
         let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
@@ -346,7 +907,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
-            zones: vec!["use1-az1".to_string()],
+            zones: strings(["use1-az1"]),
         });
 
         assert_eq!(
@@ -370,7 +931,7 @@ mod tests {
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
-            zones: vec!["use1-az2".to_string(), "use1-az3".to_string()],
+            zones: strings(["use1-az2", "use1-az3"]),
         };
 
         assert_eq!(
@@ -397,7 +958,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             }),
-            zones: vec!["use1-az1".to_string()],
+            zones: strings(["use1-az1"]),
         };
 
         assert_eq!(
@@ -421,7 +982,7 @@ mod tests {
             instance_type: Some("r7g.xlarge".to_string()),
             shard_count: Some(3),
             replicas_per_shard: Some(1),
-            zones: vec!["use1-az2".to_string(), "use1-az3".to_string()],
+            zones: strings(["use1-az2", "use1-az3"]),
         };
 
         assert_eq!(
@@ -438,7 +999,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_provisioning_update_in_flex_mode_with_no_updates() {
+    fn test_serialize_provisioning_update_in_flex_mode_with_no_fields() {
         let update = CapacityPoolProvisioningUpdate::Flex {
             capacity: None,
             replication: None,
@@ -453,7 +1014,7 @@ mod tests {
     }
 
     #[test]
-    fn test_serialize_provisioning_update_in_cluster_mode_with_no_updates() {
+    fn test_serialize_provisioning_update_in_cluster_mode_with_no_fields() {
         let update = CapacityPoolProvisioningUpdate::Cluster {
             instance_type: None,
             shard_count: None,
@@ -467,6 +1028,10 @@ mod tests {
             serde_json::to_value(update).expect("provisioning update should serialize")
         );
     }
+
+    // ========== ========== ===========
+    // Deserialization
+    // ========== ========== ===========
 
     #[test]
     fn test_deserialize_diagnostic_by_its_kind() {
@@ -579,7 +1144,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_capacity_pool_with_all_fields_in_flex_mode() {
+    fn test_deserialize_capacity_pool_in_flex_mode_with_all_fields() {
         let pool = parse_pool(
             r#"{
                 "name": "hello world",
@@ -612,7 +1177,7 @@ mod tests {
         assert_eq!(128, provisioning.capacity.max_gib);
         assert_eq!(1, provisioning.replication.min_replicas_per_shard);
         assert_eq!(2, provisioning.replication.max_replicas_per_shard);
-        assert_eq!(vec!["use1-az1", "use1-az2"], provisioning.zones);
+        assert_eq!(strings(["use1-az1", "use1-az2"]), provisioning.zones);
         assert_eq!(Some(40), pool.current_capacity_gib);
         assert_eq!(Some(2), pool.current_replicas_per_shard);
 
@@ -640,7 +1205,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_capacity_pool_with_all_fields_in_cluster_mode() {
+    fn test_deserialize_capacity_pool_in_cluster_mode_with_all_fields() {
         let pool = parse_pool(
             r#"{
                 "name": "hello world",
@@ -677,7 +1242,7 @@ mod tests {
         assert_eq!("r7g.xlarge", instance_type);
         assert_eq!(3, *shard_count);
         assert_eq!(1, *replicas_per_shard);
-        assert_eq!(vec!["use1-az3", "use1-az4", "use1-az5"], *zones);
+        assert_eq!(strings(["use1-az3", "use1-az4", "use1-az5"]), *zones);
         assert_eq!(None, pool.current_capacity_gib);
         assert_eq!(None, pool.current_replicas_per_shard);
 
@@ -740,7 +1305,7 @@ mod tests {
         assert_eq!("r7g.xlarge", instance_type);
         assert_eq!(&3, shard_count);
         assert_eq!(&1, replicas_per_shard);
-        assert_eq!(&vec!["use1-az1".to_string()], zones);
+        assert_eq!(strings(["use1-az1"]), *zones);
         assert_eq!(None, pool.current_capacity_gib);
         assert_eq!(None, pool.current_replicas_per_shard);
 
@@ -796,7 +1361,7 @@ mod tests {
         assert_eq!("r7g.xlarge", instance_type);
         assert_eq!(&3, shard_count);
         assert_eq!(&1, replicas_per_shard);
-        assert_eq!(&vec!["use1-az1".to_string()], zones);
+        assert_eq!(strings(["use1-az1"]), *zones);
         assert_eq!(None, pool.current_capacity_gib);
         assert_eq!(None, pool.current_replicas_per_shard);
 
@@ -851,7 +1416,7 @@ mod tests {
         assert_eq!("r7g.xlarge", instance_type);
         assert_eq!(&3, shard_count);
         assert_eq!(&1, replicas_per_shard);
-        assert_eq!(&vec!["use1-az1".to_string()], zones);
+        assert_eq!(strings(["use1-az1"]), *zones);
         assert_eq!(None, pool.current_capacity_gib);
         assert_eq!(None, pool.current_replicas_per_shard);
         assert_eq!(
