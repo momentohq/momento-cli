@@ -18,6 +18,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
+name = "ahash"
+version = "0.8.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75"
+dependencies = [
+ "cfg-if",
+ "getrandom 0.3.3",
+ "once_cell",
+ "version_check",
+ "zerocopy",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -96,6 +109,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "224afbd727c3d6e4b90103ece64b8d1b67fbb1973b1046c2281eed3f3803f800"
 
 [[package]]
+name = "arc-swap"
+version = "1.9.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c049c0be4daef0b145cb3555416b3b8ef5b7888a38aea1a3a155801fe7b0810b"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "assert_cmd"
 version = "2.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -118,16 +140,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.104",
-]
-
-[[package]]
-name = "atomic-wait"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a55b94919229f2c42292fd71ffa4b75e83193bffdd77b1e858cd55fd2d0b0ea8"
-dependencies = [
- "libc",
- "windows-sys 0.42.0",
 ]
 
 [[package]]
@@ -2250,16 +2262,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "k-lock"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab228fb4852ec5d997306dc0d652235b0de0595dc1f0a7a2bd96b03730b96474"
-dependencies = [
- "atomic-wait",
- "readme-rustdocifier",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2270,6 +2272,18 @@ name = "lazycell"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
+
+[[package]]
+name = "level-runtime"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b6df3ef219caa55c67518e798ee85955ec28b51bbc5bf523f37b744c2ff2ca3"
+dependencies = [
+ "futures",
+ "log",
+ "rand 0.9.1",
+ "tokio",
+]
 
 [[package]]
 name = "libc"
@@ -2404,11 +2418,13 @@ dependencies = [
 
 [[package]]
 name = "momento"
-version = "0.66.0"
+version = "0.68.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc8c2b85f993cb7ba74c8ac89f67e77627efba858fa2b2f2a9684531e368572c"
+checksum = "0a7a4c674de0b8f2a56b171214232287d66facc54d61b361e0ba8d165a5536b9"
 dependencies = [
+ "arc-swap",
  "base64 0.22.1",
+ "bytes",
  "derive_more",
  "futures",
  "h2 0.4.11",
@@ -2482,13 +2498,14 @@ dependencies = [
 
 [[package]]
 name = "momento-protos"
-version = "0.132.0"
+version = "0.133.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5cdb80e6857610decc80ff9473e889aad71e1aa3b7bf37df73472e88bb99cc9"
+checksum = "36f9d39273d88e612d2946f665bc5beb975e1aa7b256cee34a31c72dbc58abe4"
 dependencies = [
  "prost",
  "protosocket-rpc",
  "tonic",
+ "tonic-prost",
 ]
 
 [[package]]
@@ -2821,9 +2838,9 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.13.5"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2796faa41db3ec313a31f7624d9286acf277b52de526150b7e69f3debf891ee5"
+checksum = "528ac67416ff8646872a3c02cad9cc4ee5dc9f9540c9b10771855c95cb2e5ae1"
 dependencies = [
  "bytes",
  "prost-derive",
@@ -2831,9 +2848,9 @@ dependencies = [
 
 [[package]]
 name = "prost-derive"
-version = "0.13.5"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
+checksum = "b570b25f7617e43d59005d0990ccb79e950a423952cea19671b7a876da390adf"
 dependencies = [
  "anyhow",
  "itertools",
@@ -2844,50 +2861,56 @@ dependencies = [
 
 [[package]]
 name = "protosocket"
-version = "0.12.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62d1f11b21e33dea20b9fd42f0832cdb13ab98f6fbf83bb38260027747f55dc5"
+checksum = "11f11a94bb4e12f9ee17f47be298ba9561e3207a8287fa4111a43f9189d9a78c"
 dependencies = [
  "bytes",
  "futures",
  "log",
- "thiserror 1.0.58",
+ "socket2 0.6.1",
+ "spillway",
+ "thiserror 2.0.12",
  "tokio",
+ "tokio-rustls 0.26.2",
  "tokio-util",
 ]
 
 [[package]]
 name = "protosocket-prost"
-version = "0.12.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3061ed45eea92f668ff46639a2b7b71c948a368c49f92a965b4b1e12b95a527b"
+checksum = "1449de200b7806562ff5eac1e0473c7682c7fbd7bec15e68608f300e99e8dd75"
 dependencies = [
  "bytes",
  "log",
  "prost",
  "protosocket",
- "thiserror 1.0.58",
+ "spillway",
+ "thiserror 2.0.12",
  "tokio",
 ]
 
 [[package]]
 name = "protosocket-rpc"
-version = "0.12.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44c39ac0bf30b8488a4d72a8d19d9c91214b2648883357f460b5ecd373e2e6f4"
+checksum = "5df44729b4aac51db1e15a940c2a27aec96362cb42839245b1ce5ec20039ae95"
 dependencies = [
+ "ahash",
  "futures",
- "k-lock",
+ "level-runtime",
  "log",
  "protosocket",
  "rand 0.9.1",
  "rustls-pki-types",
  "socket2 0.6.1",
- "thiserror 1.0.58",
+ "spillway",
+ "thiserror 2.0.12",
  "tokio",
  "tokio-rustls 0.26.2",
  "tokio-util",
- "webpki-roots 1.0.1",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -3080,12 +3103,6 @@ checksum = "678054eb77286b51581ba43620cc911abf02758c91f93f479767aed0f90458b2"
 dependencies = [
  "rand_core 0.3.1",
 ]
-
-[[package]]
-name = "readme-rustdocifier"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08ad765b21a08b1a8e5cdce052719188a23772bcbefb3c439f0baaf62c56ceac"
 
 [[package]]
 name = "redox_syscall"
@@ -3432,7 +3449,7 @@ dependencies = [
  "security-framework 3.6.0",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3719,6 +3736,18 @@ checksum = "17129e116933cf371d018bb80ae557e889637989d8638274fb25622827b03881"
 dependencies = [
  "libc",
  "windows-sys 0.60.2",
+]
+
+[[package]]
+name = "spillway"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53f8438cd4b90d1ef37e434ea9248fd1a27a85dc59461a0148e7387ccf323be8"
+dependencies = [
+ "futures",
+ "log",
+ "rand 0.9.1",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -4097,9 +4126,9 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.13.1"
+version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e581ba15a835f4d9ea06c55ab1bd4dce26fc53752c69a04aac00703bfb49ba9"
+checksum = "ac2a5518c70fa84342385732db33fb3f44bc4cc748936eb5833d2df34d6445ef"
 dependencies = [
  "async-trait",
  "axum",
@@ -4114,8 +4143,8 @@ dependencies = [
  "hyper-util",
  "percent-encoding",
  "pin-project",
- "prost",
- "socket2 0.5.10",
+ "socket2 0.6.1",
+ "sync_wrapper 1.0.2",
  "tokio",
  "tokio-rustls 0.26.2",
  "tokio-stream",
@@ -4123,7 +4152,18 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
- "webpki-roots 0.26.11",
+ "webpki-roots",
+]
+
+[[package]]
+name = "tonic-prost"
+version = "0.14.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50849f68853be452acf590cde0b146665b8d507b3b8af17261df47e02c209ea0"
+dependencies = [
+ "bytes",
+ "prost",
+ "tonic",
 ]
 
 [[package]]
@@ -4428,15 +4468,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "804f18a4ac2676ffb4e8b5b5fa9ae38af06df08162314f96a68d2a363e21a8ca"
 dependencies = [
  "rustls-pki-types",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
-dependencies = [
- "webpki-roots 1.0.1",
 ]
 
 [[package]]
@@ -4880,6 +4911,26 @@ dependencies = [
  "quote",
  "syn 2.0.104",
  "synstructure",
+]
+
+[[package]]
+name = "zerocopy"
+version = "0.8.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0894878a5fa3edfd6da3f88c4805f4c8558e2b996227a3d864f47fe11e38282c"
+dependencies = [
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.8.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88d2b8d9c68ad2b9e4340d7832716a4d21a22a1154777ad56ea55c51a9cf3831"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.104",
 ]
 
 [[package]]
