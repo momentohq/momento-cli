@@ -398,10 +398,7 @@ pub enum FunctionCommand {
 
 #[derive(Debug, Parser)]
 pub enum CapacityPoolCommand {
-    #[command(
-    about = "Create a Momento capacity pool",
-    group(clap::ArgGroup::new("mode").required(true)),
-    )]
+    #[command(about = "Create a Momento capacity pool")]
     Create {
         #[arg(
             long,
@@ -413,15 +410,12 @@ pub enum CapacityPoolCommand {
         name: String,
         #[arg(
             long,
-            group = "mode",
-            requires = "shard_count",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Cluster mode: EC2 instance type backing the pool's cluster"
         )]
         instance_type: Option<String>,
         #[arg(
             long,
-            requires = "instance_type",
             value_parser = value_parser!(u32).range(1..),
             help = "Cluster mode: number of shards in the backing cluster"
         )]
@@ -435,7 +429,6 @@ pub enum CapacityPoolCommand {
         replicas_per_shard: Bounds,
         #[arg(
             long,
-            group = "mode",
             value_parser = parse_positive_bounds,
             help = "Flex mode: capacity bounds in GiB — `500` pins, \
                     `100..500` lets Momento auto-scale within the range"
@@ -475,14 +468,7 @@ pub enum CapacityPoolCommand {
         )]
         name: String,
     },
-    #[command(
-    about = "Update a Momento capacity pool",
-    group(
-    clap::ArgGroup::new("field")
-    .required(true)
-    .multiple(true)
-    ),
-    )]
+    #[command(about = "Update a Momento capacity pool")]
     Update {
         #[arg(
             long,
@@ -497,19 +483,17 @@ pub enum CapacityPoolCommand {
             value_enum,
             help = "The pool's provisioning mode (cluster or flex)"
         )]
-        mode: CapacityPoolProvisioningMode,
+        mode: Option<CapacityPoolProvisioningMode>,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
             help = "Cluster mode: new EC2 instance type for the backing cluster; omit to leave unchanged",
-            group = "field"
         )]
         instance_type: Option<String>,
         #[arg(
             long,
             value_parser = value_parser!(u32).range(1..),
             help = "Cluster mode: new shard count for the backing cluster; omit to leave unchanged",
-            group = "field"
         )]
         shard_count: Option<u32>,
         #[arg(
@@ -518,7 +502,6 @@ pub enum CapacityPoolCommand {
             help = "New replicas per shard — a single value for cluster-mode pools (e.g. `2`), \
                     a value or range for flex-mode pools (e.g. `1..3`); \
                     omit to leave unchanged",
-            group = "field"
         )]
         replicas_per_shard: Option<Bounds>,
         #[arg(
@@ -527,7 +510,6 @@ pub enum CapacityPoolCommand {
             help = "Flex mode: new capacity bounds in GiB — `500` pins, \
                    `100..500` lets Momento auto-scale within the range; \
                     omit to leave unchanged",
-            group = "field"
         )]
         capacity_gib: Option<Bounds>,
         #[arg(
@@ -538,7 +520,6 @@ pub enum CapacityPoolCommand {
             help = "Replace the zone set with these AZ IDs, e.g. usw2-az1 (comma-delimited) — \
                     ids, not names like us-west-2a; omit to leave unchanged",
             value_name = "AVAILABILITY_ZONES",
-            group = "field"
         )]
         zones: Vec<String>,
     },
