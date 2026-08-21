@@ -81,14 +81,19 @@ pub async fn delete_database(
     Ok(())
 }
 
-pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), CliError> {
-    let response = call_database_list_api(endpoint, auth_token).await?;
-    match response {
+pub async fn list_databases(
+    api_endpoint: String,
+    valkey_hostname: String,
+    auth_token: String,
+) -> Result<(), CliError> {
+    let response = call_database_list_api(api_endpoint, auth_token).await?;
+    let database_name = match response {
         Parsed(ListDatabasesResponse {
             databases: databases_list,
         }) => {
             if databases_list.is_empty() {
                 console_data!("No databases found");
+                None
             } else {
                 console_data!("Databases:");
                 databases_list.iter().for_each(|database| {
@@ -98,11 +103,20 @@ pub async fn list_databases(endpoint: String, auth_token: String) -> Result<(), 
                         database.pool_name
                     );
                 });
+                if databases_list.len() == 1 {
+                    Some(databases_list[0].name.clone())
+                } else {
+                    Some("<DATABASE NAME>".to_string())
+                }
             }
         }
         Unparseable(response_text) => {
             console_data!("Listing databases:\n\n{response_text}");
+            Some("<DATABASE NAME>".to_string())
         }
     };
+    if let Some(database_name) = database_name {
+        print_valkey_cli_sample(valkey_hostname, &database_name);
+    }
     Ok(())
 }

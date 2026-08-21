@@ -482,8 +482,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         .await?
                     }
                     momento_cli_opts::DatabaseCommand::List {} => {
-                        commands::database::database_cli::list_databases(api_endpoint, auth_token)
-                            .await?
+                        commands::database::database_cli::list_databases(
+                            api_endpoint,
+                            valkey_hostname,
+                            auth_token,
+                        )
+                        .await?
                     }
                 }
             }
