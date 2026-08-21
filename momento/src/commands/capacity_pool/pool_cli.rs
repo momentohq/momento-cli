@@ -31,7 +31,7 @@ pub async fn create_pool(
             }
         }
     };
-    console_data!("\nNow you can create a database, export your API key from ~/.momento/credentials, then use the Valkey CLI:\n");
+    console_data!("\nNow you can create a database, export your API key from ~/.momento/credentials, and use your favorite RESP client:\n");
     print_valkey_cli_sample(valkey_hostname, "<DATABASE NAME>");
     Ok(())
 }
@@ -66,7 +66,9 @@ pub async fn describe_pool(
             console_data!("Your capacity pool:\n\n{response_text}");
         }
     };
-    console_data!("\nExport your API key from ~/.momento/credentials and use the Valkey CLI to interact with any database:\n");
+    console_data!(
+        "\nExport your API key from ~/.momento/credentials, then use your favorite RESP client:\n"
+    );
     print_valkey_cli_sample(valkey_hostname, "<DATABASE NAME>");
     Ok(())
 }

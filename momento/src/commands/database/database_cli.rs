@@ -41,7 +41,7 @@ pub async fn create_database(
             }
         }
     };
-    console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
+    console_data!("\nExport your API key from ~/.momento/credentials, then use the your favorite RESP client:\n");
     print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
@@ -70,7 +70,9 @@ pub async fn describe_database(
                 "<DATABASE NAME>".to_string()
             }
         };
-    console_data!("\nExport your API key from ~/.momento/credentials, then use the Valkey CLI to interact with your database:\n");
+    console_data!(
+        "\nExport your API key from ~/.momento/credentials, then use your favorite RESP client:\n"
+    );
     print_valkey_cli_sample(valkey_hostname, &database_name);
     Ok(())
 }
