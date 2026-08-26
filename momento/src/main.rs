@@ -199,6 +199,22 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             } => commands::account::signup_decommissioned().await?,
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
+            PreviewCommand::Role {
+                api_key,
+                endpoint,
+                operation,
+            } => {
+                let (creds, _) = get_creds_and_config(&args.profile).await?;
+                let credential_provider = creds.override_and_authenticate(api_key, None)?;
+
+                let auth_token = credential_provider.auth_token().to_string();
+
+                match operation {
+                    momento_cli_opts::CustomRoleCommand::List {} => {
+                        commands::custom_role::role_cli::list_roles(endpoint, auth_token).await?
+                    }
+                }
+            }
             PreviewCommand::CloudLinter {
                 region,
                 enable_ddb_ttl_check,

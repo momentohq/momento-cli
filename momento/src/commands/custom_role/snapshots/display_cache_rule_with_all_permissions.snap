@@ -1,0 +1,7 @@
+---
+source: momento/src/commands/custom_role/display.rs
+expression: rule.to_string()
+---
+- Caches (all)
+  All keys
+  Allowed actions: Read, Write, List

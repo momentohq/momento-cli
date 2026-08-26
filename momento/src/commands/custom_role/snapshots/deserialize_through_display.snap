@@ -1,0 +1,34 @@
+---
+source: momento/src/commands/custom_role/display.rs
+expression: role.to_string()
+---
+Name: Limited
+Description: I have a description
+Permissions:
+- Account Management:
+  Allowed actions: Read, Write, List
+- Auth Management:
+  Allowed actions: Read, Write, List
+- Resource Management:
+  Allowed actions: Read, Write, List
+- Cache: foobar
+  All keys
+  Allowed actions: List
+- Cache: foobar
+  Keys with prefix: hello
+  Allowed actions: Read
+- Cache: foobar
+  Key: helloworld
+  Allowed actions: Write
+- Topics with prefix: prod-
+  In cache: foobar
+  Allowed actions: Read, List
+- Topics with prefix: preprod-
+  In cache: foobar
+  Allowed actions: Read, List, Write
+- Topic: dev
+  In all caches
+  Allowed actions: Read, List, Write
+Conditions:
+- Allowed IPs:
+  0.0.0.0/0

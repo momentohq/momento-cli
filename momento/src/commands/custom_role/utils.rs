@@ -1,0 +1,571 @@
+use crate::commands::utils::{call_momento_http_api, MomentoHttpResponse};
+use crate::error::CliError;
+
+use http::Method;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum Condition {
+    IpFilter { allowed_cidr_ranges: Vec<String> },
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum PermissionAction {
+    Read,
+    Write,
+    List,
+    Invoke,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum NameSelector {
+    #[serde(rename = "*")]
+    All,
+    Name(String),
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum PrefixSelector {
+    #[serde(rename = "*")]
+    All,
+    Name(String),
+    Prefix(String),
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ItemSelector {
+    #[serde(rename = "*")]
+    All,
+    Key(String),
+    KeyPrefix(String),
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Rule {
+    Cache {
+        permissions: Vec<PermissionAction>,
+        caches: NameSelector,
+        items: ItemSelector,
+    },
+    Topic {
+        permissions: Vec<PermissionAction>,
+        topics: PrefixSelector,
+        caches: NameSelector,
+    },
+    Store {
+        permissions: Vec<PermissionAction>,
+        stores: NameSelector,
+        items: ItemSelector,
+    },
+    Function {
+        permissions: Vec<PermissionAction>,
+        functions: PrefixSelector,
+        caches: NameSelector,
+    },
+    Database {
+        permissions: Vec<PermissionAction>,
+        databases: NameSelector,
+    },
+    AccountManagement {
+        permissions: Vec<PermissionAction>,
+    },
+    AuthManagement {
+        permissions: Vec<PermissionAction>,
+    },
+    ResourceManagement {
+        permissions: Vec<PermissionAction>,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Permissions {
+    #[serde(default)]
+    pub rules: Vec<Rule>,
+    #[serde(default)]
+    pub conditions: Vec<Condition>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CustomRoleResponse {
+    #[serde(rename = "role_name")]
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub permissions: Permissions,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListCustomRolesResponse {
+    pub roles: Vec<CustomRoleResponse>,
+}
+
+fn build_request_url(endpoint: String, query_string: Option<&str>) -> String {
+    match query_string {
+        None => format!("{endpoint}/roles"),
+        Some(query_string) => format!("{endpoint}/roles?{query_string}"),
+    }
+}
+
+pub async fn call_role_list_api(
+    endpoint: String,
+    auth_token: String,
+) -> Result<MomentoHttpResponse<ListCustomRolesResponse>, CliError> {
+    call_momento_http_api(
+        Method::GET,
+        build_request_url(endpoint, Some("type=custom")),
+        auth_token,
+        None,
+        None,
+    )
+    .await
+}
+
+#[cfg(test)]
+pub mod test_utils {
+    use super::*;
+
+    pub fn parse_role(json: &str) -> CustomRoleResponse {
+        serde_json::from_str(json).expect("should parse role")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::test_utils::*;
+    use super::*;
+
+    #[test]
+    fn test_deserialize_role_with_all_permissions() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-everything",
+                "role_name": "Everything",
+                "description": "I have a description",
+                "permissions": {
+                    "rules": [
+                        {
+                            "type": "account_management",
+                            "permissions": [
+                                "read",
+                                "write",
+                                "list"
+                            ]
+                        },
+                        {
+                            "type": "auth_management",
+                            "permissions": [
+                                "read",
+                                "write",
+                                "list"
+                            ],
+                            "items": "*"
+                        },
+                        {
+                            "type": "resource_management",
+                            "permissions": [
+                                "read",
+                                "write",
+                                "list"
+                            ],
+                            "resources": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "read",
+                                "write",
+                                "list"
+                            ],
+                            "caches": "*",
+                            "items": "*"
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "write",
+                                "list"
+                            ],
+                            "caches": "*",
+                            "topics": "*"
+                        },
+                        {
+                            "type": "store",
+                            "permissions": [
+                                "read",
+                                "write",
+                                "list"
+                            ],
+                            "stores": "*",
+                            "items": "*"
+                        },
+                        {
+                            "type": "function",
+                            "permissions": [
+                                "invoke"
+                            ],
+                            "caches": "*",
+                            "functions": "*"
+                        },
+                        {
+                            "type": "database",
+                            "permissions": [
+                                "read",
+                                "write"
+                            ],
+                            "databases": "*"
+                        }
+                    ],
+                    "conditions": [
+                        {
+                            "ip_filter": {
+                                "allowed_cidr_ranges": [
+                                    "0.0.0.0/0"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "role_type": "custom"
+            }"#,
+        );
+
+        assert_eq!("Everything", role.name);
+        assert_eq!(
+            "I have a description",
+            role.description.expect("should have a description")
+        );
+        assert_eq!(8, role.permissions.rules.len());
+        assert_eq!(1, role.permissions.conditions.len());
+
+        assert_eq!(
+            Rule::AccountManagement {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::Write,
+                    PermissionAction::List
+                ],
+            },
+            role.permissions.rules[0]
+        );
+        assert_eq!(
+            Rule::AuthManagement {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::Write,
+                    PermissionAction::List
+                ],
+            },
+            role.permissions.rules[1]
+        );
+        assert_eq!(
+            Rule::ResourceManagement {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::Write,
+                    PermissionAction::List
+                ],
+            },
+            role.permissions.rules[2]
+        );
+
+        assert_eq!(
+            Rule::Cache {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::Write,
+                    PermissionAction::List
+                ],
+                caches: NameSelector::All,
+                items: ItemSelector::All,
+            },
+            role.permissions.rules[3]
+        );
+        assert_eq!(
+            Rule::Topic {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::Write,
+                    PermissionAction::List
+                ],
+                caches: NameSelector::All,
+                topics: PrefixSelector::All,
+            },
+            role.permissions.rules[4]
+        );
+        assert_eq!(
+            Rule::Store {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::Write,
+                    PermissionAction::List
+                ],
+                stores: NameSelector::All,
+                items: ItemSelector::All,
+            },
+            role.permissions.rules[5]
+        );
+        assert_eq!(
+            Rule::Function {
+                permissions: vec![PermissionAction::Invoke],
+                caches: NameSelector::All,
+                functions: PrefixSelector::All,
+            },
+            role.permissions.rules[6]
+        );
+        assert_eq!(
+            Rule::Database {
+                permissions: vec![PermissionAction::Read, PermissionAction::Write,],
+                databases: NameSelector::All,
+            },
+            role.permissions.rules[7]
+        );
+
+        assert_eq!(
+            Condition::IpFilter {
+                allowed_cidr_ranges: vec!["0.0.0.0/0".to_string()],
+            },
+            role.permissions.conditions[0]
+        );
+    }
+
+    #[test]
+    fn test_deserialize_role_with_limited_permissions() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-limited",
+                "role_name": "Limited",
+                "permissions": {
+                    "rules": [
+                        {
+                            "type": "resource_management",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "resources": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "read"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key_prefix": "hello" }
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key": "helloworld" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "prod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "preprod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": "*",
+                            "topics": { "name": "dev" }
+                        }
+                    ],
+                    "conditions": [
+                        {
+                            "ip_filter": {
+                                "allowed_cidr_ranges": [
+                                    "10.1.2.3/32",
+                                    "5.4.3.2/24"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "role_type": "custom"
+            }"#,
+        );
+
+        assert_eq!("Limited", role.name);
+        assert_eq!(None, role.description);
+        assert_eq!(7, role.permissions.rules.len());
+        assert_eq!(1, role.permissions.conditions.len());
+
+        // Rules:
+        assert_eq!(
+            Rule::ResourceManagement {
+                permissions: vec![PermissionAction::Read, PermissionAction::List],
+            },
+            role.permissions.rules[0]
+        );
+        assert_eq!(
+            Rule::Cache {
+                permissions: vec![PermissionAction::List],
+                caches: NameSelector::Name("foobar".to_string()),
+                items: ItemSelector::All
+            },
+            role.permissions.rules[1]
+        );
+        assert_eq!(
+            Rule::Cache {
+                permissions: vec![PermissionAction::Read],
+                caches: NameSelector::Name("foobar".to_string()),
+                items: ItemSelector::KeyPrefix("hello".to_string())
+            },
+            role.permissions.rules[2]
+        );
+        assert_eq!(
+            Rule::Cache {
+                permissions: vec![PermissionAction::Write],
+                caches: NameSelector::Name("foobar".to_string()),
+                items: ItemSelector::Key("helloworld".to_string())
+            },
+            role.permissions.rules[3]
+        );
+
+        assert_eq!(
+            Rule::Topic {
+                permissions: vec![PermissionAction::Read, PermissionAction::List,],
+                caches: NameSelector::Name("foobar".to_string()),
+                topics: PrefixSelector::Prefix("prod-".to_string())
+            },
+            role.permissions.rules[4]
+        );
+        assert_eq!(
+            Rule::Topic {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::List,
+                    PermissionAction::Write,
+                ],
+                caches: NameSelector::Name("foobar".to_string()),
+                topics: PrefixSelector::Prefix("preprod-".to_string())
+            },
+            role.permissions.rules[5]
+        );
+        assert_eq!(
+            Rule::Topic {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::List,
+                    PermissionAction::Write,
+                ],
+                caches: NameSelector::All,
+                topics: PrefixSelector::Name("dev".to_string())
+            },
+            role.permissions.rules[6]
+        );
+
+        // Conditions:
+        assert_eq!(
+            Condition::IpFilter {
+                allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()]
+            },
+            role.permissions.conditions[0]
+        );
+    }
+
+    #[test]
+    fn test_deserialize_role_with_no_conditions() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-limited",
+                "role_name": "Limited",
+                "permissions": {
+                    "rules": [
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": "*"
+                        }
+                    ]
+                },
+                "role_type": "custom"
+            }"#,
+        );
+
+        assert_eq!("Limited", role.name);
+        assert_eq!(None, role.description);
+        assert_eq!(
+            vec![Rule::Cache {
+                permissions: vec![PermissionAction::List],
+                caches: NameSelector::Name("foobar".to_string()),
+                items: ItemSelector::All
+            }],
+            role.permissions.rules
+        );
+
+        assert!(role.permissions.conditions.is_empty());
+    }
+
+    #[test]
+    fn test_deserialize_role_with_no_rules() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-limited",
+                "role_name": "Limited",
+                "permissions": {
+                    "conditions": [
+                        {
+                            "ip_filter": {
+                                "allowed_cidr_ranges": [
+                                    "10.1.2.3/32",
+                                    "5.4.3.2/24"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "role_type": "custom"
+            }"#,
+        );
+
+        assert_eq!("Limited", role.name);
+        assert_eq!(None, role.description);
+        assert_eq!(
+            Condition::IpFilter {
+                allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()]
+            },
+            role.permissions.conditions[0]
+        );
+
+        assert!(role.permissions.rules.is_empty());
+    }
+}

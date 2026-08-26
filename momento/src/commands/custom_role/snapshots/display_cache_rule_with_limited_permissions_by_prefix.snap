@@ -1,0 +1,7 @@
+---
+source: momento/src/commands/custom_role/display.rs
+expression: rule.to_string()
+---
+- Cache: foobar
+  Keys with prefix: hello
+  Allowed actions: Write

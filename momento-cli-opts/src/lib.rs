@@ -586,6 +586,29 @@ pub enum DatabaseCommand {
 
 #[derive(Debug, Parser)]
 pub enum PreviewCommand {
+    #[command(about = "**PREVIEW** Interact with your custom roles for Momento API keys")]
+    Role {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key that already grants auth-management access on your account [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use",
+            default_value = "https://mga.registry.prod.a.momentohq.com"
+        )]
+        endpoint: String,
+
+        #[command(subcommand)]
+        operation: CustomRoleCommand,
+    },
     #[command(
         about = "**PREVIEW** Query your AWS account to find optimizations with Momento",
         before_help = "
@@ -721,6 +744,12 @@ https://github.com/momentohq/functions/"
         #[command(subcommand)]
         operation: DatabaseCommand,
     },
+}
+
+#[derive(Debug, Parser)]
+pub enum CustomRoleCommand {
+    #[command(about = "List all custom roles that are available for your Momento API keys")]
+    List {},
 }
 
 #[derive(clap::ValueEnum, PartialEq, Eq, Debug, Clone, Copy)]
