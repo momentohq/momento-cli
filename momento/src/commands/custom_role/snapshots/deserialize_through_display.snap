@@ -3,6 +3,7 @@ source: momento/src/commands/custom_role/display.rs
 expression: role.to_string()
 ---
 Name: Limited
+ID: r-limited
 Description: I have a description
 Permissions:
 - Account Management:

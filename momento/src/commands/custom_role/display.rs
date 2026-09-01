@@ -1,7 +1,9 @@
 use super::utils::{
-    Condition, CustomRoleResponse, ItemSelector, NameSelector, PrefixSelector, Rule,
+    AccountMember, ActiveReferences, ApiKey, Condition, CustomRoleResponse, Invitation,
+    ItemSelector, NameSelector, PrefixSelector, Rule,
 };
 
+use chrono::prelude::DateTime;
 use std::fmt;
 
 impl Rule {
@@ -127,6 +129,7 @@ impl fmt::Display for Condition {
 impl fmt::Display for CustomRoleResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
+        write!(f, "\nID: {}", self.id)?;
         if let Some(description) = &self.description {
             write!(f, "\nDescription: {description}")?;
         }
@@ -146,6 +149,73 @@ impl fmt::Display for CustomRoleResponse {
         } else {
             write!(f, "\nConditions: (none)")?;
         }
+        Ok(())
+    }
+}
+
+/// delete_role
+impl fmt::Display for AccountMember {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "- {}", self.user_name)?;
+        Ok(())
+    }
+}
+
+impl fmt::Display for Invitation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "- {}", self.account_member.user_name)?;
+        Ok(())
+    }
+}
+
+impl fmt::Display for ApiKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "- Key ID: {}", self.key_id)?;
+        writeln!(f, "  Account ID: {}", self.account_id)?;
+        writeln!(f, "  Description: {}", self.description)?;
+        let issued_at = match DateTime::from_timestamp(self.issued_at_epoch_seconds, 0) {
+            Some(datetime) => datetime.to_string(),
+            None => format!("{} (epoch seconds)", self.issued_at_epoch_seconds),
+        };
+        write!(f, "  Issued At: {}", issued_at)?;
+        Ok(())
+    }
+}
+
+impl fmt::Display for ActiveReferences {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut refs = vec![];
+        if !self.account_members.is_empty() {
+            refs.push(format!(
+                "Account Members:\n{}",
+                self.account_members
+                    .iter()
+                    .map(|member| member.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n- ")
+            ));
+        }
+        if !self.invitations.is_empty() {
+            refs.push(format!(
+                "Invited Account Members:\n{}",
+                self.invitations
+                    .iter()
+                    .map(|invite| invite.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n- ")
+            ));
+        }
+        if !self.api_keys.is_empty() {
+            refs.push(format!(
+                "API Keys:\n{}",
+                self.api_keys
+                    .iter()
+                    .map(|key| key.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ));
+        }
+        write!(f, "{}", refs.join("\n"))?;
         Ok(())
     }
 }

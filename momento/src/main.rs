@@ -210,6 +210,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
+                    momento_cli_opts::CustomRoleCommand::Delete { id } => {
+                        commands::custom_role::role_cli::delete_role(endpoint, auth_token, id)
+                            .await?
+                    }
                     momento_cli_opts::CustomRoleCommand::List {} => {
                         commands::custom_role::role_cli::list_roles(endpoint, auth_token).await?
                     }

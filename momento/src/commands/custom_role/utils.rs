@@ -95,6 +95,8 @@ pub struct Permissions {
 pub struct CustomRoleResponse {
     #[serde(rename = "role_name")]
     pub name: String,
+    #[serde(rename = "role_id")]
+    pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub permissions: Permissions,
@@ -105,20 +107,78 @@ pub struct ListCustomRolesResponse {
     pub roles: Vec<CustomRoleResponse>,
 }
 
-fn build_request_url(endpoint: String, query_string: Option<&str>) -> String {
-    match query_string {
-        None => format!("{endpoint}/roles"),
-        Some(query_string) => format!("{endpoint}/roles?{query_string}"),
-    }
+/// delete_role
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum DeleteStatus {
+    Deleted,
+    Blocked,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AccountMember {
+    pub user_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Invitation {
+    pub account_member: AccountMember,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApiKey {
+    pub key_id: String,
+    pub account_id: String,
+    pub description: String,
+    pub issued_at_epoch_seconds: i64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ActiveReferences {
+    #[serde(default)]
+    pub account_members: Vec<AccountMember>,
+    #[serde(default)]
+    pub invitations: Vec<Invitation>,
+    #[serde(default)]
+    pub api_keys: Vec<ApiKey>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteCustomRoleResponse {
+    pub status: DeleteStatus,
+    #[serde(flatten)]
+    pub active_references: ActiveReferences,
+}
+
+/// API calls
+fn build_request_url(endpoint: String) -> String {
+    format!("{endpoint}/roles")
+}
+
+pub async fn call_role_delete_api(
+    endpoint: String,
+    auth_token: String,
+    role_id: String,
+) -> Result<MomentoHttpResponse<DeleteCustomRoleResponse>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(
+        Method::DELETE,
+        format!("{url}/{role_id}"),
+        auth_token,
+        None,
+        None,
+    )
+    .await
 }
 
 pub async fn call_role_list_api(
     endpoint: String,
     auth_token: String,
 ) -> Result<MomentoHttpResponse<ListCustomRolesResponse>, CliError> {
+    let url = build_request_url(endpoint);
     call_momento_http_api(
         Method::GET,
-        build_request_url(endpoint, Some("type=custom")),
+        format!("{url}?type=custom"),
         auth_token,
         None,
         None,
@@ -237,6 +297,7 @@ mod tests {
         );
 
         assert_eq!("Everything", role.name);
+        assert_eq!("r-everything", role.id);
         assert_eq!(
             "I have a description",
             role.description.expect("should have a description")
@@ -421,6 +482,7 @@ mod tests {
         );
 
         assert_eq!("Limited", role.name);
+        assert_eq!("r-limited", role.id);
         assert_eq!(None, role.description);
         assert_eq!(7, role.permissions.rules.len());
         assert_eq!(1, role.permissions.conditions.len());
@@ -522,6 +584,7 @@ mod tests {
         );
 
         assert_eq!("Limited", role.name);
+        assert_eq!("r-limited", role.id);
         assert_eq!(None, role.description);
         assert_eq!(
             vec![Rule::Cache {
@@ -558,6 +621,7 @@ mod tests {
         );
 
         assert_eq!("Limited", role.name);
+        assert_eq!("r-limited", role.id);
         assert_eq!(None, role.description);
         assert_eq!(
             Condition::IpFilter {
