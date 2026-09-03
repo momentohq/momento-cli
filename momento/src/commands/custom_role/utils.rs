@@ -150,6 +150,65 @@ pub struct DeleteCustomRoleResponse {
     pub active_references: ActiveReferences,
 }
 
+/// Role Name vs ID
+pub enum RoleSelector {
+    ByName(String),
+    ById(String),
+}
+
+pub fn determine_role_selector(
+    id: Option<String>,
+    name: Option<String>,
+) -> Result<RoleSelector, CliError> {
+    match (id, name) {
+        (Some(id), None) => Ok(RoleSelector::ById(id)),
+        (None, Some(name)) => Ok(RoleSelector::ByName(name)),
+        _ => {
+            Err(CliError::new(
+                // This should never happen; clap requires role id XOR role name.
+                "Sorry, something went wrong!",
+            ))
+        }
+    }
+}
+
+pub async fn determine_role_id(
+    endpoint: String,
+    auth_token: String,
+    selector: &RoleSelector,
+) -> Result<String, CliError> {
+    match selector {
+        RoleSelector::ById(id) => Ok(id.clone()),
+        RoleSelector::ByName(name) => {
+            let response = call_role_list_api(endpoint, auth_token).await?;
+            match response {
+                MomentoHttpResponse::Parsed(ListCustomRolesResponse { roles: roles_list }) => {
+                    if roles_list.is_empty() {
+                        Err(CliError::new("No custom roles found"))
+                    } else {
+                        for role in roles_list.iter() {
+                            if role.name == name.clone() {
+                                return Ok(role.id.clone());
+                            }
+                        }
+                        Err(CliError::new(format!(
+                            "No custom role has name {name}.\n\nListing custom roles:\n\n{}",
+                            roles_list
+                                .iter()
+                                .map(|role| role.to_string())
+                                .collect::<Vec<String>>()
+                                .join("\n\n")
+                        )))
+                    }
+                }
+                MomentoHttpResponse::Unparseable(response_text) => Err(CliError::new(format!(
+                    "Can't determine which custom role has name {name}:\n\n{response_text}"
+                ))),
+            }
+        }
+    }
+}
+
 /// API calls
 fn build_request_url(endpoint: String) -> String {
     format!("{endpoint}/roles")

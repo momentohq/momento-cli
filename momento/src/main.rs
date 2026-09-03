@@ -15,6 +15,7 @@ use utils::{
 
 use crate::{
     commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
+    commands::custom_role::utils::determine_role_selector,
     commands::functions::utils::{
         determine_current_function_version, determine_metrics_config_change, determine_wasm_source,
         InvocationOptions,
@@ -210,8 +211,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::CustomRoleCommand::Delete { id } => {
-                        commands::custom_role::role_cli::delete_role(endpoint, auth_token, id)
+                    momento_cli_opts::CustomRoleCommand::Delete { id, name } => {
+                        let selector = determine_role_selector(id, name)?;
+                        commands::custom_role::role_cli::delete_role(endpoint, auth_token, selector)
                             .await?
                     }
                     momento_cli_opts::CustomRoleCommand::List {} => {

@@ -748,8 +748,24 @@ https://github.com/momentohq/functions/"
 
 #[derive(Debug, Parser)]
 pub enum CustomRoleCommand {
-    #[command(about = "Delete a custom role from your Momento API keys")]
+    #[command(
+    about = "Delete a custom role from your Momento API keys",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["id", "name"]),
+    ),
+    )]
     Delete {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the role you want to delete",
+            value_name = "CUSTOM_ROLE",
+        )]
+        name: Option<String>,
+
         #[arg(
             long,
             short,
@@ -757,7 +773,7 @@ pub enum CustomRoleCommand {
             help = "ID of the role you want to delete",
             value_name = "CUSTOM_ROLE",
         )]
-        id: String,
+        id: Option<String>,
     },
 
     #[command(about = "List all custom roles that are available for your Momento API keys")]
