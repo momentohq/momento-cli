@@ -1,9 +1,104 @@
 use super::utils::{
-    call_role_delete_api, call_role_list_api, determine_role_id, DeleteCustomRoleResponse,
-    DeleteStatus, ListCustomRolesResponse, RoleSelector,
+    call_role_create_api, call_role_delete_api, call_role_list_api, call_role_update_api,
+    determine_role_id, CustomRole, CustomRoleUpdate, DeleteCustomRoleResponse, DeleteStatus,
+    ListCustomRolesResponse, Permissions, RoleSelector,
 };
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
+
+use serde_json;
+
+pub async fn create_role(
+    endpoint: String,
+    auth_token: String,
+    name: String,
+    description: Option<String>,
+    permission_set: String,
+) -> Result<(), CliError> {
+    let data = CustomRole {
+        name,
+        description,
+        permissions: serde_json::from_str::<Permissions>(&permission_set)?,
+    };
+    let response = call_role_create_api(endpoint, auth_token, data).await?;
+    match response {
+        Parsed(role) => {
+            console_data!("Creating custom role!\n\n{role}");
+        }
+        Unparseable(response_text) => {
+            console_data!("Creating custom role!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
+        }
+    };
+    Ok(())
+}
+
+pub async fn update_role(
+    endpoint: String,
+    auth_token: String,
+    selector: RoleSelector,
+    description: Option<String>,
+    permission_set: Option<String>,
+) -> Result<(), CliError> {
+    let data = CustomRoleUpdate {
+        name: None,
+        description,
+        permissions: permission_set
+            .map(|permission_set| serde_json::from_str::<Permissions>(&permission_set))
+            .transpose()?,
+    };
+    let id = determine_role_id(endpoint.clone(), auth_token.clone(), &selector).await?;
+    let response = call_role_update_api(endpoint, auth_token, id.clone(), data).await?;
+    match response {
+        Parsed(role) => {
+            console_data!("Updating custom role!\n\n{role}");
+        }
+        Unparseable(response_text) => {
+            console_data!("Updating custom role!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
+        }
+    };
+    Ok(())
+}
+
+pub async fn rename_role(
+    endpoint: String,
+    auth_token: String,
+    selector: RoleSelector,
+    new_name: String,
+) -> Result<(), CliError> {
+    let data = CustomRoleUpdate {
+        name: Some(new_name),
+        description: None,
+        permissions: None,
+    };
+    let id = determine_role_id(endpoint.clone(), auth_token.clone(), &selector).await?;
+    let response = call_role_update_api(endpoint, auth_token, id.clone(), data).await?;
+    match response {
+        Parsed(role) => {
+            console_data!(
+                "Renaming custom role{} to {}!\n\n{role}",
+                if let RoleSelector::ByName(name) = selector {
+                    format!(" from {name}")
+                } else {
+                    "".to_string()
+                },
+                role.name
+            );
+        }
+        Unparseable(response_text) => {
+            console_data!("Renaming custom role!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
+        }
+    };
+    Ok(())
+}
 
 pub async fn delete_role(
     endpoint: String,

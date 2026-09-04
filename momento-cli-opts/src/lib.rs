@@ -6,7 +6,7 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
-use utils::{parse_bounds, parse_date, parse_positive_bounds};
+use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
 pub use utils::{Bounds, CapacityPoolProvisioningMode};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
@@ -748,6 +748,109 @@ https://github.com/momentohq/functions/"
 
 #[derive(Debug, Parser)]
 pub enum CustomRoleCommand {
+    #[command(about = "Create a custom role for your Momento API keys")]
+    Create {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the role you want to create",
+            value_name = "CUSTOM_ROLE"
+        )]
+        name: String,
+
+        #[arg(long, short, help = "Description for your custom role")]
+        description: Option<String>,
+
+        #[arg(
+            long,
+            value_parser = parse_to_json,
+            help = "The grant as JSON, or '@path' to a file holding it"
+        )]
+        permission_set: String,
+    },
+
+    #[command(
+    about = "Update a custom role that's available for your Momento API keys",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["id", "name"]),
+    ),
+    group(
+    clap::ArgGroup::new("update-field")
+    .required(true)
+    .multiple(true)
+    .args(["description", "permission_set"]),
+    ),
+    )]
+    Update {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the role you want to update",
+            value_name = "CUSTOM_ROLE",
+        )]
+        name: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the role you want to update",
+            value_name = "CUSTOM_ROLE",
+        )]
+        id: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            help = "New description for your custom role; \
+                    omit to leave unchanged"
+        )]
+        description: Option<String>,
+
+        #[arg(
+            long,
+            value_parser = parse_to_json,
+            help = "New grant as JSON, or '@path' to a file holding it. \
+                    Completely replaces the old grant; omit to leave unchanged"
+        )]
+        permission_set: Option<String>,
+    },
+
+    #[command(
+    about = "Rename a custom role that's available for your Momento API keys",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["id", "name"]),
+    ),
+    )]
+    Rename {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Current name of the role you want to rename",
+            value_name = "CUSTOM_ROLE",
+        )]
+        name: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the role you want to rename",
+            value_name = "CUSTOM_ROLE",
+        )]
+        id: Option<String>,
+
+        #[arg(long, help = "New name for your custom role")]
+        new_name: String,
+    },
+
     #[command(
     about = "Delete a custom role from your Momento API keys",
     group(
@@ -756,6 +859,7 @@ pub enum CustomRoleCommand {
     .args(["id", "name"]),
     ),
     )]
+    #[command(about = "Delete a custom role from your Momento API keys")]
     Delete {
         #[arg(
             long,

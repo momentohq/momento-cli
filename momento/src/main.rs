@@ -211,6 +211,43 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
+                    momento_cli_opts::CustomRoleCommand::Create {
+                        name,
+                        description,
+                        permission_set,
+                    } => {
+                        commands::custom_role::role_cli::create_role(
+                            endpoint,
+                            auth_token,
+                            name,
+                            description,
+                            permission_set,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::CustomRoleCommand::Update {
+                        id,
+                        name,
+                        description,
+                        permission_set,
+                    } => {
+                        let selector = determine_role_selector(id, name)?;
+                        commands::custom_role::role_cli::update_role(
+                            endpoint,
+                            auth_token,
+                            selector,
+                            description,
+                            permission_set,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::CustomRoleCommand::Rename { id, name, new_name } => {
+                        let selector = determine_role_selector(id, name)?;
+                        commands::custom_role::role_cli::rename_role(
+                            endpoint, auth_token, selector, new_name,
+                        )
+                        .await?
+                    }
                     momento_cli_opts::CustomRoleCommand::Delete { id, name } => {
                         let selector = determine_role_selector(id, name)?;
                         commands::custom_role::role_cli::delete_role(endpoint, auth_token, selector)

@@ -1,16 +1,16 @@
-use crate::commands::utils::{call_momento_http_api, MomentoHttpResponse};
+use crate::commands::utils::{call_momento_http_api, MomentoHttpData, MomentoHttpResponse};
 use crate::error::CliError;
 
 use http::Method;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Condition {
     IpFilter { allowed_cidr_ranges: Vec<String> },
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum PermissionAction {
     Read,
@@ -19,7 +19,7 @@ pub enum PermissionAction {
     Invoke,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum NameSelector {
     #[serde(rename = "*")]
@@ -27,7 +27,7 @@ pub enum NameSelector {
     Name(String),
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum PrefixSelector {
     #[serde(rename = "*")]
@@ -36,7 +36,7 @@ pub enum PrefixSelector {
     Prefix(String),
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemSelector {
     #[serde(rename = "*")]
@@ -45,7 +45,7 @@ pub enum ItemSelector {
     KeyPrefix(String),
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Rule {
     Cache {
@@ -83,12 +83,30 @@ pub enum Rule {
     },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Permissions {
     #[serde(default)]
     pub rules: Vec<Rule>,
     #[serde(default)]
     pub conditions: Vec<Condition>,
+}
+
+#[derive(Serialize)]
+pub struct CustomRole {
+    #[serde(rename = "role_name")]
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub permissions: Permissions,
+}
+
+#[derive(Serialize)]
+pub struct CustomRoleUpdate {
+    #[serde(rename = "role_name")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub permissions: Option<Permissions>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -212,6 +230,39 @@ pub async fn determine_role_id(
 /// API calls
 fn build_request_url(endpoint: String) -> String {
     format!("{endpoint}/roles")
+}
+
+pub async fn call_role_create_api(
+    endpoint: String,
+    auth_token: String,
+    data: CustomRole,
+) -> Result<MomentoHttpResponse<CustomRoleResponse>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(
+        Method::POST,
+        url,
+        auth_token,
+        None,
+        Some(MomentoHttpData::Json(serde_json::to_value(data)?)),
+    )
+    .await
+}
+
+pub async fn call_role_update_api(
+    endpoint: String,
+    auth_token: String,
+    role_id: String,
+    data: CustomRoleUpdate,
+) -> Result<MomentoHttpResponse<CustomRoleResponse>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(
+        Method::PUT,
+        format!("{url}/{role_id}"),
+        auth_token,
+        None,
+        Some(MomentoHttpData::Json(serde_json::to_value(data)?)),
+    )
+    .await
 }
 
 pub async fn call_role_delete_api(

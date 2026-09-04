@@ -2,6 +2,16 @@ use std::num::IntErrorKind;
 
 use chrono::NaiveDate;
 
+/// Returns a JSON string: `@path` reads from a file, anything else is the JSON itself.
+pub fn parse_to_json(s: &str) -> Result<String, String> {
+    let json = match s.strip_prefix('@') {
+        Some(path) => std::fs::read_to_string(path)
+            .map_err(|error| format!("could not read {path}: {error}"))?,
+        None => s.to_owned(),
+    };
+    Ok(json)
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Bounds {
     pub min: u32,
