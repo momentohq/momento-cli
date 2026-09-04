@@ -109,7 +109,7 @@ pub struct CustomRoleUpdate {
     pub permissions: Option<Permissions>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CustomRoleResponse {
     #[serde(rename = "role_name")]
     pub name: String,
@@ -120,30 +120,30 @@ pub struct CustomRoleResponse {
     pub permissions: Permissions,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListCustomRolesResponse {
     pub roles: Vec<CustomRoleResponse>,
 }
 
 /// delete_role
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum DeleteStatus {
     Deleted,
     Blocked,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AccountMember {
     pub user_name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Invitation {
     pub account_member: AccountMember,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ApiKey {
     pub key_id: String,
     pub account_id: String,
@@ -151,7 +151,7 @@ pub struct ApiKey {
     pub issued_at_epoch_seconds: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ActiveReferences {
     #[serde(default)]
     pub account_members: Vec<AccountMember>,
@@ -161,7 +161,7 @@ pub struct ActiveReferences {
     pub api_keys: Vec<ApiKey>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DeleteCustomRoleResponse {
     pub status: DeleteStatus,
     #[serde(flatten)]

@@ -6,7 +6,9 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
-use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
+use utils::{
+    parse_bounds, parse_date, parse_positive_bounds, parse_to_json, ROLE_PERMISSIONS_SAMPLE,
+};
 pub use utils::{Bounds, CapacityPoolProvisioningMode};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
@@ -770,7 +772,11 @@ pub enum CustomRoleCommand {
         #[arg(
             long,
             value_parser = parse_to_json,
-            help = "The grant as JSON, or '@path' to a file holding it",
+            help = format!(
+                "The grant as JSON, or '@path' to a file holding it.\n\
+                 Sample: {ROLE_PERMISSIONS_SAMPLE}\n\
+                 More at https://docs.momentohq.com/platform/authentication/roles-http-api#full-permission-set-example"
+            ),
             value_name = "PERMISSIONS",
         )]
         permission_set: String,
@@ -829,8 +835,12 @@ pub enum CustomRoleCommand {
         #[arg(
             long,
             value_parser = parse_to_json,
-            help = "New grant as JSON, or '@path' to a file holding it. \
-                    Completely replaces the old grant; omit to leave unchanged",
+            help = format!(
+                "The grant as JSON, or '@path' to a file holding it.\n\
+                 Completely replaces the old grant; omit to leave unchanged.\n\
+                 Sample: {ROLE_PERMISSIONS_SAMPLE}\n\
+                 More at https://docs.momentohq.com/platform/authentication/roles-http-api#full-permission-set-example"
+            ),
             value_name = "NEW_PERMISSIONS",
         )]
         permission_set: Option<String>,

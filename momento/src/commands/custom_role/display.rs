@@ -42,7 +42,7 @@ impl fmt::Display for Rule {
                         NameSelector::Name(name) => format!("Cache: {name}"),
                     },
                     match items {
-                        ItemSelector::All => "All keys".to_string(),
+                        ItemSelector::All => "Keys: all".to_string(),
                         ItemSelector::Key(name) => format!("Key: {name}"),
                         ItemSelector::KeyPrefix(prefix) => format!("Keys with prefix: {prefix}"),
                     },
@@ -59,7 +59,7 @@ impl fmt::Display for Rule {
                         PrefixSelector::Prefix(prefix) => format!("Topics with prefix: {prefix}"),
                     },
                     match caches {
-                        NameSelector::All => "In all caches".to_string(),
+                        NameSelector::All => "In caches: all".to_string(),
                         NameSelector::Name(name) => format!("In cache: {name}"),
                     },
                 ),
@@ -74,7 +74,7 @@ impl fmt::Display for Rule {
                         NameSelector::Name(name) => format!("Object Store: {name}"),
                     },
                     match items {
-                        ItemSelector::All => "All keys".to_string(),
+                        ItemSelector::All => "Keys: all".to_string(),
                         ItemSelector::Key(name) => format!("Key: {name}"),
                         ItemSelector::KeyPrefix(prefix) => format!("Keys with prefix: {prefix}"),
                     },
@@ -92,7 +92,7 @@ impl fmt::Display for Rule {
                             format!("Functions with prefix: {prefix}"),
                     },
                     match caches {
-                        NameSelector::All => "In all caches".to_string(),
+                        NameSelector::All => "In caches: all".to_string(),
                         NameSelector::Name(name) => format!("In cache: {name}"),
                     },
                 ),

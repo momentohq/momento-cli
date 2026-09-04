@@ -2,6 +2,34 @@ use std::num::IntErrorKind;
 
 use chrono::NaiveDate;
 
+pub const ROLE_PERMISSIONS_SAMPLE: &str = r#"{
+  "rules": [
+    {
+      "type": "account_management",
+      "permissions": ["read", "list"]
+    },
+    {
+      "type": "cache",
+      "caches": { "name": "prod-cache" },
+      "items": "*",
+      "permissions": ["read", "write"]
+    },
+    {
+      "type": "function",
+      "functions": { "prefix": "webhook-" },
+      "caches": { "name": "edge-app" },
+      "permissions": ["invoke"]
+    }
+  ],
+  "conditions": [
+    {
+      "ip_filter": {
+        "allowed_cidr_ranges": ["10.0.0.0/8", "192.168.1.0/24", "2001:db8::/32"]
+      }
+    }
+  ]
+}"#;
+
 /// Returns a JSON string: `@path` reads from a file, anything else is the JSON itself.
 pub fn parse_to_json(s: &str) -> Result<String, String> {
     let json = match s.strip_prefix('@') {

@@ -13,7 +13,7 @@ Permissions:
 - Resource Management:
   Allowed actions: Read, Write, List
 - Cache: foobar
-  All keys
+  Keys: all
   Allowed actions: List
 - Cache: foobar
   Keys with prefix: hello
@@ -28,7 +28,7 @@ Permissions:
   In cache: foobar
   Allowed actions: Read, List, Write
 - Topic: dev
-  In all caches
+  In caches: all
   Allowed actions: Read, List, Write
 Conditions:
 - Allowed IPs:
