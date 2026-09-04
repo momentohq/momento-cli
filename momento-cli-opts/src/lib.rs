@@ -50,6 +50,29 @@ impl Momento {
 
 #[derive(Debug, Parser)]
 pub enum Subcommand {
+    #[command(about = "Interact with custom roles for API keys")]
+    Role {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key that already grants auth-management access on your account [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use",
+            default_value = "https://mga.registry.prod.a.momentohq.com"
+        )]
+        endpoint: String,
+
+        #[command(subcommand)]
+        operation: CustomRoleCommand,
+    },
     #[command(about = "Interact with caches")]
     Cache {
         #[arg(
@@ -593,29 +616,6 @@ pub enum DatabaseCommand {
 
 #[derive(Debug, Parser)]
 pub enum PreviewCommand {
-    #[command(about = "**PREVIEW** Interact with your custom roles for Momento API keys")]
-    Role {
-        #[arg(
-            long,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit Momento API key that already grants auth-management access on your account [default: your profile's API key]"
-        )]
-        api_key: Option<String>,
-
-        #[arg(
-            long,
-            short,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit hostname to use",
-            default_value = "https://mga.registry.prod.a.momentohq.com"
-        )]
-        endpoint: String,
-
-        #[command(subcommand)]
-        operation: CustomRoleCommand,
-    },
     #[command(
         about = "**PREVIEW** Query your AWS account to find optimizations with Momento",
         before_help = "
