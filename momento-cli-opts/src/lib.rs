@@ -263,7 +263,7 @@ pub enum FunctionCommand {
             short = 'i',
             value_parser = NonEmptyStringValueParser::new(),
             help = "ID of the function you want to update",
-            value_name = "FUNCTION"
+            value_name = "FUNCTION_ID"
         )]
         function_id: Option<String>,
 
@@ -811,7 +811,7 @@ pub enum CustomRoleCommand {
             short,
             value_parser = NonEmptyStringValueParser::new(),
             help = "ID of the role you want to update",
-            value_name = "CUSTOM_ROLE",
+            value_name = "CUSTOM_ROLE_ID",
         )]
         id: Option<String>,
 
@@ -870,7 +870,7 @@ pub enum CustomRoleCommand {
             short,
             value_parser = NonEmptyStringValueParser::new(),
             help = "ID of the role you want to delete",
-            value_name = "CUSTOM_ROLE",
+            value_name = "CUSTOM_ROLE_ID",
         )]
         id: Option<String>,
     },
