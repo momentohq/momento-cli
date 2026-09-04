@@ -1,6 +1,6 @@
 use super::utils::{
     call_role_create_api, call_role_delete_api, call_role_list_api, call_role_update_api,
-    determine_role_id, CustomRole, CustomRoleUpdate, DeleteCustomRoleResponse, DeleteStatus,
+    determine_role, determine_role_update, CustomRole, DeleteCustomRoleResponse, DeleteStatus,
     ListCustomRolesResponse, Permissions, RoleSelector,
 };
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
@@ -56,15 +56,9 @@ pub async fn update_role(
         }
         (None, _, _) => "Updating custom role!".to_string(),
     };
-    let data = CustomRoleUpdate {
-        name: new_name,
-        description,
-        permissions: permission_set
-            .map(|permission_set| serde_json::from_str::<Permissions>(&permission_set))
-            .transpose()?,
-    };
-    let id = determine_role_id(endpoint.clone(), auth_token.clone(), &selector).await?;
-    let response = call_role_update_api(endpoint, auth_token, id.clone(), data).await?;
+    let existing_role = determine_role(endpoint.clone(), auth_token.clone(), &selector).await?;
+    let data = determine_role_update(existing_role.clone(), new_name, description, permission_set)?;
+    let response = call_role_update_api(endpoint, auth_token, existing_role.id, data).await?;
     match response {
         Parsed(role) => {
             console_data!("{update_text}\n\n{role}");
@@ -84,7 +78,9 @@ pub async fn delete_role(
     auth_token: String,
     selector: RoleSelector,
 ) -> Result<(), CliError> {
-    let id = determine_role_id(endpoint.clone(), auth_token.clone(), &selector).await?;
+    let id = determine_role(endpoint.clone(), auth_token.clone(), &selector)
+        .await?
+        .id;
     let response = call_role_delete_api(endpoint, auth_token, id.clone()).await?;
     let selector_text = match selector {
         RoleSelector::ById(id) => format!("with ID {id}"),

@@ -4,13 +4,13 @@ use crate::error::CliError;
 use http::Method;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum Condition {
     IpFilter { allowed_cidr_ranges: Vec<String> },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum PermissionAction {
     Read,
@@ -19,7 +19,7 @@ pub enum PermissionAction {
     Invoke,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum NameSelector {
     #[serde(rename = "*")]
@@ -27,7 +27,7 @@ pub enum NameSelector {
     Name(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum PrefixSelector {
     #[serde(rename = "*")]
@@ -36,7 +36,7 @@ pub enum PrefixSelector {
     Prefix(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemSelector {
     #[serde(rename = "*")]
@@ -45,7 +45,7 @@ pub enum ItemSelector {
     KeyPrefix(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Rule {
     Cache {
@@ -83,7 +83,7 @@ pub enum Rule {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Permissions {
     #[serde(default)]
     pub rules: Vec<Rule>,
@@ -100,16 +100,7 @@ pub struct CustomRole {
     pub permissions: Permissions,
 }
 
-#[derive(Serialize)]
-pub struct CustomRoleUpdate {
-    #[serde(rename = "role_name")]
-    pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    pub permissions: Option<Permissions>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CustomRoleResponse {
     #[serde(rename = "role_name")]
     pub name: String,
@@ -190,41 +181,68 @@ pub fn determine_role_selector(
     }
 }
 
-pub async fn determine_role_id(
+pub async fn determine_role(
     endpoint: String,
     auth_token: String,
     selector: &RoleSelector,
-) -> Result<String, CliError> {
+) -> Result<CustomRoleResponse, CliError> {
+    let selector_text = match selector {
+        RoleSelector::ById(id) => format!("ID {id}"),
+        RoleSelector::ByName(name) => format!("name {name}"),
+    };
+    let roles_list = match call_role_list_api(endpoint, auth_token).await? {
+        MomentoHttpResponse::Parsed(ListCustomRolesResponse { roles: roles_list }) => {
+            if roles_list.is_empty() {
+                return Err(CliError::new("No custom roles found"));
+            } else {
+                roles_list
+            }
+        }
+        MomentoHttpResponse::Unparseable(response_text) => {
+            return Err(CliError::new(format!(
+                "Can't determine which custom role has {selector_text}:\n\n{response_text}"
+            )))
+        }
+    };
     match selector {
-        RoleSelector::ById(id) => Ok(id.clone()),
-        RoleSelector::ByName(name) => {
-            let response = call_role_list_api(endpoint, auth_token).await?;
-            match response {
-                MomentoHttpResponse::Parsed(ListCustomRolesResponse { roles: roles_list }) => {
-                    if roles_list.is_empty() {
-                        Err(CliError::new("No custom roles found"))
-                    } else {
-                        for role in roles_list.iter() {
-                            if role.name == name.clone() {
-                                return Ok(role.id.clone());
-                            }
-                        }
-                        Err(CliError::new(format!(
-                            "No custom role has name {name}.\n\nListing custom roles:\n\n{}",
-                            roles_list
-                                .iter()
-                                .map(|role| role.to_string())
-                                .collect::<Vec<String>>()
-                                .join("\n\n")
-                        )))
-                    }
+        RoleSelector::ById(id) => {
+            for role in roles_list.iter() {
+                if role.id == id.clone() {
+                    return Ok(role.clone());
                 }
-                MomentoHttpResponse::Unparseable(response_text) => Err(CliError::new(format!(
-                    "Can't determine which custom role has name {name}:\n\n{response_text}"
-                ))),
+            }
+        }
+        RoleSelector::ByName(name) => {
+            for role in roles_list.iter() {
+                if role.name == name.clone() {
+                    return Ok(role.clone());
+                }
             }
         }
     }
+    Err(CliError::new(format!(
+        "No custom role has {selector_text}.\n\nListing custom roles:\n\n{}",
+        roles_list
+            .iter()
+            .map(|role| role.to_string())
+            .collect::<Vec<String>>()
+            .join("\n\n")
+    )))
+}
+
+pub fn determine_role_update(
+    existing_role: CustomRoleResponse,
+    new_name: Option<String>,
+    new_description: Option<String>,
+    new_permission_set: Option<String>,
+) -> Result<CustomRole, CliError> {
+    Ok(CustomRole {
+        name: new_name.unwrap_or(existing_role.name),
+        description: new_description.or(existing_role.description),
+        permissions: new_permission_set
+            .and_then(|permissions| serde_json::from_str::<Permissions>(permissions.as_str()).ok())
+            .unwrap_or(existing_role.permissions),
+    })
 }
 
 /// API calls
@@ -252,7 +270,7 @@ pub async fn call_role_update_api(
     endpoint: String,
     auth_token: String,
     role_id: String,
-    data: CustomRoleUpdate,
+    data: CustomRole,
 ) -> Result<MomentoHttpResponse<CustomRoleResponse>, CliError> {
     let url = build_request_url(endpoint);
     call_momento_http_api(
