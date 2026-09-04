@@ -39,11 +39,25 @@ pub async fn update_role(
     endpoint: String,
     auth_token: String,
     selector: RoleSelector,
+    new_name: Option<String>,
     description: Option<String>,
     permission_set: Option<String>,
 ) -> Result<(), CliError> {
+    let from_name = match &selector {
+        RoleSelector::ById(_) => "".to_string(),
+        RoleSelector::ByName(name) => format!(" from {name}"),
+    };
+    let update_text = match (&new_name, &description, &permission_set) {
+        (Some(name), None, None) => format!("Renaming custom role{from_name} to {name}!"),
+        (Some(name), _, _) => format!("Updating custom role and renaming{from_name} to {name}!"),
+        (None, None, None) => {
+            // This should never happen; clap requires at least 1 field.
+            return Err(CliError::new("Please provide at least 1 field to update."));
+        }
+        (None, _, _) => "Updating custom role!".to_string(),
+    };
     let data = CustomRoleUpdate {
-        name: None,
+        name: new_name,
         description,
         permissions: permission_set
             .map(|permission_set| serde_json::from_str::<Permissions>(&permission_set))
@@ -53,45 +67,10 @@ pub async fn update_role(
     let response = call_role_update_api(endpoint, auth_token, id.clone(), data).await?;
     match response {
         Parsed(role) => {
-            console_data!("Updating custom role!\n\n{role}");
+            console_data!("{update_text}\n\n{role}");
         }
         Unparseable(response_text) => {
-            console_data!("Updating custom role!");
-            if !response_text.is_empty() {
-                console_data!("\n\n{response_text}");
-            }
-        }
-    };
-    Ok(())
-}
-
-pub async fn rename_role(
-    endpoint: String,
-    auth_token: String,
-    selector: RoleSelector,
-    new_name: String,
-) -> Result<(), CliError> {
-    let data = CustomRoleUpdate {
-        name: Some(new_name),
-        description: None,
-        permissions: None,
-    };
-    let id = determine_role_id(endpoint.clone(), auth_token.clone(), &selector).await?;
-    let response = call_role_update_api(endpoint, auth_token, id.clone(), data).await?;
-    match response {
-        Parsed(role) => {
-            console_data!(
-                "Renaming custom role{} to {}!\n\n{role}",
-                if let RoleSelector::ByName(name) = selector {
-                    format!(" from {name}")
-                } else {
-                    "".to_string()
-                },
-                role.name
-            );
-        }
-        Unparseable(response_text) => {
-            console_data!("Renaming custom role!");
+            console_data!("{update_text}");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
             }
