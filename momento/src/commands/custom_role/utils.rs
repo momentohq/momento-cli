@@ -94,7 +94,6 @@ pub struct Permissions {
 pub struct CustomRole {
     #[serde(rename = "role_name")]
     pub name: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
     pub description: String,
     pub permissions: Permissions,
 }
