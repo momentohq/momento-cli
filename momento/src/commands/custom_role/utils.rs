@@ -85,7 +85,6 @@ pub enum Rule {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Permissions {
-    #[serde(default)]
     pub rules: Vec<Rule>,
     #[serde(default)]
     pub conditions: Vec<Condition>,
@@ -240,7 +239,8 @@ pub fn determine_role_update(
         name: new_name.unwrap_or(existing_role.name),
         description: new_description.unwrap_or(existing_role.description),
         permissions: new_permission_set
-            .and_then(|permissions| serde_json::from_str::<Permissions>(permissions.as_str()).ok())
+            .map(|permissions| serde_json::from_str::<Permissions>(&permissions))
+            .transpose()?
             .unwrap_or(existing_role.permissions),
     })
 }
@@ -721,40 +721,5 @@ mod tests {
         );
 
         assert!(role.permissions.conditions.is_empty());
-    }
-
-    #[test]
-    fn test_deserialize_role_with_no_rules() {
-        let role = parse_role(
-            r#"{
-                "role_id": "r-limited",
-                "role_name": "Limited",
-                "permissions": {
-                    "conditions": [
-                        {
-                            "ip_filter": {
-                                "allowed_cidr_ranges": [
-                                    "10.1.2.3/32",
-                                    "5.4.3.2/24"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                "role_type": "custom"
-            }"#,
-        );
-
-        assert_eq!("Limited", role.name);
-        assert_eq!("r-limited", role.id);
-        assert!(role.description.is_empty());
-        assert_eq!(
-            Condition::IpFilter {
-                allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()]
-            },
-            role.permissions.conditions[0]
-        );
-
-        assert!(role.permissions.rules.is_empty());
     }
 }
