@@ -95,7 +95,6 @@ pub struct Permissions {
 pub struct CustomRole {
     #[serde(rename = "role_name")]
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub permissions: Permissions,
 }
@@ -428,7 +427,7 @@ mod tests {
         assert_eq!("r-everything", role.id);
         assert_eq!(
             "I have a description",
-            role.description.expect("should have a description")
+            role.description.expect("should have description")
         );
         assert_eq!(8, role.permissions.rules.len());
         assert_eq!(1, role.permissions.conditions.len());
@@ -530,6 +529,175 @@ mod tests {
             r#"{
                 "role_id": "r-limited",
                 "role_name": "Limited",
+                "description": "role with limited permissions",
+                "permissions": {
+                    "rules": [
+                        {
+                            "type": "resource_management",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "resources": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "read"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key_prefix": "hello" }
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key": "helloworld" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "prod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "preprod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": "*",
+                            "topics": { "name": "dev" }
+                        }
+                    ],
+                    "conditions": [
+                        {
+                            "ip_filter": {
+                                "allowed_cidr_ranges": [
+                                    "10.1.2.3/32",
+                                    "5.4.3.2/24"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "role_type": "custom"
+            }"#,
+        );
+
+        assert_eq!("Limited", role.name);
+        assert_eq!("r-limited", role.id);
+        assert_eq!(
+            "role with limited permissions",
+            role.description.expect("should have description")
+        );
+        assert_eq!(7, role.permissions.rules.len());
+        assert_eq!(1, role.permissions.conditions.len());
+
+        // Rules:
+        assert_eq!(
+            Rule::ResourceManagement {
+                permissions: vec![PermissionAction::Read, PermissionAction::List],
+            },
+            role.permissions.rules[0]
+        );
+        assert_eq!(
+            Rule::Cache {
+                permissions: vec![PermissionAction::List],
+                caches: NameSelector::Name("foobar".to_string()),
+                items: ItemSelector::All
+            },
+            role.permissions.rules[1]
+        );
+        assert_eq!(
+            Rule::Cache {
+                permissions: vec![PermissionAction::Read],
+                caches: NameSelector::Name("foobar".to_string()),
+                items: ItemSelector::KeyPrefix("hello".to_string())
+            },
+            role.permissions.rules[2]
+        );
+        assert_eq!(
+            Rule::Cache {
+                permissions: vec![PermissionAction::Write],
+                caches: NameSelector::Name("foobar".to_string()),
+                items: ItemSelector::Key("helloworld".to_string())
+            },
+            role.permissions.rules[3]
+        );
+
+        assert_eq!(
+            Rule::Topic {
+                permissions: vec![PermissionAction::Read, PermissionAction::List,],
+                caches: NameSelector::Name("foobar".to_string()),
+                topics: PrefixSelector::Prefix("prod-".to_string())
+            },
+            role.permissions.rules[4]
+        );
+        assert_eq!(
+            Rule::Topic {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::List,
+                    PermissionAction::Write,
+                ],
+                caches: NameSelector::Name("foobar".to_string()),
+                topics: PrefixSelector::Prefix("preprod-".to_string())
+            },
+            role.permissions.rules[5]
+        );
+        assert_eq!(
+            Rule::Topic {
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::List,
+                    PermissionAction::Write,
+                ],
+                caches: NameSelector::All,
+                topics: PrefixSelector::Name("dev".to_string())
+            },
+            role.permissions.rules[6]
+        );
+
+        // Conditions:
+        assert_eq!(
+            Condition::IpFilter {
+                allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()]
+            },
+            role.permissions.conditions[0]
+        );
+    }
+
+    #[test]
+    fn test_deserialize_role_with_no_description() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-limited",
+                "role_name": "Limited",
                 "permissions": {
                     "rules": [
                         {
@@ -614,79 +782,99 @@ mod tests {
         assert_eq!(None, role.description);
         assert_eq!(7, role.permissions.rules.len());
         assert_eq!(1, role.permissions.conditions.len());
+    }
 
-        // Rules:
-        assert_eq!(
-            Rule::ResourceManagement {
-                permissions: vec![PermissionAction::Read, PermissionAction::List],
-            },
-            role.permissions.rules[0]
-        );
-        assert_eq!(
-            Rule::Cache {
-                permissions: vec![PermissionAction::List],
-                caches: NameSelector::Name("foobar".to_string()),
-                items: ItemSelector::All
-            },
-            role.permissions.rules[1]
-        );
-        assert_eq!(
-            Rule::Cache {
-                permissions: vec![PermissionAction::Read],
-                caches: NameSelector::Name("foobar".to_string()),
-                items: ItemSelector::KeyPrefix("hello".to_string())
-            },
-            role.permissions.rules[2]
-        );
-        assert_eq!(
-            Rule::Cache {
-                permissions: vec![PermissionAction::Write],
-                caches: NameSelector::Name("foobar".to_string()),
-                items: ItemSelector::Key("helloworld".to_string())
-            },
-            role.permissions.rules[3]
+    #[test]
+    fn test_deserialize_role_with_empty_description() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-limited",
+                "role_name": "Limited",
+                "description": "",
+                "permissions": {
+                    "rules": [
+                        {
+                            "type": "resource_management",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "resources": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "read"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key_prefix": "hello" }
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key": "helloworld" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "prod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "preprod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": "*",
+                            "topics": { "name": "dev" }
+                        }
+                    ],
+                    "conditions": [
+                        {
+                            "ip_filter": {
+                                "allowed_cidr_ranges": [
+                                    "10.1.2.3/32",
+                                    "5.4.3.2/24"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "role_type": "custom"
+            }"#,
         );
 
-        assert_eq!(
-            Rule::Topic {
-                permissions: vec![PermissionAction::Read, PermissionAction::List,],
-                caches: NameSelector::Name("foobar".to_string()),
-                topics: PrefixSelector::Prefix("prod-".to_string())
-            },
-            role.permissions.rules[4]
-        );
-        assert_eq!(
-            Rule::Topic {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::List,
-                    PermissionAction::Write,
-                ],
-                caches: NameSelector::Name("foobar".to_string()),
-                topics: PrefixSelector::Prefix("preprod-".to_string())
-            },
-            role.permissions.rules[5]
-        );
-        assert_eq!(
-            Rule::Topic {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::List,
-                    PermissionAction::Write,
-                ],
-                caches: NameSelector::All,
-                topics: PrefixSelector::Name("dev".to_string())
-            },
-            role.permissions.rules[6]
-        );
-
-        // Conditions:
-        assert_eq!(
-            Condition::IpFilter {
-                allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()]
-            },
-            role.permissions.conditions[0]
-        );
+        assert_eq!("Limited", role.name);
+        assert_eq!("r-limited", role.id);
+        assert_eq!("", role.description.expect("should have description"));
+        assert_eq!(7, role.permissions.rules.len());
+        assert_eq!(1, role.permissions.conditions.len());
     }
 
     #[test]
@@ -695,6 +883,7 @@ mod tests {
             r#"{
                 "role_id": "r-limited",
                 "role_name": "Limited",
+                "description": "role with limited permissions",
                 "permissions": {
                     "rules": [
                         {
@@ -713,7 +902,10 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
-        assert_eq!(None, role.description);
+        assert_eq!(
+            "role with limited permissions",
+            role.description.expect("should have description")
+        );
         assert_eq!(
             vec![Rule::Cache {
                 permissions: vec![PermissionAction::List],
