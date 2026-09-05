@@ -393,9 +393,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // determine_provisioning (create)
-    // ========== ========== ===========
+    // determine_provisioning (create) //
 
     #[test]
     fn test_determine_provisioning_in_cluster_mode() {
@@ -518,9 +516,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // determine_provisioning_update, with --mode specified
-    // ========== ========== ===========
+    // determine_provisioning_update, with --mode specified //
 
     #[test]
     fn test_determine_provisioning_update_in_cluster_mode_with_one_field() {
@@ -811,9 +807,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // determine_provisioning_update, with --mode inferred
-    // ========== ========== ===========
+    // determine_provisioning_update, with --mode inferred //
 
     #[test]
     fn test_determine_provisioning_update_infers_cluster_mode() {
@@ -923,9 +917,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // Serialization
-    // ========== ========== ===========
+    // Serialization //
 
     #[test]
     fn test_serialize_provisioning_in_flex_mode() {
@@ -1060,9 +1052,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // Deserialization
-    // ========== ========== ===========
+    // Deserialization //
 
     #[test]
     fn test_deserialize_diagnostic_by_its_kind() {
