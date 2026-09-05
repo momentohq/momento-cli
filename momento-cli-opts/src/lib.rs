@@ -817,6 +817,7 @@ pub enum CustomRoleCommand {
 
         #[arg(
             long = "rename",
+            value_parser = NonEmptyStringValueParser::new(),
             help = "New name for your custom role; \
                     omit to leave unchanged",
             value_name = "NEW_NAME"
@@ -826,6 +827,7 @@ pub enum CustomRoleCommand {
         #[arg(
             long,
             short,
+            // Empty is allowed! Must be able to *remove* a description
             help = "New description for your custom role; \
                     omit to leave unchanged",
             value_name = "NEW_DESCRIPTION"
