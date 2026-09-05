@@ -1,12 +1,10 @@
 use super::utils::{
     call_role_create_api, call_role_delete_api, call_role_list_api, call_role_update_api,
-    determine_role, determine_role_update, CustomRole, DeleteCustomRoleResponse, DeleteStatus,
-    ListCustomRolesResponse, Permissions, RoleSelector,
+    determine_role, determine_role_permissions, determine_role_update, CustomRole,
+    DeleteCustomRoleResponse, DeleteStatus, ListCustomRolesResponse, RoleSelector,
 };
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
-
-use serde_json;
 
 pub async fn create_role(
     endpoint: String,
@@ -18,7 +16,7 @@ pub async fn create_role(
     let data = CustomRole {
         name,
         description,
-        permissions: serde_json::from_str::<Permissions>(&permission_set)?,
+        permissions: determine_role_permissions(permission_set)?,
     };
     let response = call_role_create_api(endpoint, auth_token, data).await?;
     match response {

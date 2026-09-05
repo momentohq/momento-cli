@@ -3,6 +3,7 @@ use crate::error::CliError;
 
 use http::Method;
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
@@ -85,10 +86,10 @@ pub enum Rule {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Permissions {
-    #[serde(default)]
-    pub rules: Vec<Rule>,
-    #[serde(default)]
-    pub conditions: Vec<Condition>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rules: Option<Vec<Rule>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conditions: Option<Vec<Condition>>,
 }
 
 #[derive(Serialize)]
@@ -229,6 +230,30 @@ pub async fn determine_role(
     )))
 }
 
+pub fn determine_role_permissions(permission_set: String) -> Result<Permissions, CliError> {
+    let help_text = "For more information, try '--help'";
+    if permission_set.is_empty() {
+        return Err(CliError::new(format!(
+            "Invalid --permission-set; must specify rules and conditions, which can each be empty [].\n\n{help_text}"
+        )));
+    }
+    let permissions = serde_json::from_str::<Permissions>(&permission_set).map_err(|error| {
+        CliError::new(format!("Invalid --permission-set: {error}\n\n{help_text}"))
+    })?;
+    match (&permissions.rules, &permissions.conditions) {
+        (Some(_), Some(_)) => Ok(permissions),
+        (None, None) => Err(CliError::new(format!(
+            "Invalid --permission-set; must specify rules and conditions, which can each be empty [].\n\n{help_text}",
+        ))),
+        (Some(_), None) => Err(CliError::new(format!(
+            "Invalid --permission-set; must specify rules, which can be empty [].\n\n{help_text}",
+        ))),
+        (None, Some(_)) => Err(CliError::new(format!(
+            "Invalid --permission-set; must specify conditions, which can be empty [].\n\n{help_text}",
+        ))),
+    }
+}
+
 pub fn determine_role_update(
     existing_role: CustomRoleResponse,
     new_name: Option<String>,
@@ -239,7 +264,8 @@ pub fn determine_role_update(
         name: new_name.unwrap_or(existing_role.name),
         description: new_description.or(existing_role.description),
         permissions: new_permission_set
-            .and_then(|permissions| serde_json::from_str::<Permissions>(permissions.as_str()).ok())
+            .map(determine_role_permissions)
+            .transpose()?
             .unwrap_or(existing_role.permissions),
     })
 }
@@ -429,8 +455,12 @@ mod tests {
             "I have a description",
             role.description.expect("should have description")
         );
-        assert_eq!(8, role.permissions.rules.len());
-        assert_eq!(1, role.permissions.conditions.len());
+
+        let rules = role.permissions.rules.expect("should have rules");
+        assert_eq!(8, rules.len());
+
+        let conditions = role.permissions.conditions.expect("should have conditions");
+        assert_eq!(1, conditions.len());
 
         assert_eq!(
             Rule::AccountManagement {
@@ -440,7 +470,7 @@ mod tests {
                     PermissionAction::List
                 ],
             },
-            role.permissions.rules[0]
+            rules[0]
         );
         assert_eq!(
             Rule::AuthManagement {
@@ -450,7 +480,7 @@ mod tests {
                     PermissionAction::List
                 ],
             },
-            role.permissions.rules[1]
+            rules[1]
         );
         assert_eq!(
             Rule::ResourceManagement {
@@ -460,7 +490,7 @@ mod tests {
                     PermissionAction::List
                 ],
             },
-            role.permissions.rules[2]
+            rules[2]
         );
 
         assert_eq!(
@@ -473,7 +503,7 @@ mod tests {
                 caches: NameSelector::All,
                 items: ItemSelector::All,
             },
-            role.permissions.rules[3]
+            rules[3]
         );
         assert_eq!(
             Rule::Topic {
@@ -485,7 +515,7 @@ mod tests {
                 caches: NameSelector::All,
                 topics: PrefixSelector::All,
             },
-            role.permissions.rules[4]
+            rules[4]
         );
         assert_eq!(
             Rule::Store {
@@ -497,7 +527,7 @@ mod tests {
                 stores: NameSelector::All,
                 items: ItemSelector::All,
             },
-            role.permissions.rules[5]
+            rules[5]
         );
         assert_eq!(
             Rule::Function {
@@ -505,21 +535,21 @@ mod tests {
                 caches: NameSelector::All,
                 functions: PrefixSelector::All,
             },
-            role.permissions.rules[6]
+            rules[6]
         );
         assert_eq!(
             Rule::Database {
                 permissions: vec![PermissionAction::Read, PermissionAction::Write,],
                 databases: NameSelector::All,
             },
-            role.permissions.rules[7]
+            rules[7]
         );
 
         assert_eq!(
             Condition::IpFilter {
                 allowed_cidr_ranges: vec!["0.0.0.0/0".to_string()],
             },
-            role.permissions.conditions[0]
+            conditions[0]
         );
     }
 
@@ -615,15 +645,19 @@ mod tests {
             "role with limited permissions",
             role.description.expect("should have description")
         );
-        assert_eq!(7, role.permissions.rules.len());
-        assert_eq!(1, role.permissions.conditions.len());
+
+        let rules = role.permissions.rules.expect("should have rules");
+        assert_eq!(7, rules.len());
+
+        let conditions = role.permissions.conditions.expect("should have conditions");
+        assert_eq!(1, conditions.len());
 
         // Rules:
         assert_eq!(
             Rule::ResourceManagement {
                 permissions: vec![PermissionAction::Read, PermissionAction::List],
             },
-            role.permissions.rules[0]
+            rules[0]
         );
         assert_eq!(
             Rule::Cache {
@@ -631,7 +665,7 @@ mod tests {
                 caches: NameSelector::Name("foobar".to_string()),
                 items: ItemSelector::All
             },
-            role.permissions.rules[1]
+            rules[1]
         );
         assert_eq!(
             Rule::Cache {
@@ -639,7 +673,7 @@ mod tests {
                 caches: NameSelector::Name("foobar".to_string()),
                 items: ItemSelector::KeyPrefix("hello".to_string())
             },
-            role.permissions.rules[2]
+            rules[2]
         );
         assert_eq!(
             Rule::Cache {
@@ -647,7 +681,7 @@ mod tests {
                 caches: NameSelector::Name("foobar".to_string()),
                 items: ItemSelector::Key("helloworld".to_string())
             },
-            role.permissions.rules[3]
+            rules[3]
         );
 
         assert_eq!(
@@ -656,7 +690,7 @@ mod tests {
                 caches: NameSelector::Name("foobar".to_string()),
                 topics: PrefixSelector::Prefix("prod-".to_string())
             },
-            role.permissions.rules[4]
+            rules[4]
         );
         assert_eq!(
             Rule::Topic {
@@ -668,7 +702,7 @@ mod tests {
                 caches: NameSelector::Name("foobar".to_string()),
                 topics: PrefixSelector::Prefix("preprod-".to_string())
             },
-            role.permissions.rules[5]
+            rules[5]
         );
         assert_eq!(
             Rule::Topic {
@@ -680,7 +714,7 @@ mod tests {
                 caches: NameSelector::All,
                 topics: PrefixSelector::Name("dev".to_string())
             },
-            role.permissions.rules[6]
+            rules[6]
         );
 
         // Conditions:
@@ -688,7 +722,7 @@ mod tests {
             Condition::IpFilter {
                 allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()]
             },
-            role.permissions.conditions[0]
+            conditions[0]
         );
     }
 
@@ -780,8 +814,14 @@ mod tests {
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
         assert_eq!(None, role.description);
-        assert_eq!(7, role.permissions.rules.len());
-        assert_eq!(1, role.permissions.conditions.len());
+        assert_eq!(7, role.permissions.rules.expect("should have rules").len());
+        assert_eq!(
+            1,
+            role.permissions
+                .conditions
+                .expect("should have conditions")
+                .len()
+        );
     }
 
     #[test]
@@ -873,8 +913,14 @@ mod tests {
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
         assert_eq!("", role.description.expect("should have description"));
-        assert_eq!(7, role.permissions.rules.len());
-        assert_eq!(1, role.permissions.conditions.len());
+        assert_eq!(7, role.permissions.rules.expect("should have rules").len());
+        assert_eq!(
+            1,
+            role.permissions
+                .conditions
+                .expect("should have conditions")
+                .len()
+        );
     }
 
     #[test]
@@ -912,10 +958,10 @@ mod tests {
                 caches: NameSelector::Name("foobar".to_string()),
                 items: ItemSelector::All
             }],
-            role.permissions.rules
+            role.permissions.rules.expect("should have rules")
         );
 
-        assert!(role.permissions.conditions.is_empty());
+        assert!(role.permissions.conditions.is_none());
     }
 
     #[test]
@@ -924,6 +970,7 @@ mod tests {
             r#"{
                 "role_id": "r-limited",
                 "role_name": "Limited",
+                "description": "role with limited permissions",
                 "permissions": {
                     "conditions": [
                         {
@@ -942,14 +989,17 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
-        assert_eq!(None, role.description);
+        assert_eq!(
+            "role with limited permissions",
+            role.description.expect("should have description")
+        );
         assert_eq!(
             Condition::IpFilter {
                 allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()]
             },
-            role.permissions.conditions[0]
+            role.permissions.conditions.expect("should have conditions")[0]
         );
 
-        assert!(role.permissions.rules.is_empty());
+        assert!(role.permissions.rules.is_none());
     }
 }
