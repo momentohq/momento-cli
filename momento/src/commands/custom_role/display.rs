@@ -133,21 +133,23 @@ impl fmt::Display for CustomRoleResponse {
         if let Some(description) = &self.description {
             write!(f, "\nDescription: {description}")?;
         }
-        if !self.permissions.rules.is_empty() {
-            write!(f, "\nPermissions:")?;
-            for rule in &self.permissions.rules {
-                write!(f, "\n{rule}")?;
+        match &self.permissions.rules {
+            Some(rules) => {
+                write!(f, "\nPermissions:")?;
+                for rule in rules {
+                    write!(f, "\n{rule}")?;
+                }
             }
-        } else {
-            write!(f, "\nPermissions: (none)")?;
+            None => write!(f, "\nPermissions: (none)")?,
         }
-        if !self.permissions.conditions.is_empty() {
-            write!(f, "\nConditions:")?;
-            for condition in &self.permissions.conditions {
-                write!(f, "\n{condition}")?;
+        match &self.permissions.conditions {
+            Some(conditions) => {
+                write!(f, "\nConditions:")?;
+                for condition in conditions {
+                    write!(f, "\n{condition}")?;
+                }
             }
-        } else {
-            write!(f, "\nConditions: (none)")?;
+            None => write!(f, "\nConditions: (none)")?,
         }
         Ok(())
     }
@@ -273,7 +275,7 @@ mod tests {
             name: "Limited".to_string(),
             description: None,
             permissions: Permissions {
-                rules: vec![
+                rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
                     },
@@ -315,10 +317,10 @@ mod tests {
                         caches: NameSelector::All,
                         topics: PrefixSelector::Name("dev".to_string()),
                     },
-                ],
-                conditions: vec![Condition::IpFilter {
+                ]),
+                conditions: Some(vec![Condition::IpFilter {
                     allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()],
-                }],
+                }]),
             },
         };
 
@@ -332,7 +334,7 @@ mod tests {
             name: "Limited".to_string(),
             description: Some("".to_string()),
             permissions: Permissions {
-                rules: vec![
+                rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
                     },
@@ -374,10 +376,10 @@ mod tests {
                         caches: NameSelector::All,
                         topics: PrefixSelector::Name("dev".to_string()),
                     },
-                ],
-                conditions: vec![Condition::IpFilter {
+                ]),
+                conditions: Some(vec![Condition::IpFilter {
                     allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()],
-                }],
+                }]),
             },
         };
 
