@@ -1,0 +1,31 @@
+---
+source: momento/src/commands/custom_role/display.rs
+expression: role.to_string()
+---
+Name: Limited
+ID: r-limited
+Permissions:
+- Resource Management:
+  Allowed actions: Read, List
+- Cache: foobar
+  Keys: all
+  Allowed actions: List
+- Cache: foobar
+  Keys with prefix: hello
+  Allowed actions: Read
+- Cache: foobar
+  Key: helloworld
+  Allowed actions: Write
+- Topics with prefix: prod-
+  In cache: foobar
+  Allowed actions: Read, List
+- Topics with prefix: preprod-
+  In cache: foobar
+  Allowed actions: Read, List, Write
+- Topic: dev
+  In caches: all
+  Allowed actions: Read, List, Write
+Conditions:
+- Allowed IPs:
+  10.1.2.3/32
+  5.4.3.2/24
