@@ -130,8 +130,8 @@ impl fmt::Display for CustomRoleResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
         write!(f, "\nID: {}", self.id)?;
-        if let Some(description) = &self.description {
-            write!(f, "\nDescription: {description}")?;
+        if !self.description.is_empty() {
+            write!(f, "\nDescription: {}", self.description)?;
         }
         if !self.permissions.rules.is_empty() {
             write!(f, "\nPermissions:")?;

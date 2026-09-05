@@ -17,7 +17,7 @@ pub async fn create_role(
 ) -> Result<(), CliError> {
     let data = CustomRole {
         name,
-        description,
+        description: description.unwrap_or_default(),
         permissions: serde_json::from_str::<Permissions>(&permission_set)?,
     };
     let response = call_role_create_api(endpoint, auth_token, data).await?;

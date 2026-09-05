@@ -95,8 +95,8 @@ pub struct Permissions {
 pub struct CustomRole {
     #[serde(rename = "role_name")]
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub description: String,
     pub permissions: Permissions,
 }
 
@@ -106,8 +106,8 @@ pub struct CustomRoleResponse {
     pub name: String,
     #[serde(rename = "role_id")]
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub description: String,
     pub permissions: Permissions,
 }
 
@@ -238,7 +238,7 @@ pub fn determine_role_update(
 ) -> Result<CustomRole, CliError> {
     Ok(CustomRole {
         name: new_name.unwrap_or(existing_role.name),
-        description: new_description.or(existing_role.description),
+        description: new_description.unwrap_or(existing_role.description),
         permissions: new_permission_set
             .and_then(|permissions| serde_json::from_str::<Permissions>(permissions.as_str()).ok())
             .unwrap_or(existing_role.permissions),
@@ -426,10 +426,7 @@ mod tests {
 
         assert_eq!("Everything", role.name);
         assert_eq!("r-everything", role.id);
-        assert_eq!(
-            "I have a description",
-            role.description.expect("should have a description")
-        );
+        assert_eq!("I have a description", role.description);
         assert_eq!(8, role.permissions.rules.len());
         assert_eq!(1, role.permissions.conditions.len());
 
@@ -611,7 +608,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
-        assert_eq!(None, role.description);
+        assert!(role.description.is_empty());
         assert_eq!(7, role.permissions.rules.len());
         assert_eq!(1, role.permissions.conditions.len());
 
@@ -713,7 +710,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
-        assert_eq!(None, role.description);
+        assert!(role.description.is_empty());
         assert_eq!(
             vec![Rule::Cache {
                 permissions: vec![PermissionAction::List],
@@ -750,7 +747,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
-        assert_eq!(None, role.description);
+        assert!(role.description.is_empty());
         assert_eq!(
             Condition::IpFilter {
                 allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()]
