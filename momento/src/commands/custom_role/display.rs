@@ -130,8 +130,8 @@ impl fmt::Display for CustomRoleResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
         write!(f, "\nID: {}", self.id)?;
-        if !self.description.is_empty() {
-            write!(f, "\nDescription: {}", self.description)?;
+        if let Some(description) = &self.description {
+            write!(f, "\nDescription: {description}")?;
         }
         if !self.permissions.rules.is_empty() {
             write!(f, "\nPermissions:")?;
@@ -223,7 +223,7 @@ impl fmt::Display for ActiveReferences {
 #[cfg(test)]
 mod tests {
     use super::super::utils::{ItemSelector, NameSelector};
-    use super::super::utils::{PermissionAction, Rule};
+    use super::super::utils::{PermissionAction, Permissions, Rule};
     use super::*;
 
     fn snapshot_settings() -> insta::Settings {
@@ -264,6 +264,124 @@ mod tests {
             items: ItemSelector::KeyPrefix("hello".to_string()),
         };
         snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_role_with_no_description() {
+        let role = CustomRoleResponse {
+            id: "r-limited".to_string(),
+            name: "Limited".to_string(),
+            description: None,
+            permissions: Permissions {
+                rules: vec![
+                    Rule::ResourceManagement {
+                        permissions: vec![PermissionAction::Read, PermissionAction::List],
+                    },
+                    Rule::Cache {
+                        permissions: vec![PermissionAction::List],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        items: ItemSelector::All,
+                    },
+                    Rule::Cache {
+                        permissions: vec![PermissionAction::Read],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        items: ItemSelector::KeyPrefix("hello".to_string()),
+                    },
+                    Rule::Cache {
+                        permissions: vec![PermissionAction::Write],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        items: ItemSelector::Key("helloworld".to_string()),
+                    },
+                    Rule::Topic {
+                        permissions: vec![PermissionAction::Read, PermissionAction::List],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        topics: PrefixSelector::Prefix("prod-".to_string()),
+                    },
+                    Rule::Topic {
+                        permissions: vec![
+                            PermissionAction::Read,
+                            PermissionAction::List,
+                            PermissionAction::Write,
+                        ],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        topics: PrefixSelector::Prefix("preprod-".to_string()),
+                    },
+                    Rule::Topic {
+                        permissions: vec![
+                            PermissionAction::Read,
+                            PermissionAction::List,
+                            PermissionAction::Write,
+                        ],
+                        caches: NameSelector::All,
+                        topics: PrefixSelector::Name("dev".to_string()),
+                    },
+                ],
+                conditions: vec![Condition::IpFilter {
+                    allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()],
+                }],
+            },
+        };
+
+        snapshot_settings().bind(|| insta::assert_snapshot!(role.to_string()));
+    }
+
+    #[test]
+    fn test_display_role_with_empty_description() {
+        let role = CustomRoleResponse {
+            id: "r-limited".to_string(),
+            name: "Limited".to_string(),
+            description: Some("".to_string()),
+            permissions: Permissions {
+                rules: vec![
+                    Rule::ResourceManagement {
+                        permissions: vec![PermissionAction::Read, PermissionAction::List],
+                    },
+                    Rule::Cache {
+                        permissions: vec![PermissionAction::List],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        items: ItemSelector::All,
+                    },
+                    Rule::Cache {
+                        permissions: vec![PermissionAction::Read],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        items: ItemSelector::KeyPrefix("hello".to_string()),
+                    },
+                    Rule::Cache {
+                        permissions: vec![PermissionAction::Write],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        items: ItemSelector::Key("helloworld".to_string()),
+                    },
+                    Rule::Topic {
+                        permissions: vec![PermissionAction::Read, PermissionAction::List],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        topics: PrefixSelector::Prefix("prod-".to_string()),
+                    },
+                    Rule::Topic {
+                        permissions: vec![
+                            PermissionAction::Read,
+                            PermissionAction::List,
+                            PermissionAction::Write,
+                        ],
+                        caches: NameSelector::Name("foobar".to_string()),
+                        topics: PrefixSelector::Prefix("preprod-".to_string()),
+                    },
+                    Rule::Topic {
+                        permissions: vec![
+                            PermissionAction::Read,
+                            PermissionAction::List,
+                            PermissionAction::Write,
+                        ],
+                        caches: NameSelector::All,
+                        topics: PrefixSelector::Name("dev".to_string()),
+                    },
+                ],
+                conditions: vec![Condition::IpFilter {
+                    allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()],
+                }],
+            },
+        };
+
+        snapshot_settings().bind(|| insta::assert_snapshot!(role.to_string()));
     }
 
     #[test]

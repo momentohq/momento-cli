@@ -94,7 +94,7 @@ pub struct Permissions {
 pub struct CustomRole {
     #[serde(rename = "role_name")]
     pub name: String,
-    pub description: String,
+    pub description: Option<String>,
     pub permissions: Permissions,
 }
 
@@ -104,8 +104,8 @@ pub struct CustomRoleResponse {
     pub name: String,
     #[serde(rename = "role_id")]
     pub id: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     pub permissions: Permissions,
 }
 
@@ -236,7 +236,7 @@ pub fn determine_role_update(
 ) -> Result<CustomRole, CliError> {
     Ok(CustomRole {
         name: new_name.unwrap_or(existing_role.name),
-        description: new_description.unwrap_or(existing_role.description),
+        description: new_description.or(existing_role.description),
         permissions: new_permission_set
             .map(|permissions| serde_json::from_str::<Permissions>(&permissions))
             .transpose()?
@@ -425,7 +425,10 @@ mod tests {
 
         assert_eq!("Everything", role.name);
         assert_eq!("r-everything", role.id);
-        assert_eq!("I have a description", role.description);
+        assert_eq!(
+            "I have a description",
+            role.description.expect("should have description")
+        );
         assert_eq!(8, role.permissions.rules.len());
         assert_eq!(1, role.permissions.conditions.len());
 
@@ -526,6 +529,7 @@ mod tests {
             r#"{
                 "role_id": "r-limited",
                 "role_name": "Limited",
+                "description": "role with limited permissions",
                 "permissions": {
                     "rules": [
                         {
@@ -607,7 +611,10 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
-        assert!(role.description.is_empty());
+        assert_eq!(
+            "role with limited permissions",
+            role.description.expect("should have description")
+        );
         assert_eq!(7, role.permissions.rules.len());
         assert_eq!(1, role.permissions.conditions.len());
 
@@ -686,11 +693,197 @@ mod tests {
     }
 
     #[test]
+    fn test_deserialize_role_with_no_description() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-limited",
+                "role_name": "Limited",
+                "permissions": {
+                    "rules": [
+                        {
+                            "type": "resource_management",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "resources": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "read"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key_prefix": "hello" }
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key": "helloworld" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "prod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "preprod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": "*",
+                            "topics": { "name": "dev" }
+                        }
+                    ],
+                    "conditions": [
+                        {
+                            "ip_filter": {
+                                "allowed_cidr_ranges": [
+                                    "10.1.2.3/32",
+                                    "5.4.3.2/24"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "role_type": "custom"
+            }"#,
+        );
+
+        assert_eq!("Limited", role.name);
+        assert_eq!("r-limited", role.id);
+        assert_eq!(None, role.description);
+        assert_eq!(7, role.permissions.rules.len());
+        assert_eq!(1, role.permissions.conditions.len());
+    }
+
+    #[test]
+    fn test_deserialize_role_with_empty_description() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-limited",
+                "role_name": "Limited",
+                "description": "",
+                "permissions": {
+                    "rules": [
+                        {
+                            "type": "resource_management",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "resources": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": "*"
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "read"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key_prefix": "hello" }
+                        },
+                        {
+                            "type": "cache",
+                            "permissions": [
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "items": { "key": "helloworld" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "prod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": { "name": "foobar" },
+                            "topics": { "prefix": "preprod-" }
+                        },
+                        {
+                            "type": "topic",
+                            "permissions": [
+                                "read",
+                                "list",
+                                "write"
+                            ],
+                            "caches": "*",
+                            "topics": { "name": "dev" }
+                        }
+                    ],
+                    "conditions": [
+                        {
+                            "ip_filter": {
+                                "allowed_cidr_ranges": [
+                                    "10.1.2.3/32",
+                                    "5.4.3.2/24"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "role_type": "custom"
+            }"#,
+        );
+
+        assert_eq!("Limited", role.name);
+        assert_eq!("r-limited", role.id);
+        assert_eq!("", role.description.expect("should have description"));
+        assert_eq!(7, role.permissions.rules.len());
+        assert_eq!(1, role.permissions.conditions.len());
+    }
+
+    #[test]
     fn test_deserialize_role_with_no_conditions() {
         let role = parse_role(
             r#"{
                 "role_id": "r-limited",
                 "role_name": "Limited",
+                "description": "role with limited permissions",
                 "permissions": {
                     "rules": [
                         {
@@ -709,7 +902,10 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
-        assert!(role.description.is_empty());
+        assert_eq!(
+            "role with limited permissions",
+            role.description.expect("should have description")
+        );
         assert_eq!(
             vec![Rule::Cache {
                 permissions: vec![PermissionAction::List],
