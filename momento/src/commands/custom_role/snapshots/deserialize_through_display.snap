@@ -7,29 +7,55 @@ ID: r-limited
 Description: I have a description
 Permissions:
 - Account Management:
-  Allowed actions: Read, Write, List
+  Allowed actions: Read, List
 - Auth Management:
+  Items: all
   Allowed actions: Read, Write, List
 - Resource Management:
+  Resources: all
   Allowed actions: Read, Write, List
-- Cache: foobar
-  Keys: all
-  Allowed actions: List
-- Cache: foobar
-  Keys with prefix: hello
+- Databases (all)
+  Allowed actions: Read, Write
+- Database: orders
   Allowed actions: Read
-- Cache: foobar
-  Key: helloworld
+- Caches (all)
+  Keys: all
+  Allowed actions: Read, Write, List
+- Cache: prod-cache
+  Keys with prefix: public/
+  Allowed actions: Read
+- Cache: prod-cache
+  Key: feature-flags
   Allowed actions: Write
-- Topics with prefix: prod-
-  In cache: foobar
-  Allowed actions: Read, List
-- Topics with prefix: preprod-
-  In cache: foobar
-  Allowed actions: Read, List, Write
-- Topic: dev
+- Topics (all)
   In caches: all
-  Allowed actions: Read, List, Write
+  Allowed actions: Read, Write, List
+- Topic: announcements
+  In cache: chat-app
+  Allowed actions: Read
+- Topics with prefix: room-
+  In cache: chat-app
+  Allowed actions: Write
+- Object Stores (all)
+  Keys: all
+  Allowed actions: Read, Write, List
+- Object Store: user-prefs
+  Keys with prefix: org:42:
+  Allowed actions: Read
+- Object Store: user-prefs
+  Key: schema-version
+  Allowed actions: Write
+- Functions (all)
+  In caches: all
+  Allowed actions: Invoke
+- Function: resize-image
+  In cache: edge-app
+  Allowed actions: Invoke
+- Functions with prefix: webhook-
+  In cache: edge-app
+  Allowed actions: Invoke
 Conditions:
 - Allowed IPs:
-  0.0.0.0/0
+  10.0.0.0/8
+  192.168.1.0/24
+  2001:db8::/32

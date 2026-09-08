@@ -6,6 +6,7 @@ Name: Limited
 ID: r-limited
 Permissions:
 - Resource Management:
+  Resources: all
   Allowed actions: Read, List
 - Cache: foobar
   Keys: all

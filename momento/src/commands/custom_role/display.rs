@@ -1,6 +1,6 @@
 use super::utils::{
-    AccountMember, ActiveReferences, ApiKey, Condition, CustomRoleResponse, Invitation,
-    ItemSelector, NameSelector, PrefixSelector, Rule,
+    AccountMember, ActiveReferences, AllSelector, ApiKey, Condition, CustomRoleResponse,
+    Invitation, ItemSelector, NameSelector, PrefixSelector, Rule,
 };
 
 use chrono::prelude::DateTime;
@@ -68,7 +68,7 @@ impl fmt::Display for Rule {
                     stores,
                     items,
                 } => format!(
-                    "{}\n  {}\n",
+                    "{}\n  {}",
                     match stores {
                         NameSelector::All => "Object Stores (all)".to_string(),
                         NameSelector::Name(name) => format!("Object Store: {name}"),
@@ -104,8 +104,18 @@ impl fmt::Display for Rule {
                     NameSelector::Name(name) => format!("Database: {name}"),
                 },
                 Rule::AccountManagement { permissions: _ } => "Account Management:".to_string(),
-                Rule::AuthManagement { permissions: _ } => "Auth Management:".to_string(),
-                Rule::ResourceManagement { permissions: _ } => "Resource Management:".to_string(),
+                Rule::AuthManagement {
+                    permissions: _,
+                    items,
+                } => match items {
+                    AllSelector::All => "Auth Management:\n  Items: all".to_string(),
+                },
+                Rule::ResourceManagement {
+                    permissions: _,
+                    resources,
+                } => match resources {
+                    AllSelector::All => "Resource Management:\n  Resources: all".to_string(),
+                },
             },
             self.format_permissions(),
         )
@@ -224,7 +234,7 @@ impl fmt::Display for ActiveReferences {
 
 #[cfg(test)]
 mod tests {
-    use super::super::utils::{ItemSelector, NameSelector};
+    use super::super::utils::{AllSelector, ItemSelector, NameSelector};
     use super::super::utils::{PermissionAction, Permissions, Rule};
     use super::*;
 
@@ -232,6 +242,58 @@ mod tests {
         let mut settings = insta::Settings::clone_current();
         settings.set_prepend_module_to_snapshot(false);
         settings
+    }
+
+    #[test]
+    fn test_display_account_management_rule_with_all_permissions() {
+        let rule = Rule::AccountManagement {
+            permissions: vec![PermissionAction::Read, PermissionAction::List],
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_auth_management_rule_with_all_permissions() {
+        let rule = Rule::AuthManagement {
+            permissions: vec![
+                PermissionAction::Read,
+                PermissionAction::Write,
+                PermissionAction::List,
+            ],
+            items: AllSelector::All,
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_resource_management_rule_with_all_permissions() {
+        let rule = Rule::ResourceManagement {
+            permissions: vec![
+                PermissionAction::Read,
+                PermissionAction::Write,
+                PermissionAction::List,
+            ],
+            resources: AllSelector::All,
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_database_rule_with_all_permissions() {
+        let rule = Rule::Database {
+            permissions: vec![PermissionAction::Read, PermissionAction::Write],
+            databases: NameSelector::All,
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_database_rule_with_name_permissions() {
+        let rule = Rule::Database {
+            permissions: vec![PermissionAction::Read, PermissionAction::Write],
+            databases: NameSelector::Name("orders".to_string()),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
     }
 
     #[test]
@@ -269,6 +331,112 @@ mod tests {
     }
 
     #[test]
+    fn test_display_topic_rule_with_all_permissions() {
+        let rule = Rule::Topic {
+            permissions: vec![
+                PermissionAction::Read,
+                PermissionAction::Write,
+                PermissionAction::List,
+            ],
+            caches: NameSelector::All,
+            topics: PrefixSelector::All,
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_topic_rule_with_name_permissions() {
+        let rule = Rule::Topic {
+            permissions: vec![PermissionAction::Read],
+            caches: NameSelector::Name("chat-app".to_string()),
+            topics: PrefixSelector::Name("announcements".to_string()),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_topic_rule_with_prefix_permissions() {
+        let rule = Rule::Topic {
+            permissions: vec![PermissionAction::Write],
+            caches: NameSelector::All,
+            topics: PrefixSelector::Prefix("room-".to_string()),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_store_rule_with_all_permissions() {
+        let rule = Rule::Store {
+            permissions: vec![
+                PermissionAction::Read,
+                PermissionAction::Write,
+                PermissionAction::List,
+            ],
+            stores: NameSelector::All,
+            items: ItemSelector::All,
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_store_rule_with_name_permissions() {
+        let rule = Rule::Store {
+            permissions: vec![
+                PermissionAction::Read,
+                PermissionAction::Write,
+                PermissionAction::List,
+            ],
+            stores: NameSelector::Name("user-prefs".to_string()),
+            items: ItemSelector::Key("schema-version".to_string()),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_store_rule_with_prefix_permissions() {
+        let rule = Rule::Store {
+            permissions: vec![
+                PermissionAction::Read,
+                PermissionAction::Write,
+                PermissionAction::List,
+            ],
+            stores: NameSelector::All,
+            items: ItemSelector::KeyPrefix("org:42:".to_string()),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_function_rule_with_all_permissions() {
+        let rule = Rule::Function {
+            permissions: vec![PermissionAction::Invoke],
+            caches: NameSelector::All,
+            functions: PrefixSelector::All,
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_function_rule_with_name_permissions() {
+        let rule = Rule::Function {
+            permissions: vec![PermissionAction::Invoke],
+            caches: NameSelector::Name("edge-app".to_string()),
+            functions: PrefixSelector::Name("resize-image".to_string()),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
+    fn test_display_function_rule_with_prefix_permissions() {
+        let rule = Rule::Function {
+            permissions: vec![PermissionAction::Invoke],
+            caches: NameSelector::Name("edge-app".to_string()),
+            functions: PrefixSelector::Prefix("webhook-".to_string()),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
+    }
+
+    #[test]
     fn test_display_role_with_no_description() {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
@@ -278,6 +446,7 @@ mod tests {
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
+                        resources: AllSelector::All,
                     },
                     Rule::Cache {
                         permissions: vec![PermissionAction::List],
@@ -337,6 +506,7 @@ mod tests {
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
+                        resources: AllSelector::All,
                     },
                     Rule::Cache {
                         permissions: vec![PermissionAction::List],
@@ -396,6 +566,7 @@ mod tests {
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
+                        resources: AllSelector::All,
                     },
                     Rule::Cache {
                         permissions: vec![PermissionAction::List],
@@ -453,6 +624,7 @@ mod tests {
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
+                        resources: AllSelector::All,
                     },
                     Rule::Cache {
                         permissions: vec![PermissionAction::List],
@@ -526,94 +698,26 @@ mod tests {
                 "description": "I have a description",
                 "permissions": {
                     "rules": [
-                        {
-                            "type": "account_management",
-                            "permissions": [
-                                "read",
-                                "write",
-                                "list"
-                            ]
-                        },
-                        {
-                            "type": "auth_management",
-                            "permissions": [
-                                "read",
-                                "write",
-                                "list"
-                            ],
-                            "items": "*"
-                        },
-                        {
-                            "type": "resource_management",
-                            "permissions": [
-                                "read",
-                                "write",
-                                "list"
-                            ],
-                            "resources": "*"
-                        },
-                        {
-                            "type": "cache",
-                            "permissions": [
-                                "list"
-                            ],
-                            "caches": { "name": "foobar" },
-                            "items": "*"
-                        },
-                        {
-                            "type": "cache",
-                            "permissions": [
-                                "read"
-                            ],
-                            "caches": { "name": "foobar" },
-                            "items": { "key_prefix": "hello" }
-                        },
-                        {
-                            "type": "cache",
-                            "permissions": [
-                                "write"
-                            ],
-                            "caches": { "name": "foobar" },
-                            "items": { "key": "helloworld" }
-                        },
-                        {
-                            "type": "topic",
-                            "permissions": [
-                                "read",
-                                "list"
-                            ],
-                            "caches": { "name": "foobar" },
-                            "topics": { "prefix": "prod-" }
-                        },
-                        {
-                            "type": "topic",
-                            "permissions": [
-                                "read",
-                                "list",
-                                "write"
-                            ],
-                            "caches": { "name": "foobar" },
-                            "topics": { "prefix": "preprod-" }
-                        },
-                        {
-                            "type": "topic",
-                            "permissions": [
-                                "read",
-                                "list",
-                                "write"
-                            ],
-                            "caches": "*",
-                            "topics": { "name": "dev" }
-                        }
+                        { "type": "account_management",  "permissions": ["read", "list"] },
+                        { "type": "auth_management",     "permissions": ["read", "write", "list"], "items": "*" },
+                        { "type": "resource_management", "permissions": ["read", "write", "list"], "resources": "*" },
+                        { "type": "database", "permissions": ["read", "write"],         "databases": "*" },
+                        { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" } },
+                        { "type": "cache",    "permissions": ["read", "write", "list"], "caches": "*",                      "items": "*" },
+                        { "type": "cache",    "permissions": ["read"],                  "caches": { "name": "prod-cache" }, "items": { "key_prefix": "public/" } },
+                        { "type": "cache",    "permissions": ["write"],                 "caches": { "name": "prod-cache" }, "items": { "key": "feature-flags" } },
+                        { "type": "topic",    "permissions": ["read", "write", "list"], "caches": "*",                      "topics": "*" },
+                        { "type": "topic",    "permissions": ["read"],                  "caches": { "name": "chat-app" },   "topics": { "name": "announcements" } },
+                        { "type": "topic",    "permissions": ["write"],                 "caches": { "name": "chat-app" },   "topics": { "prefix": "room-" } },
+                        { "type": "store",    "permissions": ["read", "write", "list"], "stores": "*",                      "items": "*" },
+                        { "type": "store",    "permissions": ["read"],                  "stores": { "name": "user-prefs" }, "items": { "key_prefix": "org:42:" } },
+                        { "type": "store",    "permissions": ["write"],                 "stores": { "name": "user-prefs" }, "items": { "key": "schema-version" } },
+                        { "type": "function", "permissions": ["invoke"],                "caches": "*",                      "functions": "*" },
+                        { "type": "function", "permissions": ["invoke"],                "caches": { "name": "edge-app" },   "functions": { "name": "resize-image" } },
+                        { "type": "function", "permissions": ["invoke"],                "caches": { "name": "edge-app" },   "functions": { "prefix": "webhook-" } }
                     ],
                     "conditions": [
-                        {
-                            "ip_filter": {
-                                "allowed_cidr_ranges": [
-                                    "0.0.0.0/0"
-                                ]
-                            }
-                        }
+                        { "ip_filter": { "allowed_cidr_ranges": ["10.0.0.0/8", "192.168.1.0/24", "2001:db8::/32"] } }
                     ]
                 },
                 "role_type": "custom"
