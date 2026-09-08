@@ -411,193 +411,7 @@ mod tests {
     }
 
     #[test]
-    fn test_determine_role_permissions_with_all_permissions() {
-        let permissions = determine_role_permissions(
-            r#"{
-                "rules": [
-                    {
-                        "type": "account_management",
-                        "permissions": [
-                            "read",
-                            "list"
-                        ]
-                    },
-                    {
-                        "type": "auth_management",
-                        "permissions": [
-                            "read",
-                            "write",
-                            "list"
-                        ],
-                        "items": "*"
-                    },
-                    {
-                        "type": "resource_management",
-                        "permissions": [
-                            "read",
-                            "write",
-                            "list"
-                        ],
-                        "resources": "*"
-                    },
-                    {
-                        "type": "cache",
-                        "permissions": [
-                            "read",
-                            "write",
-                            "list"
-                        ],
-                        "caches": "*",
-                        "items": "*"
-                    },
-                    {
-                        "type": "topic",
-                        "permissions": [
-                            "read",
-                            "write",
-                            "list"
-                        ],
-                        "caches": "*",
-                        "topics": "*"
-                    },
-                    {
-                        "type": "store",
-                        "permissions": [
-                            "read",
-                            "write",
-                            "list"
-                        ],
-                        "stores": "*",
-                        "items": "*"
-                    },
-                    {
-                        "type": "function",
-                        "permissions": [
-                            "invoke"
-                        ],
-                        "caches": "*",
-                        "functions": "*"
-                    },
-                    {
-                        "type": "database",
-                        "permissions": [
-                            "read",
-                            "write"
-                        ],
-                        "databases": "*"
-                    }
-                ],
-                "conditions": [
-                    {
-                        "ip_filter": {
-                            "allowed_cidr_ranges": [
-                                "0.0.0.0/0"
-                            ]
-                        }
-                    }
-                ]
-            }"#
-            .to_string(),
-        )
-        .expect("should parse permissions");
-
-        let rules = permissions.rules.expect("should have rules");
-        assert_eq!(8, rules.len());
-
-        let conditions = permissions.conditions.expect("should have conditions");
-        assert_eq!(1, conditions.len());
-
-        assert_eq!(
-            Rule::AccountManagement {
-                permissions: vec![PermissionAction::Read, PermissionAction::List],
-            },
-            rules[0]
-        );
-        assert_eq!(
-            Rule::AuthManagement {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                items: AllSelector::All,
-            },
-            rules[1]
-        );
-        assert_eq!(
-            Rule::ResourceManagement {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                resources: AllSelector::All,
-            },
-            rules[2]
-        );
-
-        assert_eq!(
-            Rule::Cache {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                caches: NameSelector::All,
-                items: ItemSelector::All,
-            },
-            rules[3]
-        );
-        assert_eq!(
-            Rule::Topic {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                caches: NameSelector::All,
-                topics: PrefixSelector::All,
-            },
-            rules[4]
-        );
-        assert_eq!(
-            Rule::Store {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                stores: NameSelector::All,
-                items: ItemSelector::All,
-            },
-            rules[5]
-        );
-        assert_eq!(
-            Rule::Function {
-                permissions: vec![PermissionAction::Invoke],
-                caches: NameSelector::All,
-                functions: PrefixSelector::All,
-            },
-            rules[6]
-        );
-        assert_eq!(
-            Rule::Database {
-                permissions: vec![PermissionAction::Read, PermissionAction::Write,],
-                databases: NameSelector::All,
-            },
-            rules[7]
-        );
-
-        assert_eq!(
-            Condition::IpFilter {
-                allowed_cidr_ranges: vec!["0.0.0.0/0".to_string()],
-            },
-            conditions[0]
-        );
-    }
-
-    #[test]
-    fn test_determine_role_permissions_with_limited_permissions() {
+    fn test_determine_role_permissions_with_all_fields() {
         let permissions = determine_role_permissions(
             r#"{
                 "rules": [
@@ -888,7 +702,7 @@ mod tests {
     // Rule Deserialization //
 
     #[test]
-    fn test_deserialize_account_management_rule_with_all_permissions() {
+    fn test_deserialize_account_management_rule() {
         let rule = parse_permission_rule(
             r#"{
                 "type": "account_management",
@@ -908,7 +722,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_auth_management_rule_with_all_permissions() {
+    fn test_deserialize_auth_management_rule() {
         let rule = parse_permission_rule(
             r#"{
                 "type": "auth_management",
@@ -935,7 +749,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_resource_management_rule_with_all_permissions() {
+    fn test_deserialize_resource_management_rule() {
         let rule = parse_permission_rule(
             r#"{
                 "type": "resource_management",
@@ -962,29 +776,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_database_rule_with_all_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "database",
-                "permissions": [
-                    "read",
-                    "write"
-                ],
-                "databases": "*"
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Database {
-                permissions: vec![PermissionAction::Read, PermissionAction::Write],
-                databases: NameSelector::All,
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_database_rule_with_name_permissions() {
+    fn test_deserialize_database_rule() {
         let rule = parse_permission_rule(
             r#"{
                 "type": "database",
@@ -1008,7 +800,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_cache_rule_with_all_permissions() {
+    fn test_deserialize_cache_rule() {
         let rule = parse_permission_rule(
             r#"{
                 "type": "cache",
@@ -1016,66 +808,6 @@ mod tests {
                     "read",
                     "write",
                     "list"
-                ],
-                "caches": "*",
-                "items": "*"
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Cache {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                caches: NameSelector::All,
-                items: ItemSelector::All,
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_cache_rule_with_name_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "cache",
-                "permissions": [
-                    "read",
-                    "write",
-                    "list"
-                ],
-                "caches": {
-                    "name": "prod-cache"
-                },
-                "items": {
-                    "key": "feature-flags"
-                }
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Cache {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                caches: NameSelector::Name("prod-cache".to_string()),
-                items: ItemSelector::Key("feature-flags".to_string()),
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_cache_rule_with_prefix_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "cache",
-                "permissions": [
-                    "read"
                 ],
                 "caches": "*",
                 "items": {
@@ -1095,63 +827,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_topic_rule_with_all_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "topic",
-                "permissions": [
-                    "read",
-                    "write",
-                    "list"
-                ],
-                "caches": "*",
-                "topics": "*"
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Topic {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                caches: NameSelector::All,
-                topics: PrefixSelector::All,
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_topic_rule_with_name_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "topic",
-                "permissions": [
-                    "read"
-                ],
-                "caches": {
-                    "name": "chat-app"
-                },
-                "topics": {
-                    "name": "announcements"
-                }
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Topic {
-                permissions: vec![PermissionAction::Read],
-                caches: NameSelector::Name("chat-app".to_string()),
-                topics: PrefixSelector::Name("announcements".to_string()),
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_topic_rule_with_prefix_permissions() {
+    fn test_deserialize_topic_rule() {
         let rule = parse_permission_rule(
             r#"{
                 "type": "topic",
@@ -1176,36 +852,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_store_rule_with_all_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "store",
-                "permissions": [
-                    "read",
-                    "write",
-                    "list"
-                ],
-                "stores": "*",
-                "items": "*"
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Store {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                stores: NameSelector::All,
-                items: ItemSelector::All,
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_store_rule_with_name_permissions() {
+    fn test_deserialize_store_rule() {
         let rule = parse_permission_rule(
             r#"{
                 "type": "store",
@@ -1217,37 +864,6 @@ mod tests {
                 "stores": {
                     "name": "user-prefs"
                 },
-                "items": {
-                    "key": "schema-version"
-                }
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Store {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                stores: NameSelector::Name("user-prefs".to_string()),
-                items: ItemSelector::Key("schema-version".to_string()),
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_store_rule_with_prefix_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "store",
-                "permissions": [
-                    "read",
-                    "write",
-                    "list"
-                ],
-                "stores": "*",
                 "items": {
                     "key_prefix": "org:42:"
                 }
@@ -1269,57 +885,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_function_rule_with_all_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "function",
-                "permissions": [
-                    "invoke"
-                ],
-                "caches": "*",
-                "functions": "*"
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Function {
-                permissions: vec![PermissionAction::Invoke],
-                caches: NameSelector::All,
-                functions: PrefixSelector::All,
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_function_rule_with_name_permissions() {
-        let rule = parse_permission_rule(
-            r#"{
-                "type": "function",
-                "permissions": [
-                    "invoke"
-                ],
-                "caches": {
-                    "name": "edge-app"
-                },
-                "functions": {
-                    "name": "resize-image"
-                }
-            }"#,
-        );
-
-        assert_eq!(
-            Rule::Function {
-                permissions: vec![PermissionAction::Invoke],
-                caches: NameSelector::Name("edge-app".to_string()),
-                functions: PrefixSelector::Name("resize-image".to_string()),
-            },
-            rule
-        );
-    }
-
-    #[test]
-    fn test_deserialize_function_rule_with_prefix_permissions() {
+    fn test_deserialize_function_rule() {
         let rule = parse_permission_rule(
             r#"{
                 "type": "function",
@@ -1343,6 +909,54 @@ mod tests {
             },
             rule
         );
+    }
+
+    #[test]
+    fn test_deserialize_rule_with_invalid_fields() {
+        serde_json::from_str::<Rule>(
+            r#"{
+                "type": "account_management",
+                "permissions": [
+                    "write"
+                ]
+            }"#,
+        )
+        .expect_err("should reject WRITE for account_management");
+
+        serde_json::from_str::<Rule>(
+            r#"{
+                "type": "resource_management",
+                "permissions": [
+                    "read",
+                    "write"
+                    "list"
+                ]
+            }"#,
+        )
+        .expect_err("should require resources for resource_management");
+
+        serde_json::from_str::<Rule>(
+            r#"{
+                "type": "cache",
+                "permissions": [
+                    "invoke"
+                ],
+                "caches": "*",
+                "items": "*"
+            }"#,
+        )
+        .expect_err("should reject INVOKE for cache");
+
+        serde_json::from_str::<Rule>(
+            r#"{
+                "type": "function",
+                "permissions": [
+                    "read"
+                ],
+                "databases": "*"
+            }"#,
+        )
+        .expect_err("should reject READ for functions");
     }
 
     #[test]
@@ -1384,204 +998,7 @@ mod tests {
     // Response Deserialization //
 
     #[test]
-    fn test_deserialize_role_with_all_permissions() {
-        let role = parse_role(
-            r#"{
-                "role_id": "r-everything",
-                "role_name": "Everything",
-                "description": "I have a description",
-                "permissions": {
-                    "rules": [
-                        {
-                            "type": "account_management",
-                            "permissions": [
-                                "read",
-                                "list"
-                            ]
-                        },
-                        {
-                            "type": "auth_management",
-                            "permissions": [
-                                "read",
-                                "write",
-                                "list"
-                            ],
-                            "items": "*"
-                        },
-                        {
-                            "type": "resource_management",
-                            "permissions": [
-                                "read",
-                                "write",
-                                "list"
-                            ],
-                            "resources": "*"
-                        },
-                        {
-                            "type": "cache",
-                            "permissions": [
-                                "read",
-                                "write",
-                                "list"
-                            ],
-                            "caches": "*",
-                            "items": "*"
-                        },
-                        {
-                            "type": "topic",
-                            "permissions": [
-                                "read",
-                                "write",
-                                "list"
-                            ],
-                            "caches": "*",
-                            "topics": "*"
-                        },
-                        {
-                            "type": "store",
-                            "permissions": [
-                                "read",
-                                "write",
-                                "list"
-                            ],
-                            "stores": "*",
-                            "items": "*"
-                        },
-                        {
-                            "type": "function",
-                            "permissions": [
-                                "invoke"
-                            ],
-                            "caches": "*",
-                            "functions": "*"
-                        },
-                        {
-                            "type": "database",
-                            "permissions": [
-                                "read",
-                                "write"
-                            ],
-                            "databases": "*"
-                        }
-                    ],
-                    "conditions": [
-                        {
-                            "ip_filter": {
-                                "allowed_cidr_ranges": [
-                                    "0.0.0.0/0"
-                                ]
-                            }
-                        }
-                    ]
-                },
-                "role_type": "custom"
-            }"#,
-        );
-
-        assert_eq!("Everything", role.name);
-        assert_eq!("r-everything", role.id);
-        assert_eq!(
-            "I have a description",
-            role.description.expect("should have description")
-        );
-
-        let rules = role.permissions.rules.expect("should have rules");
-        assert_eq!(8, rules.len());
-
-        let conditions = role.permissions.conditions.expect("should have conditions");
-        assert_eq!(1, conditions.len());
-
-        assert_eq!(
-            Rule::AccountManagement {
-                permissions: vec![PermissionAction::Read, PermissionAction::List],
-            },
-            rules[0]
-        );
-        assert_eq!(
-            Rule::AuthManagement {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                items: AllSelector::All,
-            },
-            rules[1]
-        );
-        assert_eq!(
-            Rule::ResourceManagement {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                resources: AllSelector::All,
-            },
-            rules[2]
-        );
-
-        assert_eq!(
-            Rule::Cache {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                caches: NameSelector::All,
-                items: ItemSelector::All,
-            },
-            rules[3]
-        );
-        assert_eq!(
-            Rule::Topic {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                caches: NameSelector::All,
-                topics: PrefixSelector::All,
-            },
-            rules[4]
-        );
-        assert_eq!(
-            Rule::Store {
-                permissions: vec![
-                    PermissionAction::Read,
-                    PermissionAction::Write,
-                    PermissionAction::List
-                ],
-                stores: NameSelector::All,
-                items: ItemSelector::All,
-            },
-            rules[5]
-        );
-        assert_eq!(
-            Rule::Function {
-                permissions: vec![PermissionAction::Invoke],
-                caches: NameSelector::All,
-                functions: PrefixSelector::All,
-            },
-            rules[6]
-        );
-        assert_eq!(
-            Rule::Database {
-                permissions: vec![PermissionAction::Read, PermissionAction::Write,],
-                databases: NameSelector::All,
-            },
-            rules[7]
-        );
-
-        assert_eq!(
-            Condition::IpFilter {
-                allowed_cidr_ranges: vec!["0.0.0.0/0".to_string()],
-            },
-            conditions[0]
-        );
-    }
-
-    #[test]
-    fn test_deserialize_role_with_limited_permissions() {
+    fn test_deserialize_role_with_all_fields() {
         let role = parse_role(
             r#"{
                 "role_id": "r-limited",
