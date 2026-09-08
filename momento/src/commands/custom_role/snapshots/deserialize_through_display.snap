@@ -5,7 +5,7 @@ expression: role.to_string()
 Name: Limited
 ID: r-limited
 Description: I have a description
-Permissions:
+Rules:
 - Account Management:
   Allowed actions: Read, List
 - Auth Management:

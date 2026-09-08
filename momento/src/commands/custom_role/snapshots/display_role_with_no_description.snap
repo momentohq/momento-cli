@@ -4,7 +4,7 @@ expression: role.to_string()
 ---
 Name: Limited
 ID: r-limited
-Permissions:
+Rules:
 - Resource Management:
   Resources: all
   Allowed actions: Read, List

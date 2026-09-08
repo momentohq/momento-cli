@@ -145,12 +145,12 @@ impl fmt::Display for CustomRoleResponse {
         }
         match &self.permissions.rules {
             Some(rules) if !rules.is_empty() => {
-                write!(f, "\nPermissions:")?;
+                write!(f, "\nRules:")?;
                 for rule in rules {
                     write!(f, "\n{rule}")?;
                 }
             }
-            _ => write!(f, "\nPermissions: (none)")?,
+            _ => write!(f, "\nRules: (none)")?,
         }
         match &self.permissions.conditions {
             Some(conditions) if !conditions.is_empty() => {
