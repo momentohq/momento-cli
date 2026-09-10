@@ -122,6 +122,7 @@ pub struct CustomRoleResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListCustomRolesResponse {
     pub roles: Vec<CustomRoleResponse>,
+    pub next_token: Option<String>,
 }
 
 /// delete_role
@@ -198,44 +199,54 @@ pub async fn determine_role(
         RoleSelector::ById(id) => format!("ID {id}"),
         RoleSelector::ByName(name) => format!("name {name}"),
     };
-    let roles_list = match call_role_list_api(endpoint, auth_token).await? {
-        MomentoHttpResponse::Parsed(ListCustomRolesResponse { roles: roles_list }) => {
-            if roles_list.is_empty() {
-                return Err(CliError::new("No custom roles found"));
-            } else {
-                roles_list
-            }
-        }
-        MomentoHttpResponse::Unparseable(response_text) => {
-            return Err(CliError::new(format!(
-                "Can't determine which custom role has {selector_text}:\n\n{response_text}"
-            )))
-        }
-    };
-    match selector {
-        RoleSelector::ById(id) => {
-            for role in roles_list.iter() {
-                if role.id == id.clone() {
-                    return Ok(role.clone());
+    let mut full_roles_list = vec![];
+    let mut next_token = None;
+    loop {
+        match call_role_list_api(endpoint.clone(), auth_token.clone(), next_token.clone()).await? {
+            MomentoHttpResponse::Parsed(ListCustomRolesResponse {
+                roles: roles_list,
+                next_token: token,
+            }) => {
+                match selector {
+                    RoleSelector::ById(id) => {
+                        for role in roles_list.iter() {
+                            if role.id == id.clone() {
+                                return Ok(role.clone());
+                            }
+                        }
+                    }
+                    RoleSelector::ByName(name) => {
+                        for role in roles_list.iter() {
+                            if role.name == name.clone() {
+                                return Ok(role.clone());
+                            }
+                        }
+                    }
+                }
+                full_roles_list = [full_roles_list, roles_list].concat();
+                next_token = token;
+                if next_token.is_none() {
+                    if full_roles_list.is_empty() {
+                        return Err(CliError::new("No custom roles found"));
+                    } else {
+                        return Err(CliError::new(format!(
+                            "No custom role has {selector_text}.\n\nListing custom roles:\n\n{}",
+                            full_roles_list
+                                .iter()
+                                .map(|role| role.to_string())
+                                .collect::<Vec<String>>()
+                                .join("\n\n")
+                        )));
+                    }
                 }
             }
-        }
-        RoleSelector::ByName(name) => {
-            for role in roles_list.iter() {
-                if role.name == name.clone() {
-                    return Ok(role.clone());
-                }
+            MomentoHttpResponse::Unparseable(response_text) => {
+                return Err(CliError::new(format!(
+                    "Can't determine which custom role has {selector_text}.\n\n{response_text}"
+                )));
             }
         }
     }
-    Err(CliError::new(format!(
-        "No custom role has {selector_text}.\n\nListing custom roles:\n\n{}",
-        roles_list
-            .iter()
-            .map(|role| role.to_string())
-            .collect::<Vec<String>>()
-            .join("\n\n")
-    )))
 }
 
 pub fn determine_role_permissions(permission_set: String) -> Result<Permissions, CliError> {
@@ -329,11 +340,17 @@ pub async fn call_role_delete_api(
 pub async fn call_role_list_api(
     endpoint: String,
     auth_token: String,
+    next_token: Option<String>,
 ) -> Result<MomentoHttpResponse<ListCustomRolesResponse>, CliError> {
     let url = build_request_url(endpoint);
+    let query_string = [
+        "type=custom".to_string(),
+        next_token.map_or("".to_string(), |token| format!("&next_token={token}")),
+    ]
+    .join("");
     call_momento_http_api(
         Method::GET,
-        format!("{url}?type=custom"),
+        format!("{url}?{query_string}"),
         auth_token,
         None,
         None,

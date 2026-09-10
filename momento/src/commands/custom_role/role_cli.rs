@@ -4,6 +4,7 @@ use super::utils::{
     DeleteCustomRoleResponse, DeleteStatus, ListCustomRolesResponse, RoleSelector,
 };
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::utils::file::prompt_user_for_input;
 use crate::{error::CliError, utils::console::console_data};
 
 pub async fn create_role(
@@ -102,23 +103,43 @@ pub async fn delete_role(
 }
 
 pub async fn list_roles(endpoint: String, auth_token: String) -> Result<(), CliError> {
-    let response = call_role_list_api(endpoint, auth_token).await?;
-    match response {
-        Parsed(ListCustomRolesResponse { roles: roles_list }) => {
-            if roles_list.is_empty() {
-                console_data!("No custom roles found");
-            } else {
-                console_data!("Custom roles available for your Momento API keys:");
-                for role in roles_list.iter() {
-                    console_data!("\n{role}");
+    let mut next_token = None;
+    let mut page_index = 1;
+    let mut page_text = "".to_string();
+    loop {
+        match call_role_list_api(endpoint.clone(), auth_token.clone(), next_token.clone()).await? {
+            Parsed(ListCustomRolesResponse {
+                roles: roles_list,
+                next_token: token,
+            }) => {
+                if roles_list.is_empty() {
+                    console_data!("No custom roles found");
+                    break;
+                } else {
+                    console_data!("Custom roles available for your Momento API keys{page_text}:");
+                    for role in roles_list.iter() {
+                        console_data!("\n{role}");
+                    }
+                    next_token = token;
+                    if next_token.is_none() {
+                        break;
+                    }
+                    let next = prompt_user_for_input("\nView more?", "y", false).await?;
+                    if next.to_lowercase() != "y" && next.to_lowercase() != "yes" {
+                        break;
+                    }
+                    page_index += 1;
+                    page_text = format!(", page {page_index}");
+                    console_data!();
                 }
             }
-        }
-        Unparseable(response_text) => {
-            console_data!(
-                "Listing custom roles available for your Momento API keys:\n\n{response_text}"
-            );
-        }
-    };
+            Unparseable(response_text) => {
+                console_data!(
+                    "Custom roles available for your Momento API keys{page_text}:\n\n{response_text}"
+                );
+                break;
+            }
+        };
+    }
     Ok(())
 }
