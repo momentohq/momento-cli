@@ -202,7 +202,14 @@ pub async fn determine_role(
     let mut full_roles_list = vec![];
     let mut next_token = None;
     loop {
-        match call_role_list_api(endpoint.clone(), auth_token.clone(), next_token.clone()).await? {
+        match call_role_list_api(
+            endpoint.clone(),
+            auth_token.clone(),
+            None,
+            next_token.clone(),
+        )
+        .await?
+        {
             MomentoHttpResponse::Parsed(ListCustomRolesResponse {
                 roles: roles_list,
                 next_token: token,
@@ -340,11 +347,13 @@ pub async fn call_role_delete_api(
 pub async fn call_role_list_api(
     endpoint: String,
     auth_token: String,
+    limit_per_page: Option<u32>,
     next_token: Option<String>,
 ) -> Result<MomentoHttpResponse<ListCustomRolesResponse>, CliError> {
     let url = build_request_url(endpoint);
     let query_string = [
         "type=custom".to_string(),
+        limit_per_page.map_or("".to_string(), |limit| format!("&limit={limit}")),
         next_token.map_or("".to_string(), |token| format!("&next_token={token}")),
     ]
     .join("");

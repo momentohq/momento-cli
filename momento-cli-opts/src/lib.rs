@@ -876,7 +876,17 @@ pub enum CustomRoleCommand {
     },
 
     #[command(about = "List all custom roles that are available for your Momento API keys")]
-    List {},
+    List {
+        #[arg(
+            long,
+            short,
+            value_parser = value_parser!(u32).range(1..101),
+            default_value = "100",
+            help = "The maximum number of roles to return in a single page. Must be between 1 and 100, inclusive",
+            value_name = "LIMIT_PER_PAGE",
+        )]
+        limit: Option<u32>,
+    },
 }
 
 #[derive(clap::ValueEnum, PartialEq, Eq, Debug, Clone, Copy)]

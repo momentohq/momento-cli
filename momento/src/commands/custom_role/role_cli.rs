@@ -102,12 +102,23 @@ pub async fn delete_role(
     Ok(())
 }
 
-pub async fn list_roles(endpoint: String, auth_token: String) -> Result<(), CliError> {
+pub async fn list_roles(
+    endpoint: String,
+    auth_token: String,
+    limit_per_page: Option<u32>,
+) -> Result<(), CliError> {
     let mut next_token = None;
     let mut page_index = 1;
     let mut page_text = "".to_string();
     loop {
-        match call_role_list_api(endpoint.clone(), auth_token.clone(), next_token.clone()).await? {
+        match call_role_list_api(
+            endpoint.clone(),
+            auth_token.clone(),
+            limit_per_page,
+            next_token.clone(),
+        )
+        .await?
+        {
             Parsed(ListCustomRolesResponse {
                 roles: roles_list,
                 next_token: token,
