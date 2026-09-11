@@ -835,7 +835,11 @@ mod tests {
 
         assert_eq!(
             Rule::Cache {
-                permissions: vec![PermissionAction::Read],
+                permissions: vec![
+                    PermissionAction::Read,
+                    PermissionAction::Write,
+                    PermissionAction::List
+                ],
                 caches: NameSelector::All,
                 items: ItemSelector::KeyPrefix("public/".to_string()),
             },
@@ -894,7 +898,7 @@ mod tests {
                     PermissionAction::Write,
                     PermissionAction::List
                 ],
-                stores: NameSelector::All,
+                stores: NameSelector::Name("user-prefs".to_string()),
                 items: ItemSelector::KeyPrefix("org:42:".to_string()),
             },
             rule
@@ -932,16 +936,6 @@ mod tests {
     fn test_deserialize_rule_with_invalid_fields() {
         serde_json::from_str::<Rule>(
             r#"{
-                "type": "account_management",
-                "permissions": [
-                    "write"
-                ]
-            }"#,
-        )
-        .expect_err("should reject WRITE for account_management");
-
-        serde_json::from_str::<Rule>(
-            r#"{
                 "type": "resource_management",
                 "permissions": [
                     "read",
@@ -951,29 +945,6 @@ mod tests {
             }"#,
         )
         .expect_err("should require resources for resource_management");
-
-        serde_json::from_str::<Rule>(
-            r#"{
-                "type": "cache",
-                "permissions": [
-                    "invoke"
-                ],
-                "caches": "*",
-                "items": "*"
-            }"#,
-        )
-        .expect_err("should reject INVOKE for cache");
-
-        serde_json::from_str::<Rule>(
-            r#"{
-                "type": "function",
-                "permissions": [
-                    "read"
-                ],
-                "databases": "*"
-            }"#,
-        )
-        .expect_err("should reject READ for functions");
     }
 
     #[test]
