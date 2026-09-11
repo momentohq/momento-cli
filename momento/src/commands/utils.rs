@@ -3,7 +3,7 @@ use crate::error::CliError;
 use http::Method;
 use log::{info, warn};
 use reqwest;
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::fmt::Debug;
 
 pub enum MomentoHttpData {
@@ -97,7 +97,7 @@ pub async fn call_momento_http_api_raw(
     Ok(response_text)
 }
 
-pub async fn call_momento_http_api<T: DeserializeOwned + Debug>(
+pub async fn call_momento_http_api<T: DeserializeOwned + Debug + Serialize>(
     method: Method,
     request_url: String,
     auth_token: String,
@@ -114,7 +114,10 @@ pub async fn call_momento_http_api<T: DeserializeOwned + Debug>(
     .await?;
     match serde_json::from_str::<T>(response_text.as_str()) {
         Ok(response) => {
-            info!("Response sent back from {method} {request_url}:\n{response:#?}");
+            info!(
+                "Response sent back from {method} {request_url}:\n{}",
+                serde_json::to_string_pretty::<T>(&response).unwrap_or(response_text)
+            );
             Ok(MomentoHttpResponse::Parsed(response))
         }
         Err(err) => {

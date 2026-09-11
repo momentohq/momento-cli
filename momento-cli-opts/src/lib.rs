@@ -6,8 +6,8 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
-use utils::{parse_bounds, parse_date, parse_positive_bounds};
-pub use utils::{Bounds, CapacityPoolProvisioningMode};
+use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
+pub use utils::{Bounds, CapacityPoolProvisioningMode, ROLE_PERMISSIONS_SAMPLE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
@@ -48,6 +48,29 @@ impl Momento {
 
 #[derive(Debug, Parser)]
 pub enum Subcommand {
+    #[command(about = "Interact with custom roles for API keys")]
+    Role {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key that already grants auth-management access on your account [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use",
+            default_value = "https://mga.registry.prod.a.momentohq.com"
+        )]
+        endpoint: String,
+
+        #[command(subcommand)]
+        operation: CustomRoleCommand,
+    },
     #[command(about = "Interact with caches")]
     Cache {
         #[arg(
@@ -261,7 +284,7 @@ pub enum FunctionCommand {
             short = 'i',
             value_parser = NonEmptyStringValueParser::new(),
             help = "ID of the function you want to update",
-            value_name = "FUNCTION"
+            value_name = "FUNCTION_ID"
         )]
         function_id: Option<String>,
 
@@ -431,7 +454,8 @@ pub enum CapacityPoolCommand {
             long,
             value_parser = parse_positive_bounds,
             help = "Flex mode: capacity bounds in GiB — `500` pins, \
-                    `100..500` lets Momento auto-scale within the range"
+                    `100..500` lets Momento auto-scale within the range",
+            value_name = "CAPACITY"
         )]
         capacity_gib: Option<Bounds>,
         #[arg(
@@ -488,12 +512,14 @@ pub enum CapacityPoolCommand {
             long,
             value_parser = NonEmptyStringValueParser::new(),
             help = "Cluster mode: new EC2 instance type for the backing cluster; omit to leave unchanged",
+            value_name = "NEW_INSTANCE_TYPE",
         )]
         instance_type: Option<String>,
         #[arg(
             long,
             value_parser = value_parser!(u32).range(1..),
             help = "Cluster mode: new shard count for the backing cluster; omit to leave unchanged",
+            value_name = "NEW_SHARD_COUNT",
         )]
         shard_count: Option<u32>,
         #[arg(
@@ -502,6 +528,7 @@ pub enum CapacityPoolCommand {
             help = "New replicas per shard — a single value for cluster-mode pools (e.g. `2`), \
                     a value or range for flex-mode pools (e.g. `1..3`); \
                     omit to leave unchanged",
+            value_name = "NEW_REPLICAS_PER_SHARD",
         )]
         replicas_per_shard: Option<Bounds>,
         #[arg(
@@ -510,6 +537,7 @@ pub enum CapacityPoolCommand {
             help = "Flex mode: new capacity bounds in GiB — `500` pins, \
                    `100..500` lets Momento auto-scale within the range; \
                     omit to leave unchanged",
+            value_name = "NEW_CAPACITY",
         )]
         capacity_gib: Option<Bounds>,
         #[arg(
@@ -519,7 +547,7 @@ pub enum CapacityPoolCommand {
             value_parser = NonEmptyStringValueParser::new(),
             help = "Replace the zone set with these AZ IDs, e.g. usw2-az1 (comma-delimited) — \
                     ids, not names like us-west-2a; omit to leave unchanged",
-            value_name = "AVAILABILITY_ZONES",
+            value_name = "NEW_AVAILABILITY_ZONES",
         )]
         zones: Vec<String>,
     },
@@ -720,6 +748,144 @@ https://github.com/momentohq/functions/"
 
         #[command(subcommand)]
         operation: DatabaseCommand,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum CustomRoleCommand {
+    #[command(about = "Create a custom role for your Momento API keys")]
+    Create {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the role you want to create",
+            value_name = "CUSTOM_ROLE"
+        )]
+        name: String,
+
+        #[arg(long, short, help = "Description for your custom role")]
+        description: Option<String>,
+
+        #[arg(
+            long,
+            value_parser = parse_to_json,
+            help = format!(
+                "The grant as JSON, or '@path' to a file holding it.\n\
+                 Sample: {ROLE_PERMISSIONS_SAMPLE}\n\
+                 More at https://docs.momentohq.com/platform/authentication/roles-http-api#full-permission-set-example"
+            ),
+            value_name = "PERMISSIONS",
+        )]
+        permission_set: String,
+    },
+
+    #[command(
+    about = "Update a custom role that's available for your Momento API keys",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["id", "name"]),
+    ),
+    group(
+    clap::ArgGroup::new("update-field")
+    .required(true)
+    .multiple(true)
+    .args(["new_name", "description", "permission_set"]),
+    ),
+    )]
+    Update {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the role you want to update",
+            value_name = "CUSTOM_ROLE",
+        )]
+        name: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the role you want to update",
+            value_name = "CUSTOM_ROLE_ID",
+        )]
+        id: Option<String>,
+
+        #[arg(
+            long = "rename",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "New name for your custom role; \
+                    omit to leave unchanged",
+            value_name = "NEW_NAME"
+        )]
+        new_name: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            // Empty is allowed! Must be able to *remove* a description
+            help = "New description for your custom role; \
+                    omit to leave unchanged",
+            value_name = "NEW_DESCRIPTION"
+        )]
+        description: Option<String>,
+
+        #[arg(
+            long,
+            value_parser = parse_to_json,
+            help = format!(
+                "The grant as JSON, or '@path' to a file holding it.\n\
+                 Completely replaces the old grant; omit to leave unchanged.\n\
+                 Sample: {ROLE_PERMISSIONS_SAMPLE}\n\
+                 More at https://docs.momentohq.com/platform/authentication/roles-http-api#full-permission-set-example"
+            ),
+            value_name = "NEW_PERMISSIONS",
+        )]
+        permission_set: Option<String>,
+    },
+
+    #[command(
+    about = "Delete a custom role from your Momento API keys",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["id", "name"]),
+    ),
+    )]
+    #[command(about = "Delete a custom role from your Momento API keys")]
+    Delete {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the role you want to delete",
+            value_name = "CUSTOM_ROLE",
+        )]
+        name: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the role you want to delete",
+            value_name = "CUSTOM_ROLE_ID",
+        )]
+        id: Option<String>,
+    },
+
+    #[command(about = "List all custom roles that are available for your Momento API keys")]
+    List {
+        #[arg(
+            long,
+            short,
+            value_parser = value_parser!(u32).range(1..101),
+            default_value = "100",
+            help = "The maximum number of roles to return in a single page. Must be between 1 and 100, inclusive",
+            value_name = "LIMIT_PER_PAGE",
+        )]
+        limit: Option<u32>,
     },
 }
 

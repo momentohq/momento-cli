@@ -1,0 +1,61 @@
+---
+source: momento/src/commands/custom_role/display.rs
+expression: role.to_string()
+---
+Name: Limited
+ID: r-limited
+Description: I have a description
+Rules:
+- Account Management:
+  Allowed actions: Read, List
+- Auth Management:
+  Items: all
+  Allowed actions: Read, Write, List
+- Resource Management:
+  Resources: all
+  Allowed actions: Read, Write, List
+- Databases (all)
+  Allowed actions: Read, Write
+- Database: orders
+  Allowed actions: Read
+- Caches (all)
+  Keys: all
+  Allowed actions: Read, Write, List
+- Cache: prod-cache
+  Keys with prefix: public/
+  Allowed actions: Read
+- Cache: prod-cache
+  Key: feature-flags
+  Allowed actions: Write
+- Topics (all)
+  In caches: all
+  Allowed actions: Read, Write, List
+- Topic: announcements
+  In cache: chat-app
+  Allowed actions: Read
+- Topics with prefix: room-
+  In cache: chat-app
+  Allowed actions: Write
+- Object Stores (all)
+  Keys: all
+  Allowed actions: Read, Write, List
+- Object Store: user-prefs
+  Keys with prefix: org:42:
+  Allowed actions: Read
+- Object Store: user-prefs
+  Key: schema-version
+  Allowed actions: Write
+- Functions (all)
+  In caches: all
+  Allowed actions: Invoke
+- Function: resize-image
+  In cache: edge-app
+  Allowed actions: Invoke
+- Functions with prefix: webhook-
+  In cache: edge-app
+  Allowed actions: Invoke
+Conditions:
+- Allowed IPs:
+  10.0.0.0/8
+  192.168.1.0/24
+  2001:db8::/32

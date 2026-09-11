@@ -7,13 +7,13 @@ use momento_cli_opts::{Bounds, CapacityPoolProvisioningMode};
 use http::Method;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CapacityBounds {
     pub min_gib: u32,
     pub max_gib: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ReplicationBounds {
     pub min_replicas_per_shard: u32,
     pub max_replicas_per_shard: u32,
@@ -37,14 +37,14 @@ impl From<Bounds> for ReplicationBounds {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FlexProvisioning {
     pub capacity: CapacityBounds,
     pub replication: ReplicationBounds,
     pub zones: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum CapacityPoolProvisioning {
     #[serde(rename = "explicit")]
     Cluster {
@@ -84,7 +84,7 @@ pub enum CapacityPoolProvisioningUpdate {
 /// A single diagnostic, which the API sends as a one-entry object keyed by kind:
 /// `{"insufficient_capacity": {"state": "active", ...}}`. The fields vary by kind,
 /// so we keep them as raw JSON rather than modelling every variant.
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(from = "serde_json::Value")]
 pub enum CapacityPoolDiagnosticEntry {
     Parsed {
@@ -111,10 +111,10 @@ impl From<serde_json::Value> for CapacityPoolDiagnosticEntry {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CapacityPoolDiagnostics(pub Vec<CapacityPoolDiagnosticEntry>);
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct FlexAllocation {
     /// The capacity the pool demonstrably provided in its last settled state.
     pub current_capacity_gib: Option<u32>,
@@ -126,7 +126,7 @@ pub struct FlexAllocation {
     pub target_replicas_per_shard: Option<u32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CapacityPoolResponse {
     pub name: String,
     pub status: String,
@@ -159,7 +159,7 @@ impl CapacityPoolResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListCapacityPoolsResponse {
     pub capacity_pools: Vec<CapacityPoolResponse>,
 }
@@ -393,9 +393,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // determine_provisioning (create)
-    // ========== ========== ===========
+    // determine_provisioning (create) //
 
     #[test]
     fn test_determine_provisioning_in_cluster_mode() {
@@ -518,9 +516,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // determine_provisioning_update, with --mode specified
-    // ========== ========== ===========
+    // determine_provisioning_update, with --mode specified //
 
     #[test]
     fn test_determine_provisioning_update_in_cluster_mode_with_one_field() {
@@ -811,9 +807,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // determine_provisioning_update, with --mode inferred
-    // ========== ========== ===========
+    // determine_provisioning_update, with --mode inferred //
 
     #[test]
     fn test_determine_provisioning_update_infers_cluster_mode() {
@@ -923,9 +917,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // Serialization
-    // ========== ========== ===========
+    // Serialization //
 
     #[test]
     fn test_serialize_provisioning_in_flex_mode() {
@@ -1060,9 +1052,7 @@ mod tests {
         );
     }
 
-    // ========== ========== ===========
-    // Deserialization
-    // ========== ========== ===========
+    // Deserialization //
 
     #[test]
     fn test_deserialize_diagnostic_by_its_kind() {

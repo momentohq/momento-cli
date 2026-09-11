@@ -1,0 +1,7 @@
+---
+source: momento/src/commands/custom_role/display.rs
+expression: rule.to_string()
+---
+- Object Store: user-prefs
+  Key: schema-version
+  Allowed actions: Read, Write, List

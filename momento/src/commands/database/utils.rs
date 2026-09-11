@@ -5,15 +5,15 @@ use crate::error::CliError;
 use crate::utils::console::console_data;
 
 use http::Method;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DatabaseResponse {
     pub name: String,
     pub pool_name: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListDatabasesResponse {
     pub databases: Vec<DatabaseResponse>,
 }

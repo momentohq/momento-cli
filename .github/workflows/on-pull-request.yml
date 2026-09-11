@@ -41,8 +41,8 @@ jobs:
       - name: Build
         run: cargo build --verbose
 
-      - name: Run Integration Tests
-        run: ./run_test_sequentially.sh
+      - name: Run Tests
+        run: make test
 
   # TODO: re-enable once windows publishing is fixed
   # build-windows:
