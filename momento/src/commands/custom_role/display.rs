@@ -99,10 +99,19 @@ impl fmt::Display for Rule {
                 Rule::Database {
                     permissions: _,
                     databases,
-                } => match databases {
-                    NameSelector::All => "Databases (all)".to_string(),
-                    NameSelector::Name(name) => format!("Database: {name}"),
-                },
+                    items,
+                } => format!(
+                    "{}\n  {}",
+                    match databases {
+                        NameSelector::All => "Databases (all)".to_string(),
+                        NameSelector::Name(name) => format!("Database: {name}"),
+                    },
+                    match items {
+                        ItemSelector::All => "Keys: all".to_string(),
+                        ItemSelector::Key(name) => format!("Key: {name}"),
+                        ItemSelector::KeyPrefix(prefix) => format!("Keys with prefix: {prefix}"),
+                    },
+                ),
                 Rule::AccountManagement { permissions: _ } => "Account Management:".to_string(),
                 Rule::AuthManagement {
                     permissions: _,
@@ -283,6 +292,7 @@ mod tests {
         let rule = Rule::Database {
             permissions: vec![PermissionAction::Read, PermissionAction::Write],
             databases: NameSelector::All,
+            items: ItemSelector::All,
         };
         snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
     }
@@ -292,6 +302,7 @@ mod tests {
         let rule = Rule::Database {
             permissions: vec![PermissionAction::Read, PermissionAction::Write],
             databases: NameSelector::Name("orders".to_string()),
+            items: ItemSelector::Key("orders:pending".to_string()),
         };
         snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
     }
@@ -701,8 +712,9 @@ mod tests {
                         { "type": "account_management",  "permissions": ["read", "list"] },
                         { "type": "auth_management",     "permissions": ["read", "write", "list"], "items": "*" },
                         { "type": "resource_management", "permissions": ["read", "write", "list"], "resources": "*" },
-                        { "type": "database", "permissions": ["read", "write"],         "databases": "*" },
-                        { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" } },
+                        { "type": "database", "permissions": ["read", "write"],         "databases": "*",                   "items": "*" },
+                        { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" },  "items": { "key_prefix": "orders:2026-" } },
+                        { "type": "database", "permissions": ["write"],                 "databases": { "name": "orders" },  "items": { "key": "orders:pending" } },
                         { "type": "cache",    "permissions": ["read", "write", "list"], "caches": "*",                      "items": "*" },
                         { "type": "cache",    "permissions": ["read"],                  "caches": { "name": "prod-cache" }, "items": { "key_prefix": "public/" } },
                         { "type": "cache",    "permissions": ["write"],                 "caches": { "name": "prod-cache" }, "items": { "key": "feature-flags" } },
