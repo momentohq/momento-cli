@@ -15,9 +15,14 @@ Rules:
   Resources: all
   Allowed actions: Read, Write, List
 - Databases (all)
+  Keys: all
   Allowed actions: Read, Write
 - Database: orders
+  Keys with prefix: orders:2026-
   Allowed actions: Read
+- Database: orders
+  Key: orders:pending
+  Allowed actions: Write
 - Caches (all)
   Keys: all
   Allowed actions: Read, Write, List

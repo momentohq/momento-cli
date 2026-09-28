@@ -78,6 +78,7 @@ pub enum Rule {
     Database {
         permissions: Vec<PermissionAction>,
         databases: NameSelector,
+        items: ItemSelector,
     },
     AccountManagement {
         permissions: Vec<PermissionAction>,
@@ -812,6 +813,9 @@ mod tests {
                 ],
                 "databases": {
                     "name": "orders"
+                },
+                "items": {
+                    "key_prefix": "orders:2026-"
                 }
             }"#,
         );
@@ -820,6 +824,7 @@ mod tests {
             Rule::Database {
                 permissions: vec![PermissionAction::Read, PermissionAction::Write],
                 databases: NameSelector::Name("orders".to_string()),
+                items: ItemSelector::KeyPrefix("orders:2026-".to_string()),
             },
             rule
         );
@@ -965,8 +970,9 @@ mod tests {
                     { "type": "account_management",  "permissions": ["read", "list"] },
                     { "type": "auth_management",     "permissions": ["read", "write", "list"], "items": "*" },
                     { "type": "resource_management", "permissions": ["read", "write", "list"], "resources": "*" },
-                    { "type": "database", "permissions": ["read", "write"],         "databases": "*" },
-                    { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" } },
+                    { "type": "database", "permissions": ["read", "write"],         "databases": "*",                   "items": "*" },
+                    { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" },  "items": { "key_prefix": "orders:2026-" } },
+                    { "type": "database", "permissions": ["write"],                 "databases": { "name": "orders" },  "items": { "key": "orders:pending" } },
                     { "type": "cache",    "permissions": ["read", "write", "list"], "caches": "*",                      "items": "*" },
                     { "type": "cache",    "permissions": ["read"],                  "caches": { "name": "prod-cache" }, "items": { "key_prefix": "public/" } },
                     { "type": "cache",    "permissions": ["write"],                 "caches": { "name": "prod-cache" }, "items": { "key": "feature-flags" } },

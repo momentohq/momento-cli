@@ -3,4 +3,5 @@ source: momento/src/commands/custom_role/display.rs
 expression: rule.to_string()
 ---
 - Database: orders
+  Key: orders:pending
   Allowed actions: Read, Write
