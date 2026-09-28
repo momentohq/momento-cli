@@ -148,27 +148,40 @@ impl fmt::Display for Condition {
 impl fmt::Display for CustomRoleResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
-        write!(f, "\nID: {}", self.id)?;
+        write!(
+            f,
+            "\nID: {}{}",
+            self.id,
+            if self.role_type == "system" {
+                " (system role)"
+            } else {
+                ""
+            }
+        )?;
         if let Some(description) = &self.description {
             write!(f, "\nDescription: {description}")?;
         }
-        match &self.permissions.rules {
-            Some(rules) if !rules.is_empty() => {
-                write!(f, "\nRules:")?;
-                for rule in rules {
-                    write!(f, "\n{rule}")?;
+        if self.permissions.super_user == Some(true) {
+            write!(f, "\nPermissions: super user")?;
+        } else {
+            match &self.permissions.rules {
+                Some(rules) if !rules.is_empty() => {
+                    write!(f, "\nRules:")?;
+                    for rule in rules {
+                        write!(f, "\n{rule}")?;
+                    }
                 }
+                _ => write!(f, "\nRules: (none)")?,
             }
-            _ => write!(f, "\nRules: (none)")?,
-        }
-        match &self.permissions.conditions {
-            Some(conditions) if !conditions.is_empty() => {
-                write!(f, "\nConditions:")?;
-                for condition in conditions {
-                    write!(f, "\n{condition}")?;
+            match &self.permissions.conditions {
+                Some(conditions) if !conditions.is_empty() => {
+                    write!(f, "\nConditions:")?;
+                    for condition in conditions {
+                        write!(f, "\n{condition}")?;
+                    }
                 }
+                _ => write!(f, "\nConditions: (none)")?,
             }
-            _ => write!(f, "\nConditions: (none)")?,
         }
         Ok(())
     }
@@ -448,12 +461,31 @@ mod tests {
     }
 
     #[test]
+    fn test_display_role_with_super_user_permissions() {
+        let role = CustomRoleResponse {
+            id: "r-owner".to_string(),
+            name: "Owner".to_string(),
+            role_type: "system".to_string(),
+            description: Some("superuser role".to_string()),
+            permissions: Permissions {
+                super_user: Some(true),
+                rules: None,
+                conditions: None,
+            },
+        };
+
+        snapshot_settings().bind(|| insta::assert_snapshot!(role.to_string()));
+    }
+
+    #[test]
     fn test_display_role_with_no_description() {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: None,
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
@@ -512,8 +544,10 @@ mod tests {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: Some("".to_string()),
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
@@ -572,8 +606,10 @@ mod tests {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: Some("role with limited permissions".to_string()),
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
@@ -630,8 +666,10 @@ mod tests {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: Some("role with limited permissions".to_string()),
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
@@ -688,8 +726,10 @@ mod tests {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: Some("role with limited permissions".to_string()),
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![]),
                 conditions: Some(vec![Condition::IpFilter {
                     allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()],

@@ -83,9 +83,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     commands::custom_role::role_cli::delete_role(mga_endpoint, auth_token, selector)
                         .await?
                 }
-                momento_cli_opts::CustomRoleCommand::List { limit } => {
-                    commands::custom_role::role_cli::list_roles(mga_endpoint, auth_token, limit)
-                        .await?
+                momento_cli_opts::CustomRoleCommand::List { limit, all } => {
+                    commands::custom_role::role_cli::list_roles(
+                        mga_endpoint,
+                        auth_token,
+                        limit,
+                        all,
+                    )
+                    .await?
                 }
             }
         }

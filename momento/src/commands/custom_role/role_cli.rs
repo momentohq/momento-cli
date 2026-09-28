@@ -106,7 +106,9 @@ pub async fn list_roles(
     endpoint: String,
     auth_token: String,
     limit_per_page: Option<u32>,
+    all: bool,
 ) -> Result<(), CliError> {
+    let roles_text = if all { "roles" } else { "custom roles" };
     let mut next_token = None;
     let mut page_index = 1;
     let mut page_text = "".to_string();
@@ -115,6 +117,7 @@ pub async fn list_roles(
             endpoint.clone(),
             auth_token.clone(),
             limit_per_page,
+            all,
             next_token.clone(),
         )
         .await?
@@ -124,10 +127,12 @@ pub async fn list_roles(
                 next_token: token,
             }) => {
                 if roles_list.is_empty() {
-                    console_data!("No custom roles found");
+                    console_data!("No {roles_text} found");
                     break;
                 } else {
-                    console_data!("Custom roles available for your Momento API keys{page_text}:");
+                    console_data!(
+                        "All {roles_text} available for your Momento API keys{page_text}:"
+                    );
                     for role in roles_list.iter() {
                         console_data!("\n{role}");
                     }
@@ -146,7 +151,7 @@ pub async fn list_roles(
             }
             Unparseable(response_text) => {
                 console_data!(
-                    "Custom roles available for your Momento API keys{page_text}:\n\n{response_text}"
+                    "All {roles_text} available for your Momento API keys{page_text}:\n\n{response_text}"
                 );
                 break;
             }

@@ -876,6 +876,14 @@ pub enum CustomRoleCommand {
             value_name = "LIMIT_PER_PAGE",
         )]
         limit: Option<u32>,
+
+        #[arg(
+            long,
+            short,
+            help = "List all your available Momento roles, not just your own custom roles",
+            default_value_t = false
+        )]
+        all: bool,
     },
 }
 

@@ -96,6 +96,8 @@ pub enum Rule {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Permissions {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub super_user: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rules: Option<Vec<Rule>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conditions: Option<Vec<Condition>>,
@@ -115,6 +117,7 @@ pub struct CustomRoleResponse {
     pub name: String,
     #[serde(rename = "role_id")]
     pub id: String,
+    pub role_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub permissions: Permissions,
@@ -207,6 +210,7 @@ pub async fn determine_role(
             endpoint.clone(),
             auth_token.clone(),
             None,
+            false,
             next_token.clone(),
         )
         .await?
@@ -349,11 +353,12 @@ pub async fn call_role_list_api(
     endpoint: String,
     auth_token: String,
     limit_per_page: Option<u32>,
+    all: bool,
     next_token: Option<String>,
 ) -> Result<MomentoHttpResponse<ListCustomRolesResponse>, CliError> {
     let url = build_request_url(endpoint);
     let query_string = [
-        "type=custom".to_string(),
+        (if all { "" } else { "type=custom" }).to_string(),
         limit_per_page.map_or("".to_string(), |limit| format!("&limit={limit}")),
         next_token.map_or("".to_string(), |token| format!("&next_token={token}")),
     ]
@@ -1088,6 +1093,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             "role with limited permissions",
             role.description.expect("should have description")
@@ -1175,6 +1181,36 @@ mod tests {
     }
 
     #[test]
+    fn test_deserialize_role_with_super_user_permissions() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-owner",
+                "role_name": "Owner",
+                "description": "superuser role",
+                "permissions": {
+                    "super_user": true
+                },
+                "role_type": "system"
+            }"#,
+        );
+
+        assert_eq!("Owner", role.name);
+        assert_eq!("r-owner", role.id);
+        assert_eq!("system", role.role_type);
+        assert_eq!(
+            "superuser role",
+            role.description.expect("should have description")
+        );
+
+        let permissions = role.permissions;
+        assert!(permissions.rules.is_none());
+        assert!(permissions.conditions.is_none());
+        assert!(permissions
+            .super_user
+            .expect("should have super_user field"));
+    }
+
+    #[test]
     fn test_deserialize_role_with_no_description() {
         let role = parse_role(
             r#"{
@@ -1208,6 +1244,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             vec![Rule::Cache {
                 permissions: vec![PermissionAction::List],
@@ -1261,6 +1298,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             vec![Rule::Cache {
                 permissions: vec![PermissionAction::List],
@@ -1304,6 +1342,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             "role with limited permissions",
             role.description.expect("should have description")
@@ -1345,6 +1384,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             "role with limited permissions",
             role.description.expect("should have description")
