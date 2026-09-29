@@ -2444,7 +2444,6 @@ version = "0.59.0"
 dependencies = [
  "chrono",
  "clap",
- "regex",
 ]
 
 [[package]]

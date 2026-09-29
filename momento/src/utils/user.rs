@@ -1,12 +1,12 @@
 use chrono::{Duration, TimeZone, Utc};
 use configparser::ini::Ini;
+use regex::Regex;
 
 use crate::{
     config::{Config, Credentials},
     error::CliError,
     utils::file::{get_config_file_path, get_credentials_file_path, read_ini_file},
 };
-use momento_cli_opts::determine_endpoint;
 
 fn get_session_token(credentials: &Ini) -> Option<String> {
     let session_token = credentials.get(".momento_session", "token");
@@ -57,17 +57,6 @@ pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliErro
         credentials_file.get(profile, "api_key_v2"),
         credentials_file.get(profile, "endpoint"),
     ) {
-        let endpoint_text = format!(
-            "{endpoint} in your {} profile '{profile}'",
-            get_credentials_file_path().unwrap_or("~/.momento/credentials".to_string())
-        );
-        let parsed_endpoint = determine_endpoint(endpoint.clone())
-            .map_err(|err| CliError::new(format!("Couldn't parse {endpoint_text}: {err}")))?;
-        if parsed_endpoint != endpoint {
-            return Err(CliError::new(format!(
-                "{endpoint_text} is not a valid endpoint structure. Do you mean '{parsed_endpoint}'?"
-            )));
-        };
         return Ok(Credentials::ApiKeyV2(api_key_v2, endpoint));
     }
 
@@ -111,4 +100,122 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
             .parse::<u64>()
             .map_err(|e| CliError::new(format!("could not parse a u64: {e:?}")))?,
     })
+}
+
+fn determine_cell_prefix_for_region(region: &str) -> String {
+    match region {
+        "us-east-1" | "ap-northeast-1" => "cell",
+        "us-west-2" => "cell-4",
+        _ => "cell-1",
+    }
+    .to_string()
+}
+
+/// Formats any sample from https://docs.momentohq.com/platform/regions
+pub fn determine_endpoint(endpoint_arg: String) -> String {
+    let prefixes = ["https://", "api.", "cache."];
+    let mut endpoint = endpoint_arg.clone();
+    if endpoint_arg.contains(".") {
+        for p in prefixes {
+            endpoint = endpoint.strip_prefix(p).unwrap_or(&endpoint).to_string();
+        }
+    } else {
+        if !endpoint_arg.starts_with("cell-") {
+            let prefix = determine_cell_prefix_for_region(&endpoint_arg);
+            endpoint = format!("{prefix}-{endpoint}");
+        }
+        if let Ok(suffix) = Regex::new(r"-[0-9]-1$") {
+            if !suffix.is_match(&endpoint_arg) {
+                endpoint += "-1";
+            }
+        }
+        endpoint += ".prod.a.momentohq.com";
+    }
+    endpoint
+}
+
+#[cfg(test)]
+mod tests {
+    use super::determine_endpoint;
+
+    #[test]
+    fn determine_endpoint_with_valid_endpoint() {
+        let endpoint_arg = "cell.preprod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string());
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-us-east-1-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string());
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-4-us-west-2-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string());
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-1-ap-southeast-2-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string());
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-10-us-northeast-3-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string());
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-foo-bar-us-northeast-3-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string());
+        assert_eq!(endpoint_arg, endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_cell_name() {
+        let endpoint = determine_endpoint("cell-us-east-1-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-4-us-west-2-1".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-1-ap-southeast-2-1".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_cell_name_no_suffix() {
+        let endpoint = determine_endpoint("cell-us-east-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-4-us-west-2".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-1-ap-southeast-2".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_url() {
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-us-east-1-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-4-us-west-2-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-1-ap-southeast-2-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_region_only() {
+        let endpoint = determine_endpoint("us-east-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("us-west-2".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("ap-southeast-2".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
 }

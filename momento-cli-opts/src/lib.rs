@@ -6,10 +6,8 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
-pub use utils::{
-    determine_endpoint, Bounds, CapacityPoolProvisioningMode, ROLE_PERMISSIONS_SAMPLE,
-};
-use utils::{parse_bounds, parse_date, parse_endpoint, parse_positive_bounds, parse_to_json};
+use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
+pub use utils::{Bounds, CapacityPoolProvisioningMode, ROLE_PERMISSIONS_SAMPLE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
@@ -77,7 +75,7 @@ pub enum Subcommand {
             long,
             short,
             global = true,
-            value_parser = parse_endpoint,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
@@ -108,7 +106,7 @@ To delete a topic, stop subscribing to it."
             long,
             short,
             global = true,
-            value_parser = parse_endpoint,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
@@ -689,7 +687,7 @@ https://github.com/momentohq/functions/"
             long,
             short,
             global = true,
-            value_parser = parse_endpoint,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
@@ -711,7 +709,7 @@ https://github.com/momentohq/functions/"
             long,
             short,
             global = true,
-            value_parser = parse_endpoint,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
@@ -733,7 +731,7 @@ https://github.com/momentohq/functions/"
             long,
             short,
             global = true,
-            value_parser = parse_endpoint,
+            value_parser = NonEmptyStringValueParser::new(),
             help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
         )]
         endpoint: Option<String>,
