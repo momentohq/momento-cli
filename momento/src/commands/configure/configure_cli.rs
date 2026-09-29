@@ -18,9 +18,10 @@ use crate::{
         ini_config::{
             create_new_config_profile, create_new_credentials_profile, does_profile_name_exist,
         },
-        user::{determine_endpoint, get_config_for_profile, get_creds_for_profile},
+        user::{get_config_for_profile, get_creds_for_profile},
     },
 };
+use momento_cli_opts::determine_endpoint;
 
 pub async fn configure_momento(
     quick: bool,

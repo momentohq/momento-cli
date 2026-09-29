@@ -1,6 +1,6 @@
-use std::num::IntErrorKind;
-
 use chrono::NaiveDate;
+use regex::Regex;
+use std::num::IntErrorKind;
 
 pub const ROLE_PERMISSIONS_SAMPLE: &str = r#"{
   "rules": [
@@ -87,4 +87,107 @@ pub enum CapacityPoolProvisioningMode {
 pub fn parse_date(s: &str) -> Result<NaiveDate, String> {
     NaiveDate::parse_from_str(s, "%Y-%m-%d")
         .map_err(|_| "Date must be in YYYY-MM-DD format".to_string())
+}
+
+fn determine_cell_prefix_for_region(region: &str) -> String {
+    match region {
+        "us-east-1" | "ap-northeast-1" => "cell",
+        "us-west-2" => "cell-4",
+        _ => "cell-1",
+    }
+    .to_string()
+}
+
+/// Formats any sample from https://docs.momentohq.com/platform/regions
+pub fn determine_endpoint(endpoint_arg: String) -> String {
+    let prefixes = ["https://", "api.", "cache."];
+    let mut endpoint = endpoint_arg.clone();
+    if endpoint_arg.contains(".") {
+        for p in prefixes {
+            endpoint = endpoint.strip_prefix(p).unwrap_or(&endpoint).to_string();
+        }
+    } else {
+        if !endpoint_arg.starts_with("cell-") {
+            let prefix = determine_cell_prefix_for_region(&endpoint_arg);
+            endpoint = format!("{prefix}-{endpoint}");
+        }
+        if let Ok(suffix) = Regex::new(r"-[0-9]-1$") {
+            if !suffix.is_match(&endpoint_arg) {
+                endpoint += "-1";
+            };
+        };
+        endpoint += ".prod.a.momentohq.com";
+    }
+    endpoint
+}
+
+pub fn parse_endpoint(s: &str) -> Result<String, String> {
+    if s.is_empty() {
+        return Err("Endpoint cannot be empty".to_string());
+    }
+    let endpoint = determine_endpoint(s.to_string());
+    if endpoint == s {
+        Ok(endpoint)
+    } else {
+        Err(format!("Do you mean '{endpoint}'?"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::determine_endpoint;
+
+    #[test]
+    fn determine_endpoint_with_cell_name() {
+        let endpoint = determine_endpoint("cell-us-east-1-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-4-us-west-2-1".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-1-ap-southeast-2-1".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_cell_name_no_suffix() {
+        let endpoint = determine_endpoint("cell-us-east-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-4-us-west-2".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-1-ap-southeast-2".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_url() {
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-us-east-1-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-4-us-west-2-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-1-ap-southeast-2-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_region_only() {
+        let endpoint = determine_endpoint("us-east-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("us-west-2".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("ap-southeast-2".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
 }
