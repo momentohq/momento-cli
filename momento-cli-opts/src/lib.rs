@@ -6,6 +6,7 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
+use std::time::Duration;
 use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
 pub use utils::{Bounds, CapacityPoolProvisioningMode, ROLE_PERMISSIONS_SAMPLE};
 
@@ -48,6 +49,19 @@ impl Momento {
 
 #[derive(Debug, Parser)]
 pub enum Subcommand {
+    #[command(about = "Interact with Momento API keys")]
+    ApiKey {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key that already grants auth-management access on your account [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[command(subcommand)]
+        operation: ApiKeyCommand,
+    },
     #[command(about = "Interact with custom roles for API keys")]
     Role {
         #[arg(
@@ -742,6 +756,139 @@ https://github.com/momentohq/functions/"
 }
 
 #[derive(Debug, Parser)]
+pub enum ApiKeyCommand {
+    #[command(
+    about = "Generate a Momento API key",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["role_id", "role_name"]),
+    ),
+    group(
+    clap::ArgGroup::new("expiry")
+    .multiple(false)
+    .args(["expires_at_epoch_seconds", "expires_in", "expires_on"]),
+    ),
+    )]
+    Create {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "What the API key is for, recorded on the key"
+        )]
+        description: String,
+
+        #[arg(
+            long = "role",
+            short = 'r',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Role the key carries, by role name ('momento role list --all')",
+            value_name = "ROLE",
+        )]
+        role_name: Option<String>,
+
+        #[arg(
+            long,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Role the key carries, by role ID ('momento role list --all')",
+            value_name = "ROLE_ID",
+        )]
+        role_id: Option<String>,
+
+        #[arg(
+            long,
+            help = "Expiry as unix epoch seconds. \
+                    When this, --expires-in, and --expires-on are all unset, \
+                    the key never expires"
+        )]
+        expires_at_epoch_seconds: Option<u64>,
+
+        #[arg(
+            long,
+            value_parser = humantime::parse_duration,
+            help = "Expiry as a duration from now, e.g. 30d or 12h",
+        )]
+        expires_in: Option<Duration>,
+
+        #[arg(
+            long,
+            value_parser = parse_date,
+            help = "Expiry as a date (YYYY-MM-DD). If set, the key expires at \
+                    midnight UTC at the beginning of that date",
+        )]
+        expires_on: Option<NaiveDate>,
+
+        #[arg(
+            long,
+            help = "Opt out of creating a refresh token for an expiring key",
+            default_value_t = false
+        )]
+        exclude_refresh_token: bool,
+    },
+
+    #[command(about = "Refresh a Momento API key")]
+    Refresh {
+        #[arg(
+            long,
+            short = 't',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "The refresh token returned from when the key was generated or last refreshed",
+            value_name = "REFRESH_TOKEN",
+        )]
+        refresh_token: String,
+
+        #[arg(
+            long,
+            help = "Shortened expiry as unix epoch seconds. \
+                    When this, --expires-in, and --expires-on are all unset, \
+                    calculates the same lifetime as the original key"
+        )]
+        expires_at_epoch_seconds: Option<u64>,
+
+        #[arg(
+            long,
+            value_parser = humantime::parse_duration,
+            help = "Shortened expiry as a duration from now, e.g. 30d or 12h",
+        )]
+        expires_in: Option<Duration>,
+
+        #[arg(
+            long,
+            value_parser = parse_date,
+            help = "Shortened expiry as a date (YYYY-MM-DD). If set, the key expires at \
+                    midnight UTC at the beginning of that date",
+        )]
+        expires_on: Option<NaiveDate>,
+    },
+
+    #[command(about = "Revoke a Momento API key, disabling it immediately")]
+    Revoke {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the API key you want to revoke ('momento api-key list')",
+            value_name = "API_KEY_ID",
+        )]
+        id: String,
+    },
+
+    #[command(about = "List your API keys")]
+    List {
+        #[arg(
+            long,
+            short,
+            value_parser = value_parser!(u32).range(1..101),
+            default_value = "100",
+            help = "The maximum number of API keys to return in a single page. Must be between 1 and 100, inclusive",
+            value_name = "LIMIT_PER_PAGE",
+        )]
+        limit: Option<u32>,
+    },
+}
+
+#[derive(Debug, Parser)]
 pub enum CustomRoleCommand {
     #[command(about = "Create a custom role for your Momento API keys")]
     Create {
@@ -876,6 +1023,14 @@ pub enum CustomRoleCommand {
             value_name = "LIMIT_PER_PAGE",
         )]
         limit: Option<u32>,
+
+        #[arg(
+            long,
+            short,
+            help = "List all your available Momento roles, not just your own custom roles",
+            default_value_t = false
+        )]
+        all: bool,
     },
 }
 

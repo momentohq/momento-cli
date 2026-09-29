@@ -1,4 +1,5 @@
 pub mod account;
+pub mod api_key;
 pub mod cache;
 pub mod capacity_pool;
 pub mod cloud_linter;
