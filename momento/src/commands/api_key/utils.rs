@@ -85,6 +85,14 @@ pub struct ApiKeyResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
     pub key_info: ApiKeyInfo,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous_key_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RefreshApiKeyRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expiration_epoch_seconds: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -114,6 +122,22 @@ pub async fn call_key_create_api(
         Method::POST,
         url,
         auth_token,
+        None,
+        Some(MomentoHttpData::Json(serde_json::to_value(data)?)),
+    )
+    .await
+}
+
+pub async fn call_key_refresh_api(
+    endpoint: String,
+    refresh_token: String,
+    data: RefreshApiKeyRequest,
+) -> Result<MomentoHttpResponse<ApiKeyResponse>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(
+        Method::POST,
+        format!("{url}/refresh"),
+        refresh_token,
         None,
         Some(MomentoHttpData::Json(serde_json::to_value(data)?)),
     )

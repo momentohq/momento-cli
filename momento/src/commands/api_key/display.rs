@@ -35,8 +35,14 @@ impl fmt::Display for ApiKeyInfo {
 impl fmt::Display for ApiKeyResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.api_key)?;
+        if let Some(refresh_token) = &self.refresh_token {
+            write!(f, "\n\nRefresh Token:\n\n{refresh_token}")?;
+        }
         writeln!(f)?;
         write!(f, "\n{}", self.key_info)?;
+        if let Some(previous_key_id) = &self.previous_key_id {
+            write!(f, "\nPrevious Key ID: {previous_key_id}")?;
+        }
         Ok(())
     }
 }

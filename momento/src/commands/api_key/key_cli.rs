@@ -1,7 +1,8 @@
 use super::utils::{
-    call_key_create_api, call_key_list_api, call_key_revoke_api, ApiKey, Expiry,
-    ListApiKeysResponse, RevokeApiKeyResponse,
+    call_key_create_api, call_key_list_api, call_key_refresh_api, call_key_revoke_api, ApiKey,
+    Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
 };
+use crate::commands::api_key::utils::RefreshApiKeyRequest;
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::utils::file::prompt_user_for_input;
 use crate::{error::CliError, utils::console::console_data};
@@ -12,12 +13,13 @@ pub async fn create_key(
     description: String,
     role_id: String,
     expiry: Expiry,
+    exclude_refresh_token: bool,
 ) -> Result<(), CliError> {
     let data = ApiKey {
         role_id,
         description,
         expiry,
-        exclude_refresh_token: true, // TODO
+        exclude_refresh_token,
     };
     let response = call_key_create_api(endpoint, auth_token, data).await?;
     match response {
@@ -26,6 +28,32 @@ pub async fn create_key(
         }
         Unparseable(response_text) => {
             console_data!("Creating API key!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
+        }
+    };
+    Ok(())
+}
+
+pub async fn refresh_key(
+    endpoint: String,
+    refresh_token: String,
+    expiry: Expiry,
+) -> Result<(), CliError> {
+    let data = RefreshApiKeyRequest {
+        expiration_epoch_seconds: match expiry {
+            Expiry::Never => None,
+            Expiry::Expires(epoch_seconds) => Some(epoch_seconds),
+        },
+    };
+    let response = call_key_refresh_api(endpoint, refresh_token, data).await?;
+    match response {
+        Parsed(key) => {
+            console_data!("Refreshed API Key:\n\n{key}");
+        }
+        Unparseable(response_text) => {
+            console_data!("Refreshing API key!");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
             }

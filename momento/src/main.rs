@@ -54,6 +54,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     expires_at_epoch_seconds,
                     expires_in,
                     expires_on,
+                    exclude_refresh_token,
                 } => {
                     let role_selector = determine_role_selector(role_id, role_name)?;
                     let role = determine_role(
@@ -72,8 +73,21 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         description,
                         role.id,
                         expiry,
+                        exclude_refresh_token,
                     )
                     .await?
+                }
+                momento_cli_opts::ApiKeyCommand::Refresh {
+                    refresh_token,
+                    expires_at_epoch_seconds,
+                    expires_in,
+                    expires_on,
+                } => {
+                    let expiry =
+                        determine_expiry(expires_at_epoch_seconds, expires_in, expires_on, now)?;
+
+                    commands::api_key::key_cli::refresh_key(mga_endpoint, refresh_token, expiry)
+                        .await?
                 }
                 momento_cli_opts::ApiKeyCommand::Revoke { id } => {
                     commands::api_key::key_cli::revoke_key(mga_endpoint, auth_token, id).await?
