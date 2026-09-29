@@ -6,6 +6,7 @@ use crate::{
     error::CliError,
     utils::file::{get_config_file_path, get_credentials_file_path, read_ini_file},
 };
+use momento_cli_opts::determine_endpoint;
 
 fn get_session_token(credentials: &Ini) -> Option<String> {
     let session_token = credentials.get(".momento_session", "token");
@@ -56,6 +57,13 @@ pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliErro
         credentials_file.get(profile, "api_key_v2"),
         credentials_file.get(profile, "endpoint"),
     ) {
+        let parsed_endpoint = determine_endpoint(endpoint.clone());
+        if parsed_endpoint != endpoint {
+            return Err(CliError::new(format!(
+                "{endpoint} in your {} profile '{profile}' is not a valid endpoint structure. Do you mean '{parsed_endpoint}'?",
+                get_credentials_file_path().unwrap_or("~/.momento/credentials".to_string()),
+            )));
+        };
         return Ok(Credentials::ApiKeyV2(api_key_v2, endpoint));
     }
 
