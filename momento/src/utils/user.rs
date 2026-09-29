@@ -57,11 +57,15 @@ pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliErro
         credentials_file.get(profile, "api_key_v2"),
         credentials_file.get(profile, "endpoint"),
     ) {
-        let parsed_endpoint = determine_endpoint(endpoint.clone());
+        let endpoint_text = format!(
+            "{endpoint} in your {} profile '{profile}'",
+            get_credentials_file_path().unwrap_or("~/.momento/credentials".to_string())
+        );
+        let parsed_endpoint = determine_endpoint(endpoint.clone())
+            .map_err(|err| CliError::new(format!("Couldn't parse {endpoint_text}: {err}")))?;
         if parsed_endpoint != endpoint {
             return Err(CliError::new(format!(
-                "{endpoint} in your {} profile '{profile}' is not a valid endpoint structure. Do you mean '{parsed_endpoint}'?",
-                get_credentials_file_path().unwrap_or("~/.momento/credentials".to_string()),
+                "{endpoint_text} is not a valid endpoint structure. Do you mean '{parsed_endpoint}'?"
             )));
         };
         return Ok(Credentials::ApiKeyV2(api_key_v2, endpoint));

@@ -99,7 +99,7 @@ fn determine_cell_prefix_for_region(region: &str) -> String {
 }
 
 /// Formats any sample from https://docs.momentohq.com/platform/regions
-pub fn determine_endpoint(endpoint_arg: String) -> String {
+pub fn determine_endpoint(endpoint_arg: String) -> Result<String, String> {
     let prefixes = ["https://", "api.", "cache."];
     let mut endpoint = endpoint_arg.clone();
     if endpoint_arg.contains(".") {
@@ -114,18 +114,28 @@ pub fn determine_endpoint(endpoint_arg: String) -> String {
         if let Ok(suffix) = Regex::new(r"-[0-9]-1$") {
             if !suffix.is_match(&endpoint_arg) {
                 endpoint += "-1";
-            };
-        };
+            }
+        }
         endpoint += ".prod.a.momentohq.com";
     }
-    endpoint
+    if !endpoint.ends_with(".preprod.a.momentohq.com") {
+        if let Ok(structure) =
+            Regex::new(r"^cell(-[0-9a-z\-]+)?-[a-z]{2}-[a-z]+-[0-9]+-1\.prod\.a\.momentohq\.com$")
+        {
+            if !structure.is_match(&endpoint) {
+                return Err(
+                    "Endpoint structure should match cell[-#]-<aws_region_code>-1.prod.a.momentohq.com. \
+                     Please see https://docs.momentohq.com/platform/regions"
+                        .to_string(),
+                );
+            }
+        }
+    }
+    Ok(endpoint)
 }
 
 pub fn parse_endpoint(s: &str) -> Result<String, String> {
-    if s.is_empty() {
-        return Err("Endpoint cannot be empty".to_string());
-    }
-    let endpoint = determine_endpoint(s.to_string());
+    let endpoint = determine_endpoint(s.to_string())?;
     if endpoint == s {
         Ok(endpoint)
     } else {
@@ -138,26 +148,59 @@ mod tests {
     use super::determine_endpoint;
 
     #[test]
+    fn determine_endpoint_with_valid_endpoint() {
+        let endpoint_arg = "cell.preprod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string()).expect("should parse endpoint");
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-us-east-1-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string()).expect("should parse endpoint");
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-4-us-west-2-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string()).expect("should parse endpoint");
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-1-ap-southeast-2-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string()).expect("should parse endpoint");
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-10-us-northeast-3-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string()).expect("should parse endpoint");
+        assert_eq!(endpoint_arg, endpoint);
+
+        let endpoint_arg = "cell-foo-bar-us-northeast-3-1.prod.a.momentohq.com";
+        let endpoint = determine_endpoint(endpoint_arg.to_string()).expect("should parse endpoint");
+        assert_eq!(endpoint_arg, endpoint);
+    }
+
+    #[test]
     fn determine_endpoint_with_cell_name() {
-        let endpoint = determine_endpoint("cell-us-east-1-1".to_string());
+        let endpoint =
+            determine_endpoint("cell-us-east-1-1".to_string()).expect("should parse endpoint");
         assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
 
-        let endpoint = determine_endpoint("cell-4-us-west-2-1".to_string());
+        let endpoint =
+            determine_endpoint("cell-4-us-west-2-1".to_string()).expect("should parse endpoint");
         assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
 
-        let endpoint = determine_endpoint("cell-1-ap-southeast-2-1".to_string());
+        let endpoint = determine_endpoint("cell-1-ap-southeast-2-1".to_string())
+            .expect("should parse endpoint");
         assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
     }
 
     #[test]
     fn determine_endpoint_with_cell_name_no_suffix() {
-        let endpoint = determine_endpoint("cell-us-east-1".to_string());
+        let endpoint =
+            determine_endpoint("cell-us-east-1".to_string()).expect("should parse endpoint");
         assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
 
-        let endpoint = determine_endpoint("cell-4-us-west-2".to_string());
+        let endpoint =
+            determine_endpoint("cell-4-us-west-2".to_string()).expect("should parse endpoint");
         assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
 
-        let endpoint = determine_endpoint("cell-1-ap-southeast-2".to_string());
+        let endpoint =
+            determine_endpoint("cell-1-ap-southeast-2".to_string()).expect("should parse endpoint");
         assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
     }
 
@@ -165,29 +208,47 @@ mod tests {
     fn determine_endpoint_with_url() {
         let endpoint = determine_endpoint(
             "https://api.cache.cell-us-east-1-1.prod.a.momentohq.com".to_string(),
-        );
+        )
+        .expect("should parse endpoint");
         assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
 
         let endpoint = determine_endpoint(
             "https://api.cache.cell-4-us-west-2-1.prod.a.momentohq.com".to_string(),
-        );
+        )
+        .expect("should parse endpoint");
         assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
 
         let endpoint = determine_endpoint(
             "https://api.cache.cell-1-ap-southeast-2-1.prod.a.momentohq.com".to_string(),
-        );
+        )
+        .expect("should parse endpoint");
         assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
     }
 
     #[test]
     fn determine_endpoint_with_region_only() {
-        let endpoint = determine_endpoint("us-east-1".to_string());
+        let endpoint = determine_endpoint("us-east-1".to_string()).expect("should parse endpoint");
         assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
 
-        let endpoint = determine_endpoint("us-west-2".to_string());
+        let endpoint = determine_endpoint("us-west-2".to_string()).expect("should parse endpoint");
         assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
 
-        let endpoint = determine_endpoint("ap-southeast-2".to_string());
+        let endpoint =
+            determine_endpoint("ap-southeast-2".to_string()).expect("should parse endpoint");
         assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_invalid_structure() {
+        let docs = "https://docs.momentohq.com/platform/regions";
+
+        let error =
+            determine_endpoint("N. Virginia".to_string()).expect_err("should reject endpoint");
+        assert!(error.contains(docs));
+
+        let error =
+            determine_endpoint("cell-1-ap-southeast-1-1.foobar.a.momentohq.com".to_string())
+                .expect_err("should reject endpoint");
+        assert!(error.contains(docs));
     }
 }
