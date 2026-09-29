@@ -162,7 +162,11 @@ async fn prompt_user_for_api_key_v2() -> Result<Credentials, CliError> {
     console_info!("");
 
     let api_key_v2 = prompt_user_for_input("API Key", "", true).await?;
-    let endpoint = determine_endpoint(prompt_user_for_input("Endpoint", "", false).await?);
+    let endpoint_input = prompt_user_for_input("Endpoint", "", false).await?;
+    let endpoint = determine_endpoint(endpoint_input.clone());
+    if endpoint != endpoint_input {
+        console_info!("Using endpoint {endpoint}\n");
+    }
 
     Ok(Credentials::ApiKeyV2(api_key_v2, endpoint))
 }
