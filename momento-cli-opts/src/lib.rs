@@ -60,16 +60,6 @@ pub enum Subcommand {
         )]
         api_key: Option<String>,
 
-        #[arg(
-            long,
-            short,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit hostname to use",
-            default_value = "https://mga.registry.prod.a.momentohq.com"
-        )]
-        endpoint: String,
-
         #[command(subcommand)]
         operation: CustomRoleCommand,
     },

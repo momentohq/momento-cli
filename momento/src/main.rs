@@ -30,15 +30,20 @@ mod utils;
 
 async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliError> {
     match args.command {
-        momento_cli_opts::Subcommand::Role {
-            api_key,
-            endpoint,
-            operation,
-        } => {
+        momento_cli_opts::Subcommand::Role { api_key, operation } => {
             let (creds, _) = get_creds_and_config(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, None)?;
 
+            let api_endpoint = credential_provider.cache_http_endpoint().to_string();
             let auth_token = credential_provider.auth_token().to_string();
+            let mga_endpoint = format!(
+                "https://mga.registry.{}.a.momentohq.com",
+                if api_endpoint.ends_with(".preprod.a.momentohq.com") {
+                    "preprod"
+                } else {
+                    "prod"
+                }
+            );
 
             match operation {
                 momento_cli_opts::CustomRoleCommand::Create {
@@ -47,7 +52,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     permission_set,
                 } => {
                     commands::custom_role::role_cli::create_role(
-                        endpoint,
+                        mga_endpoint,
                         auth_token,
                         name,
                         description,
@@ -64,7 +69,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 } => {
                     let selector = determine_role_selector(id, name)?;
                     commands::custom_role::role_cli::update_role(
-                        endpoint,
+                        mga_endpoint,
                         auth_token,
                         selector,
                         new_name,
@@ -75,11 +80,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 }
                 momento_cli_opts::CustomRoleCommand::Delete { id, name } => {
                     let selector = determine_role_selector(id, name)?;
-                    commands::custom_role::role_cli::delete_role(endpoint, auth_token, selector)
+                    commands::custom_role::role_cli::delete_role(mga_endpoint, auth_token, selector)
                         .await?
                 }
                 momento_cli_opts::CustomRoleCommand::List { limit } => {
-                    commands::custom_role::role_cli::list_roles(endpoint, auth_token, limit).await?
+                    commands::custom_role::role_cli::list_roles(mga_endpoint, auth_token, limit)
+                        .await?
                 }
             }
         }
