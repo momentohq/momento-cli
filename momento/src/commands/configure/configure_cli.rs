@@ -18,7 +18,7 @@ use crate::{
         ini_config::{
             create_new_config_profile, create_new_credentials_profile, does_profile_name_exist,
         },
-        user::{get_config_for_profile, get_creds_for_profile},
+        user::{determine_endpoint, get_config_for_profile, get_creds_for_profile},
     },
 };
 
@@ -162,7 +162,7 @@ async fn prompt_user_for_api_key_v2() -> Result<Credentials, CliError> {
     console_info!("");
 
     let api_key_v2 = prompt_user_for_input("API Key", "", true).await?;
-    let endpoint = prompt_user_for_input("Endpoint", "", false).await?;
+    let endpoint = determine_endpoint(prompt_user_for_input("Endpoint", "", false).await?);
 
     Ok(Credentials::ApiKeyV2(api_key_v2, endpoint))
 }

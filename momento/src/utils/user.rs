@@ -1,5 +1,6 @@
 use chrono::{Duration, TimeZone, Utc};
 use configparser::ini::Ini;
+use regex::Regex;
 
 use crate::{
     config::{Config, Credentials},
@@ -99,4 +100,93 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
             .parse::<u64>()
             .map_err(|e| CliError::new(format!("could not parse a u64: {e:?}")))?,
     })
+}
+
+fn determine_cell_prefix_for_region(region: &str) -> String {
+    match region {
+        "us-east-1" | "ap-northeast-1" => "cell",
+        "us-west-2" => "cell-4",
+        _ => "cell-1",
+    }
+    .to_string()
+}
+
+/// Parses any sample from https://docs.momentohq.com/platform/regions
+pub fn determine_endpoint(endpoint_arg: String) -> String {
+    let prefixes = ["https://", "api.", "cache."];
+    let mut endpoint = endpoint_arg.clone();
+    if endpoint_arg.contains(".") {
+        for p in prefixes {
+            endpoint = endpoint.strip_prefix(p).unwrap_or(&endpoint).to_string();
+        }
+    } else {
+        if !endpoint_arg.starts_with("cell-") {
+            let prefix = determine_cell_prefix_for_region(&endpoint_arg);
+            endpoint = format!("{prefix}-{endpoint}");
+        }
+        if !Regex::new(r"-[0-9]-1$").unwrap().is_match(&endpoint_arg) {
+            endpoint += "-1";
+        }
+        endpoint += ".prod.a.momentohq.com";
+    }
+    endpoint
+}
+
+#[cfg(test)]
+mod tests {
+    use super::determine_endpoint;
+
+    #[test]
+    fn determine_endpoint_with_cell_name() {
+        let endpoint = determine_endpoint("cell-us-east-1-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-4-us-west-2-1".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-1-ap-southeast-2-1".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_cell_name_no_suffix() {
+        let endpoint = determine_endpoint("cell-us-east-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-4-us-west-2".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("cell-1-ap-southeast-2".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_url() {
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-us-east-1-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-4-us-west-2-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint(
+            "https://api.cache.cell-1-ap-southeast-2-1.prod.a.momentohq.com".to_string(),
+        );
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn determine_endpoint_with_region_only() {
+        let endpoint = determine_endpoint("us-east-1".to_string());
+        assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("us-west-2".to_string());
+        assert_eq!("cell-4-us-west-2-1.prod.a.momentohq.com", endpoint);
+
+        let endpoint = determine_endpoint("ap-southeast-2".to_string());
+        assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
 }
