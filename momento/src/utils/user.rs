@@ -113,6 +113,9 @@ fn determine_cell_prefix_for_region(region: &str) -> String {
 
 /// Formats any sample from https://docs.momentohq.com/platform/regions
 pub fn determine_endpoint(endpoint_arg: String) -> String {
+    if endpoint_arg.is_empty() {
+        return endpoint_arg;
+    }
     let prefixes = ["https://", "api.", "cache."];
     let mut endpoint = endpoint_arg.clone();
     if endpoint_arg.contains(".") {
