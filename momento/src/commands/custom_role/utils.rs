@@ -198,7 +198,9 @@ pub async fn determine_role(
     endpoint: String,
     auth_token: String,
     selector: &RoleSelector,
+    all: bool,
 ) -> Result<CustomRoleResponse, CliError> {
+    let role_text = if all { "role" } else { "custom role" };
     let selector_text = match selector {
         RoleSelector::ById(id) => format!("ID {id}"),
         RoleSelector::ByName(name) => format!("name {name}"),
@@ -210,7 +212,7 @@ pub async fn determine_role(
             endpoint.clone(),
             auth_token.clone(),
             None,
-            false,
+            all,
             next_token.clone(),
         )
         .await?
@@ -239,10 +241,10 @@ pub async fn determine_role(
                 next_token = token;
                 if next_token.is_none() {
                     if full_roles_list.is_empty() {
-                        return Err(CliError::new("No custom roles found"));
+                        return Err(CliError::new(format!("No {role_text}s found")));
                     } else {
                         return Err(CliError::new(format!(
-                            "No custom role has {selector_text}.\n\nListing custom roles:\n\n{}",
+                            "No {role_text} has {selector_text}.\n\nListing {role_text}s:\n\n{}",
                             full_roles_list
                                 .iter()
                                 .map(|role| role.to_string())

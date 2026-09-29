@@ -137,12 +137,23 @@ pub fn determine_endpoint(endpoint_arg: String) -> String {
     endpoint
 }
 
+pub fn determine_mga_endpoint(api_endpoint: String) -> String {
+    format!(
+        "https://mga.registry.{}.a.momentohq.com",
+        if api_endpoint.ends_with(".preprod.a.momentohq.com") {
+            "preprod"
+        } else {
+            "prod"
+        }
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use super::determine_endpoint;
+    use super::*;
 
     #[test]
-    fn determine_endpoint_with_valid_endpoint() {
+    fn test_determine_endpoint_with_valid_endpoint() {
         let endpoint_arg = "cell.preprod.a.momentohq.com";
         let endpoint = determine_endpoint(endpoint_arg.to_string());
         assert_eq!(endpoint_arg, endpoint);
@@ -169,7 +180,7 @@ mod tests {
     }
 
     #[test]
-    fn determine_endpoint_with_cell_name() {
+    fn test_determine_endpoint_with_cell_name() {
         let endpoint = determine_endpoint("cell-us-east-1-1".to_string());
         assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
 
@@ -181,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    fn determine_endpoint_with_cell_name_no_suffix() {
+    fn test_determine_endpoint_with_cell_name_no_suffix() {
         let endpoint = determine_endpoint("cell-us-east-1".to_string());
         assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
 
@@ -193,7 +204,7 @@ mod tests {
     }
 
     #[test]
-    fn determine_endpoint_with_url() {
+    fn test_determine_endpoint_with_url() {
         let endpoint = determine_endpoint(
             "https://api.cache.cell-us-east-1-1.prod.a.momentohq.com".to_string(),
         );
@@ -211,7 +222,7 @@ mod tests {
     }
 
     #[test]
-    fn determine_endpoint_with_region_only() {
+    fn test_determine_endpoint_with_region_only() {
         let endpoint = determine_endpoint("us-east-1".to_string());
         assert_eq!("cell-us-east-1-1.prod.a.momentohq.com", endpoint);
 
@@ -220,5 +231,20 @@ mod tests {
 
         let endpoint = determine_endpoint("ap-southeast-2".to_string());
         assert_eq!("cell-1-ap-southeast-2-1.prod.a.momentohq.com", endpoint);
+    }
+
+    #[test]
+    fn test_determine_mga_endpoint() {
+        let api_endpoints = [
+            "cell-us-east-1-1.prod.a.momentohq.com",
+            "cell-4-us-west-2-1.prod.a.momentohq.com",
+            "cell-foo-bar-us-northeast-3-1.prod.a.momentohq.com",
+            "supercalifragilistixexpialidocious.momentohq.com",
+        ];
+        let expected = "https://mga.registry.prod.a.momentohq.com";
+        for endpoint in api_endpoints {
+            let actual = determine_mga_endpoint(endpoint.to_string());
+            assert_eq!(expected, actual);
+        }
     }
 }

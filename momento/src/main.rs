@@ -10,12 +10,12 @@ use momento_cli_opts::PreviewCommand;
 use utils::{
     client::{get_cache_client, get_function_client, get_topic_client},
     console::output_info,
-    user::get_creds_and_config,
+    user::{determine_mga_endpoint, get_creds_and_config},
 };
 
 use crate::{
     commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
-    commands::custom_role::utils::determine_role_selector,
+    commands::custom_role::utils::{determine_role, determine_role_selector},
     commands::functions::utils::{
         determine_current_function_version, determine_metrics_config_change, determine_wasm_source,
         InvocationOptions,
@@ -30,20 +30,51 @@ mod utils;
 
 async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliError> {
     match args.command {
+        momento_cli_opts::Subcommand::ApiKey { api_key, operation } => {
+            let (creds, _) = get_creds_and_config(&args.profile).await?;
+            let credential_provider = creds.override_and_authenticate(api_key, None)?;
+
+            let mga_endpoint =
+                determine_mga_endpoint(credential_provider.cache_http_endpoint().to_string());
+            let auth_token = credential_provider.auth_token().to_string();
+
+            match operation {
+                momento_cli_opts::ApiKeyCommand::Create {
+                    description,
+                    role_name,
+                    role_id,
+                } => {
+                    let role_selector = determine_role_selector(role_id, role_name)?;
+                    let role = determine_role(
+                        mga_endpoint.clone(),
+                        auth_token.clone(),
+                        &role_selector,
+                        true,
+                    )
+                    .await?;
+                    commands::api_key::key_cli::create_key(
+                        mga_endpoint,
+                        auth_token,
+                        description,
+                        role.id,
+                    )
+                    .await?
+                }
+                momento_cli_opts::ApiKeyCommand::Revoke { id } => {
+                    commands::api_key::key_cli::revoke_key(mga_endpoint, auth_token, id).await?
+                }
+                momento_cli_opts::ApiKeyCommand::List { limit } => {
+                    commands::api_key::key_cli::list_keys(mga_endpoint, auth_token, limit).await?
+                }
+            }
+        }
         momento_cli_opts::Subcommand::Role { api_key, operation } => {
             let (creds, _) = get_creds_and_config(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, None)?;
 
-            let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+            let mga_endpoint =
+                determine_mga_endpoint(credential_provider.cache_http_endpoint().to_string());
             let auth_token = credential_provider.auth_token().to_string();
-            let mga_endpoint = format!(
-                "https://mga.registry.{}.a.momentohq.com",
-                if api_endpoint.ends_with(".preprod.a.momentohq.com") {
-                    "preprod"
-                } else {
-                    "prod"
-                }
-            );
 
             match operation {
                 momento_cli_opts::CustomRoleCommand::Create {

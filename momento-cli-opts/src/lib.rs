@@ -48,6 +48,19 @@ impl Momento {
 
 #[derive(Debug, Parser)]
 pub enum Subcommand {
+    #[command(about = "Interact with Momento API keys")]
+    ApiKey {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key that already grants auth-management access on your account [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[command(subcommand)]
+        operation: ApiKeyCommand,
+    },
     #[command(about = "Interact with custom roles for API keys")]
     Role {
         #[arg(
@@ -738,6 +751,69 @@ https://github.com/momentohq/functions/"
 
         #[command(subcommand)]
         operation: DatabaseCommand,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum ApiKeyCommand {
+    #[command(
+    about = "Generate a Momento API key",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["role_id", "role_name"]),
+    ),
+    )]
+    Create {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "What the API key is for, recorded on the key"
+        )]
+        description: String,
+
+        #[arg(
+            long = "role",
+            short = 'r',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Role the key carries, by role name ('momento role list --all')",
+            value_name = "ROLE",
+        )]
+        role_name: Option<String>,
+
+        #[arg(
+            long,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Role the key carries, by role ID ('momento role list --all')",
+            value_name = "ROLE_ID",
+        )]
+        role_id: Option<String>,
+    },
+
+    #[command(about = "Revoke a Momento API key, disabling it immediately")]
+    Revoke {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the API key you want to revoke ('momento api-key list')",
+            value_name = "API_KEY_ID",
+        )]
+        id: String,
+    },
+
+    #[command(about = "List your API keys")]
+    List {
+        #[arg(
+            long,
+            short,
+            value_parser = value_parser!(u32).range(1..101),
+            default_value = "100",
+            help = "The maximum number of API keys to return in a single page. Must be between 1 and 100, inclusive",
+            value_name = "LIMIT_PER_PAGE",
+        )]
+        limit: Option<u32>,
     },
 }
 

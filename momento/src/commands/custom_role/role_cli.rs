@@ -55,7 +55,8 @@ pub async fn update_role(
         }
         (None, _, _) => "Updating custom role!".to_string(),
     };
-    let existing_role = determine_role(endpoint.clone(), auth_token.clone(), &selector).await?;
+    let existing_role =
+        determine_role(endpoint.clone(), auth_token.clone(), &selector, false).await?;
     let data = determine_role_update(existing_role.clone(), new_name, description, permission_set)?;
     let response = call_role_update_api(endpoint, auth_token, existing_role.id, data).await?;
     match response {
@@ -77,7 +78,7 @@ pub async fn delete_role(
     auth_token: String,
     selector: RoleSelector,
 ) -> Result<(), CliError> {
-    let id = determine_role(endpoint.clone(), auth_token.clone(), &selector)
+    let id = determine_role(endpoint.clone(), auth_token.clone(), &selector, false)
         .await?
         .id;
     let response = call_role_delete_api(endpoint, auth_token, id.clone()).await?;
