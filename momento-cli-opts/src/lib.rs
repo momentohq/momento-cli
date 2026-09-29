@@ -6,6 +6,7 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
+use std::time::Duration;
 use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
 pub use utils::{Bounds, CapacityPoolProvisioningMode, ROLE_PERMISSIONS_SAMPLE};
 
@@ -763,6 +764,11 @@ pub enum ApiKeyCommand {
     .required(true)
     .args(["role_id", "role_name"]),
     ),
+    group(
+    clap::ArgGroup::new("expiry")
+    .multiple(false)
+    .args(["expires_at_epoch_seconds", "expires_in", "expires_on"]),
+    ),
     )]
     Create {
         #[arg(
@@ -789,6 +795,28 @@ pub enum ApiKeyCommand {
             value_name = "ROLE_ID",
         )]
         role_id: Option<String>,
+
+        #[arg(
+            long,
+            help = "Expiry as unix epoch seconds. The key never expires when this, \
+                    --expires-in, and --expires-on are all unset"
+        )]
+        expires_at_epoch_seconds: Option<u64>,
+
+        #[arg(
+            long,
+            value_parser = humantime::parse_duration,
+            help = "Expiry as a duration from now, e.g. 30d or 12h",
+        )]
+        expires_in: Option<Duration>,
+
+        #[arg(
+            long,
+            value_parser = parse_date,
+            help = "Expiry as a date (YYYY-MM-DD). If set, the key expires at \
+                    midnight UTC at the beginning of that date",
+        )]
+        expires_on: Option<NaiveDate>,
     },
 
     #[command(about = "Revoke a Momento API key, disabling it immediately")]

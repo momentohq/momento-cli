@@ -11,11 +11,12 @@ pub async fn create_key(
     auth_token: String,
     description: String,
     role_id: String,
+    expiry: Expiry,
 ) -> Result<(), CliError> {
     let data = ApiKey {
         role_id,
         description,
-        expiry: Expiry::Never,       // TODO
+        expiry,
         exclude_refresh_token: true, // TODO
     };
     let response = call_key_create_api(endpoint, auth_token, data).await?;

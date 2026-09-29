@@ -1,14 +1,62 @@
 use crate::commands::utils::{call_momento_http_api, MomentoHttpData, MomentoHttpResponse};
 use crate::error::CliError;
 
+use chrono::{prelude::DateTime, NaiveDate};
 use http::Method;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Expiry {
     Never,
+    #[serde(untagged)]
+    Expires(u64),
+}
+
+pub fn determine_expiry(
+    expires_at_epoch_seconds: Option<u64>,
+    expires_in: Option<Duration>,
+    expires_on: Option<NaiveDate>,
+    now: u64,
+) -> Result<Expiry, CliError> {
+    let expiry = match (expires_at_epoch_seconds, expires_in, expires_on) {
+        (Some(expiration_epoch_seconds), None, None) => Expiry::Expires(expiration_epoch_seconds),
+        (None, Some(expires_in), None) => Expiry::Expires(now.saturating_add(expires_in.as_secs())),
+        (None, None, Some(date)) => Expiry::Expires(
+            match u64::try_from(
+                date.and_hms_opt(0, 0, 0)
+                    .expect("midnight is always a valid time")
+                    .and_utc()
+                    .timestamp(),
+            ) {
+                Ok(epoch_seconds) => epoch_seconds,
+                Err(_) => {
+                    return Err(CliError::new(format!("Expiry is in the past: {date}")));
+                }
+            },
+        ),
+
+        (None, None, None) => Expiry::Never,
+        _ => {
+            return Err(CliError::new(
+                // This should never happen; clap allows at most 1 expiry argument.
+                "Sorry, something went wrong!",
+            ));
+        }
+    };
+    if let Expiry::Expires(epoch_seconds) = expiry {
+        if epoch_seconds <= now {
+            return Err(CliError::new(format!(
+                "Expiry is in the past: {epoch_seconds} epoch seconds{}",
+                DateTime::from_timestamp(epoch_seconds as i64, 0)
+                    .map(|datetime| format!(", {datetime}"))
+                    .unwrap_or("".to_string()),
+            )));
+        }
+    }
+    Ok(expiry)
 }
 
 #[derive(Debug, Serialize, Deserialize)]

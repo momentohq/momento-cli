@@ -7,6 +7,7 @@ use error::CliError;
 use log::{debug, error, warn, LevelFilter};
 use momento::MomentoError;
 use momento_cli_opts::PreviewCommand;
+use std::time::{SystemTime, UNIX_EPOCH};
 use utils::{
     client::{get_cache_client, get_function_client, get_topic_client},
     console::output_info,
@@ -14,6 +15,7 @@ use utils::{
 };
 
 use crate::{
+    commands::api_key::utils::determine_expiry,
     commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
     commands::custom_role::utils::{determine_role, determine_role_selector},
     commands::functions::utils::{
@@ -29,6 +31,12 @@ mod error;
 mod utils;
 
 async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliError> {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| {
+            CliError::new("The system clock is before 1970.").with_details(error.to_string())
+        })?
+        .as_secs();
     match args.command {
         momento_cli_opts::Subcommand::ApiKey { api_key, operation } => {
             let (creds, _) = get_creds_and_config(&args.profile).await?;
@@ -43,6 +51,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     description,
                     role_name,
                     role_id,
+                    expires_at_epoch_seconds,
+                    expires_in,
+                    expires_on,
                 } => {
                     let role_selector = determine_role_selector(role_id, role_name)?;
                     let role = determine_role(
@@ -52,11 +63,15 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         true,
                     )
                     .await?;
+                    let expiry =
+                        determine_expiry(expires_at_epoch_seconds, expires_in, expires_on, now)?;
+
                     commands::api_key::key_cli::create_key(
                         mga_endpoint,
                         auth_token,
                         description,
                         role.id,
+                        expiry,
                     )
                     .await?
                 }

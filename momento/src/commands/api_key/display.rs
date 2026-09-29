@@ -17,6 +17,14 @@ impl fmt::Display for ApiKeyInfo {
         write!(f, "\nRole ID: {}", self.role_id)?;
         write!(
             f,
+            "\nExpires At: {}",
+            match self.expires_at_epoch_seconds {
+                Some(seconds) => format_epoch_seconds(seconds),
+                None => "never".to_string(),
+            }
+        )?;
+        write!(
+            f,
             "\nIssued At: {}",
             format_epoch_seconds(self.issued_at_epoch_seconds)
         )?;
