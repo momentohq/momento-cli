@@ -1,6 +1,6 @@
 use super::utils::{
     AccountMember, ActiveReferences, AllSelector, ApiKey, Condition, CustomRoleResponse,
-    Invitation, ItemSelector, NameSelector, PrefixSelector, Rule,
+    Invitation, ItemSelector, NameSelector, Permissions, PrefixSelector, Rule,
 };
 
 use chrono::prelude::DateTime;
@@ -145,6 +145,34 @@ impl fmt::Display for Condition {
     }
 }
 
+impl fmt::Display for Permissions {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.super_user == Some(true) {
+            write!(f, "Permissions: super user")?;
+        } else {
+            match &self.rules {
+                Some(rules) if !rules.is_empty() => {
+                    write!(f, "Rules:")?;
+                    for rule in rules {
+                        write!(f, "\n{rule}")?;
+                    }
+                }
+                _ => write!(f, "Rules: (none)")?,
+            }
+            match &self.conditions {
+                Some(conditions) if !conditions.is_empty() => {
+                    write!(f, "\nConditions:")?;
+                    for condition in conditions {
+                        write!(f, "\n{condition}")?;
+                    }
+                }
+                _ => write!(f, "\nConditions: (none)")?,
+            }
+        }
+        Ok(())
+    }
+}
+
 impl fmt::Display for CustomRoleResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
@@ -161,28 +189,7 @@ impl fmt::Display for CustomRoleResponse {
         if let Some(description) = &self.description {
             write!(f, "\nDescription: {description}")?;
         }
-        if self.permissions.super_user == Some(true) {
-            write!(f, "\nPermissions: super user")?;
-        } else {
-            match &self.permissions.rules {
-                Some(rules) if !rules.is_empty() => {
-                    write!(f, "\nRules:")?;
-                    for rule in rules {
-                        write!(f, "\n{rule}")?;
-                    }
-                }
-                _ => write!(f, "\nRules: (none)")?,
-            }
-            match &self.permissions.conditions {
-                Some(conditions) if !conditions.is_empty() => {
-                    write!(f, "\nConditions:")?;
-                    for condition in conditions {
-                        write!(f, "\n{condition}")?;
-                    }
-                }
-                _ => write!(f, "\nConditions: (none)")?,
-            }
-        }
+        write!(f, "\n{}", self.permissions)?;
         Ok(())
     }
 }
