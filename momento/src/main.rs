@@ -77,6 +77,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     )
                     .await?
                 }
+                momento_cli_opts::ApiKeyCommand::Info { api_key } => {
+                    commands::api_key::key_cli::get_key_info(api_key).await?
+                }
                 momento_cli_opts::ApiKeyCommand::Refresh {
                     refresh_token,
                     expires_at_epoch_seconds,

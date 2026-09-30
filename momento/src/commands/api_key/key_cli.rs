@@ -1,3 +1,4 @@
+use super::info::decode;
 use super::utils::{
     call_key_create_api, call_key_list_api, call_key_refresh_api, call_key_revoke_api, ApiKey,
     Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
@@ -33,6 +34,12 @@ pub async fn create_key(
             }
         }
     };
+    Ok(())
+}
+
+pub async fn get_key_info(api_key: String) -> Result<(), CliError> {
+    let decoded = decode(api_key.trim())?;
+    console_data!("{decoded}");
     Ok(())
 }
 

@@ -1,0 +1,407 @@
+use super::display::format_epoch_seconds;
+use crate::commands::custom_role::utils::Permissions;
+use crate::error::CliError;
+
+use momento_protos::permission_messages::Permissions as PermissionsProtoV1;
+use momento_protos::permission_rules::PermissionSet as PermissionsProtoV2;
+
+use base64::{
+    engine::{general_purpose::STANDARD, GeneralPurpose},
+    Engine,
+};
+use prost::Message;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::borrow::Cow;
+use std::sync::LazyLock;
+
+pub static BASE64: LazyLock<GeneralPurpose> = LazyLock::new(|| {
+    GeneralPurpose::new(
+        &base64::alphabet::URL_SAFE,
+        base64::engine::general_purpose::GeneralPurposeConfig::new()
+            .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
+    )
+});
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum TokenType {
+    #[serde(rename = "disposable")]
+    DisposableToken,
+    #[serde(rename = "g")]
+    GlobalApiKey,
+    #[serde(rename = "gr")]
+    GlobalApiKeyRefresh,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Identity<'a> {
+    ApiTokenV1 { legacy_customer_id: Cow<'a, str> },
+    ApiTokenV1Disposable { legacy_customer_id: Cow<'a, str> },
+    ApiTokenV2Disposable { account_id: Cow<'a, str> },
+    LegacyToken { legacy_customer_id: Cow<'a, str> },
+    CustomerSignedToken { key_id: Cow<'a, str> },
+    GlobalApiKey { key_id: Cow<'a, str> },
+}
+
+impl TryFrom<&str> for TokenType {
+    type Error = serde_json::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        // quote to make it look like json
+        serde_json::from_str(format!("\"{value}\"").as_str())
+    }
+}
+
+pub(crate) fn get_key_id_from_jwt(auth_token: &str) -> Result<Option<String>, CliError> {
+    let header = jsonwebtoken::decode_header(auth_token)
+        .map_err(|error| CliError::new(format!("{error}")))?;
+    Ok(header.kid)
+}
+
+pub fn derive_identity<'a>(
+    claims: &'a Claims<'a>,
+    auth_token: &str,
+) -> Result<Identity<'a>, CliError> {
+    match claims.token_type {
+        Some(token_type_str) => {
+            let token_type: TokenType = token_type_str.try_into().map_err(|error| {
+                log::error!("Unable to parse token type: {error:?}");
+                CliError::new("Unable to parse token type")
+            })?;
+            match token_type {
+                TokenType::DisposableToken => match claims.version {
+                    Some(1) => Ok(Identity::ApiTokenV1Disposable {
+                        legacy_customer_id: Cow::Borrowed(claims.get_subject_claim()?),
+                    }),
+                    Some(2) => Ok(Identity::ApiTokenV2Disposable {
+                        account_id: Cow::Borrowed(claims.get_account_id_claim()?),
+                    }),
+                    _ => Err(CliError::new("Unsupported disposable token version")),
+                },
+                TokenType::GlobalApiKey => Ok(Identity::GlobalApiKey {
+                    key_id: Cow::Borrowed(claims.get_jwt_token_id_claim()?),
+                }),
+                TokenType::GlobalApiKeyRefresh => {
+                    Err(CliError::new("Cannot decode a refresh token"))
+                }
+            }
+        }
+        None => derive_identity_without_token_type(claims, auth_token),
+    }
+}
+
+fn derive_identity_without_token_type<'a>(
+    claims: &'a Claims<'a>,
+    auth_token: &str,
+) -> Result<Identity<'a>, CliError> {
+    match claims.issuer {
+        Some(issuer) => Err(CliError::new(format!("Unsupported issuer: {issuer}"))),
+        None => {
+            if claims.version == Some(1) {
+                Ok(Identity::ApiTokenV1 {
+                    legacy_customer_id: Cow::Borrowed(claims.get_subject_claim()?),
+                })
+            } else if claims.control_plane_proxy_endpoint.is_some() {
+                Ok(Identity::LegacyToken {
+                    legacy_customer_id: claims.get_subject_claim()?.into(),
+                })
+            } else {
+                // The only way to identify a customer signed token is by checking that
+                // a keyid exists in the header, and none of the other claim tags identifying
+                // other token types were found.
+                let key_id =
+                    get_key_id_from_jwt(auth_token)?.ok_or(CliError::new("Missing key id"))?;
+                Ok(Identity::CustomerSignedToken {
+                    key_id: Cow::Owned(key_id),
+                })
+            }
+        }
+    }
+}
+
+/// Claims from all token types, used for initial parsing to determine token type.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims<'a> {
+    /// Borrowed from the buffer when the claim needs no JSON unescaping, owned when it
+    /// does. v1-issued disposable tokens carry the caller's `token_id` here, and that is
+    /// arbitrary customer text.
+    #[serde(rename = "sub", borrow)]
+    pub subject: Option<Cow<'a, str>>,
+
+    #[serde(rename = "email")]
+    pub email: Option<&'a str>,
+
+    #[serde(rename = "iss")]
+    pub issuer: Option<&'a str>,
+
+    #[serde(rename = "ver")]
+    pub version: Option<i32>,
+
+    #[serde(rename = "cp")]
+    pub control_plane_proxy_endpoint: Option<&'a str>, // control endpoint in Momento Legacy auth tokens
+
+    #[serde(rename = "t")]
+    pub token_type: Option<&'a str>, // Momento token type
+
+    #[serde(rename = "jti")]
+    pub jwt_token_id: Option<&'a str>, // Refresh tokens, Key ID on Global Api Keys
+
+    #[serde(rename = "a")]
+    pub account_id: Option<&'a str>,
+}
+
+impl Claims<'_> {
+    fn get_account_id_claim(&self) -> Result<&str, CliError> {
+        match self.account_id {
+            Some(account_id) => {
+                if account_id.is_empty() {
+                    Err(CliError::new("Missing account_id claim"))
+                } else {
+                    Ok(account_id)
+                }
+            }
+            None => Err(CliError::new("Missing account_id claim")),
+        }
+    }
+
+    fn get_subject_claim(&self) -> Result<&str, CliError> {
+        match self.subject.as_deref() {
+            Some(subject) => {
+                if subject.is_empty() {
+                    Err(CliError::new("Missing sub claim"))
+                } else {
+                    Ok(subject)
+                }
+            }
+            None => Err(CliError::new("Missing sub claim")),
+        }
+    }
+
+    fn get_jwt_token_id_claim(&self) -> Result<&str, CliError> {
+        self.jwt_token_id
+            .filter(|token_id| !token_id.is_empty())
+            .ok_or(CliError::new("Missing jti claim"))
+    }
+}
+
+/// Initial read of token to determine token type.
+/// Parse the claims section as cheaply as possible, by mapping the claims onto the input buffer.
+pub fn read_buffered_claims<'a>(
+    auth_token: &str,
+    buffer: &'a mut Vec<u8>,
+) -> Result<Claims<'a>, CliError> {
+    let middle = auth_token
+        .split('.')
+        .nth(1)
+        .ok_or_else(|| CliError::new("JWS schema violated"))?;
+
+    BASE64
+        .decode_vec(middle, buffer)
+        .map_err(|error| CliError::new(format!("{error}")))?;
+
+    serde_json::de::from_slice(buffer)
+        .map_err(|error| CliError::new(format!("JSON issue: {error}")))
+}
+
+/// What a token decoded to.
+pub struct DecodedApiKey {
+    /// What kind of Momento token this is.
+    pub kind: String,
+    /// Who it identifies — the meaning depends on `kind`, so the label does too.
+    pub identity_label: &'static str,
+    pub identity: String,
+    /// The cell endpoint, when the token arrived in an envelope carrying one.
+    pub endpoint: Option<String>,
+    pub expires: Option<String>,
+    pub permissions: Option<String>,
+    pub claims: Value,
+}
+
+/// Offline and unverified: nothing is contacted and no signature is checked.
+/// That is the point — a token that fails validation can still decode here,
+/// which is what you need when one is behaving unexpectedly.
+pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
+    let (endpoint, jwt) = unwrap_envelope(key);
+
+    let mut buffer = Vec::new();
+    let claims = read_buffered_claims(&jwt, &mut buffer).map_err(|error| {
+        CliError::new("This does not read as a Momento token. Pass the key exactly as issued.")
+            .with_details(format!("{error}"))
+    })?;
+    let identity = derive_identity(&claims, &jwt).map_err(|error| {
+        CliError::new("Could not determine what kind of token this is")
+            .with_details(format!("{error}"))
+    })?;
+    let permission_encoding = match identity {
+        Identity::ApiTokenV1 { .. } | Identity::ApiTokenV1Disposable { .. } => {
+            Some(EmbeddedPermissionEncoding::V1)
+        }
+        Identity::ApiTokenV2Disposable { .. } => Some(EmbeddedPermissionEncoding::V2),
+        Identity::LegacyToken { .. }
+        | Identity::CustomerSignedToken { .. }
+        | Identity::GlobalApiKey { .. } => None,
+    };
+    let (kind, identity_label, identity_value) = describe(&identity);
+
+    let payload = serde_json::from_slice::<Value>(&buffer).map_err(|error| {
+        CliError::new("the JWT payload is not JSON").with_details(format!("{error}"))
+    })?;
+    let expires = payload
+        .get("exp")
+        .and_then(Value::as_u64)
+        .map(format_epoch_seconds);
+    let permissions = permissions(
+        permission_encoding,
+        payload.get("p").and_then(Value::as_str),
+    )?;
+
+    Ok(DecodedApiKey {
+        kind,
+        identity_label,
+        identity: identity_value,
+        endpoint,
+        expires,
+        permissions,
+        claims: payload,
+    })
+}
+
+/// The token kind, and what its identity claim *means*.
+fn describe(identity: &Identity<'_>) -> (String, &'static str, String) {
+    let (kind, label, value) = match identity {
+        Identity::ApiTokenV1 { legacy_customer_id } => {
+            ("API token (v1)", "Customer", legacy_customer_id)
+        }
+        Identity::ApiTokenV1Disposable { legacy_customer_id } => {
+            ("Disposable token (v1)", "Customer", legacy_customer_id)
+        }
+        Identity::ApiTokenV2Disposable { account_id } => {
+            ("Disposable token (v2)", "Account", account_id)
+        }
+        Identity::LegacyToken { legacy_customer_id } => {
+            ("Legacy token", "Customer", legacy_customer_id)
+        }
+        Identity::CustomerSignedToken { key_id } => {
+            ("Customer-signed token", "Signing key", key_id)
+        }
+        Identity::GlobalApiKey { key_id } => ("Global API key", "Key", key_id),
+    };
+    (kind.to_owned(), label, value.to_string())
+}
+
+/// Console- and SDK-issued keys arrive as base64 JSON carrying the cell
+/// endpoint alongside the JWT; everything else is the JWT itself.
+/// Anything that does not read as the envelope is passed through untouched,
+/// and fails later as a bad JWT if that is what it is.
+fn unwrap_envelope(key: &str) -> (Option<String>, String) {
+    #[derive(Deserialize)]
+    struct Envelope {
+        api_key: String,
+        endpoint: String,
+    }
+    match STANDARD
+        .decode(key)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<Envelope>(&bytes).ok())
+    {
+        Some(envelope) => (Some(envelope.endpoint), envelope.api_key),
+        None => (None, key.to_owned()),
+    }
+}
+
+/// The `p` claim: a base64 protobuf permission set, on the token kinds that carry one.
+/// Present but empty means super-user — that is how an unrestricted key is written, not an error.
+/// `None` means this kind has no permissions claim at all.
+#[derive(Clone, Copy)]
+enum EmbeddedPermissionEncoding {
+    V1,
+    V2,
+}
+
+fn permissions(
+    encoding: Option<EmbeddedPermissionEncoding>,
+    claim: Option<&str>,
+) -> Result<Option<String>, CliError> {
+    let (Some(encoding), Some(claim)) = (encoding, claim) else {
+        return Ok(None);
+    };
+    let rendered = match encoding {
+        EmbeddedPermissionEncoding::V1 if claim.is_empty() => Permissions {
+            super_user: Some(true),
+            rules: None,
+            conditions: None,
+        }
+        .to_string(),
+        EmbeddedPermissionEncoding::V1 => {
+            let bytes = BASE64.decode(claim).map_err(|error| {
+                CliError::new("Could not base64-decode the permissions claim")
+                    .with_details(format!("{error}"))
+            })?;
+            let permissions = PermissionsProtoV1::decode(bytes.as_slice()).map_err(|error| {
+                CliError::new("Could not decode the v1 permissions protobuf")
+                    .with_details(format!("{error}"))
+            })?;
+            format!("{permissions:#?}")
+        }
+        EmbeddedPermissionEncoding::V2 => {
+            let bytes = BASE64.decode(claim).map_err(|error| {
+                CliError::new("Could not base64-decode the permissions claim")
+                    .with_details(format!("{error}"))
+            })?;
+            let permissions = PermissionsProtoV2::decode(bytes.as_slice()).map_err(|error| {
+                CliError::new("Could not decode the v2 permissions protobuf")
+                    .with_details(format!("{error}"))
+            })?;
+            format!("{permissions:#?}")
+        }
+    };
+    Ok(Some(rendered))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A console key hides its JWT in an envelope; a bare token is itself.
+    /// Getting this wrong means trying to decode the envelope as a JWT and
+    /// reporting nonsense, so both shapes are pinned — along with the endpoint,
+    /// which only the envelope carries.
+    #[test]
+    fn envelopes_are_unwrapped_and_bare_tokens_pass_through() {
+        let jwt = "aaa.bbb.ccc";
+        assert_eq!((None, jwt.to_owned()), unwrap_envelope(jwt));
+
+        let envelope = STANDARD.encode(
+            serde_json::json!({ "endpoint": "cell.momentohq.com", "api_key": jwt }).to_string(),
+        );
+        assert_eq!(
+            (Some("cell.momentohq.com".to_owned()), jwt.to_owned()),
+            unwrap_envelope(&envelope),
+        );
+    }
+
+    /// An empty `p` is how an unrestricted key is written;
+    /// a token kind without the claim has no permissions to show at all.
+    /// The two must not collapse into each other.
+    #[test]
+    fn an_empty_permissions_claim_is_super_user_but_an_absent_one_is_nothing() {
+        assert_eq!(
+            None,
+            permissions(Some(EmbeddedPermissionEncoding::V1), None).expect("no claim renders")
+        );
+        let super_user = permissions(Some(EmbeddedPermissionEncoding::V1), Some(""))
+            .expect("empty claim renders");
+        assert!(
+            super_user.is_some_and(|value| value.contains("super")),
+            "an empty permissions claim should render as super-user",
+        );
+    }
+
+    #[test]
+    fn a_permissions_claim_is_ignored_when_the_token_format_does_not_carry_permissions() {
+        assert_eq!(
+            None,
+            permissions(None, Some("not encoded permissions")).expect("claim is ignored")
+        );
+    }
+}

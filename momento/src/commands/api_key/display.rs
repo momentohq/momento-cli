@@ -1,9 +1,10 @@
+use super::info::DecodedApiKey;
 use super::utils::{ApiKeyInfo, ApiKeyResponse};
 
 use chrono::prelude::DateTime;
 use std::fmt;
 
-fn format_epoch_seconds(seconds: u64) -> String {
+pub fn format_epoch_seconds(seconds: u64) -> String {
     match DateTime::from_timestamp(seconds as i64, 0) {
         Some(datetime) => datetime.to_string(),
         None => format!("{seconds} (epoch seconds)"),
@@ -43,6 +44,28 @@ impl fmt::Display for ApiKeyResponse {
         if let Some(previous_key_id) = &self.previous_key_id {
             write!(f, "\nPrevious Key ID: {previous_key_id}")?;
         }
+        Ok(())
+    }
+}
+
+impl fmt::Display for DecodedApiKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Kind: {}", self.kind)?;
+        write!(f, "\n{}: {}", self.identity_label, self.identity)?;
+        if let Some(endpoint) = &self.endpoint {
+            write!(f, "\nEndpoint: {endpoint}")?;
+        }
+        if let Some(expires) = &self.expires {
+            write!(f, "\nExpires: {expires}")?;
+        }
+        if let Some(permissions) = &self.permissions {
+            write!(f, "\n{permissions}")?;
+        }
+        write!(
+            f,
+            "\nClaims: {}",
+            serde_json::to_string_pretty(&self.claims).unwrap_or_else(|_| self.claims.to_string())
+        )?;
         Ok(())
     }
 }

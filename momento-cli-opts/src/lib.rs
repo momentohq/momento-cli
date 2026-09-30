@@ -827,6 +827,16 @@ pub enum ApiKeyCommand {
         exclude_refresh_token: bool,
     },
 
+    #[command(about = "Parse embedded data from a Momento API key")]
+    Info {
+        #[arg(
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "The Momento API key or token that you want to parse. \
+                    This can be a console/SDK envelope or a bare JWT"
+        )]
+        api_key: String,
+    },
+
     #[command(about = "Refresh a Momento API key")]
     Refresh {
         #[arg(
