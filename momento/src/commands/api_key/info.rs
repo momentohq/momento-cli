@@ -243,6 +243,86 @@ mod tests {
     use super::*;
     use momento_protos::permission_rules::{permission_set::Kind as KindV2, ExplicitPermissions};
 
+    fn jwt(header: Value, claims: Value) -> String {
+        format!(
+            "{}.{}.sig",
+            BASE64.encode(header.to_string()),
+            BASE64.encode(claims.to_string())
+        )
+    }
+
+    #[test]
+    fn test_classify_token_kinds() {
+        use serde_json::json;
+        let cases = [
+            (
+                json!({}),
+                json!({ "t": "disposable", "ver": 1, "sub": "c" }),
+                "Disposable token (v1)",
+                "c",
+            ),
+            (
+                json!({}),
+                json!({ "t": "disposable", "ver": 2, "a": "acct" }),
+                "Disposable token (v2)",
+                "acct",
+            ),
+            (
+                json!({}),
+                json!({ "t": "g", "jti": "k" }),
+                "Global API key",
+                "k",
+            ),
+            (
+                json!({}),
+                json!({ "t": "gr", "akid": "k" }),
+                "Global API key refresh token",
+                "k",
+            ),
+            (
+                json!({}),
+                json!({ "ver": 1, "sub": "c" }),
+                "API token (v1)",
+                "c",
+            ),
+            (
+                json!({}),
+                json!({ "cp": "x", "sub": "c" }),
+                "Legacy token",
+                "c",
+            ),
+            (
+                json!({ "kid": "sk" }),
+                json!({ "sub": "c" }),
+                "Customer-signed token",
+                "sk",
+            ),
+        ];
+        for (header, claims, expected_kind, expected_identity) in cases {
+            let token = jwt(header, claims.clone());
+            let classified = classify(&claims, &token).expect("should classify");
+            assert_eq!(expected_kind, classified.kind);
+            assert_eq!(expected_identity, classified.identity_value);
+        }
+    }
+
+    /// Unclassifiable tokens still decode, so the raw claims can be shown.
+    #[test]
+    fn test_decode_unknown_token_type_is_reported_not_fatal() {
+        use serde_json::json;
+        for claims in [
+            json!({ "t": "nope" }),
+            json!({ "t": "disposable", "ver": 9 }),
+            json!({ "iss": "someone" }),
+            json!({}), // no kid in header
+        ] {
+            let decoded = decode(&jwt(json!({}), claims.clone())).expect("should decode");
+            assert_eq!("(unknown)", decoded.kind);
+            assert_eq!(claims, decoded.claims);
+        }
+        assert!(decode("not-a-jwt").is_err());
+    }
+
     #[test]
     fn test_unwrap_envelope_and_preserve_bare_token() {
         let jwt = "aaa.bbb.ccc";
