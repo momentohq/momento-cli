@@ -26,7 +26,6 @@ flate2 = "1.0.28"
 http = "1.4.0"
 form_urlencoded = "1.2.2"
 base64 = "0.23.1"
-jsonwebtoken = "11.1.0"
 prost = "0.14.4"
 
 [dev-dependencies]

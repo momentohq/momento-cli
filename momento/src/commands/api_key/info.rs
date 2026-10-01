@@ -16,18 +16,25 @@ const BASE64: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
 );
 
-pub(crate) fn get_key_id_from_jwt(auth_token: &str) -> Result<Option<String>, CliError> {
-    let header = jsonwebtoken::decode_header(auth_token)
-        .map_err(|error| CliError::new(format!("{error}")))?;
-    Ok(header.kid)
-}
-
 fn get_claim_string(claims: &Value, name: &str) -> Result<String, CliError> {
     claims
         .get(name)
         .and_then(Value::as_str)
         .map(String::from)
         .ok_or(CliError::new(format!("Missing {name} claim")))
+}
+
+/// Decodes one dot-separated part of a JWT (0 = header, 1 = payload) to JSON.
+fn decode_segment(jwt: &str, index: usize, name: &str) -> Result<Value, CliError> {
+    let segment = jwt
+        .split('.')
+        .nth(index)
+        .ok_or(CliError::new("Not a JWT; expected dot-separated parts"))?;
+    let bytes = BASE64
+        .decode(segment)
+        .map_err(|error| CliError::new(format!("JWT {name} is not base64 ({error})")))?;
+    serde_json::from_slice::<Value>(&bytes)
+        .map_err(|error| CliError::new(format!("JWT {name} is not JSON ({error})")))
 }
 
 struct Classified {
@@ -94,8 +101,12 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                     // The only way to identify a customer signed token is by checking that
                     // a keyid exists in the header, and none of the other claim tags identifying
                     // other token types were found.
-                    let key_id =
-                        get_key_id_from_jwt(auth_token)?.ok_or(CliError::new("Missing key id"))?;
+                    let header = decode_segment(auth_token, 0, "header")?;
+                    let key_id = header
+                        .get("kid")
+                        .and_then(Value::as_str)
+                        .ok_or(CliError::new("Missing key id".to_string()))?
+                        .to_string();
                     Ok(Classified {
                         kind: "Customer-signed token",
                         identity_label: "Signing key",
@@ -106,21 +117,6 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
             }
         },
     }
-}
-
-/// Initial read of token to determine token type.
-pub fn read_buffered_claims(auth_token: &str, buffer: &mut Vec<u8>) -> Result<Value, CliError> {
-    let middle = auth_token
-        .split('.')
-        .nth(1)
-        .ok_or_else(|| CliError::new("JWS schema violated"))?;
-
-    BASE64
-        .decode_vec(middle, buffer)
-        .map_err(|error| CliError::new(format!("{error}")))?;
-
-    serde_json::de::from_slice(buffer)
-        .map_err(|error| CliError::new(format!("JSON issue: {error}")))
 }
 
 /// What a token decoded to.
@@ -143,11 +139,8 @@ pub struct DecodedApiKey {
 pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
     let (endpoint, jwt) = unwrap_envelope(key);
 
-    let mut buffer = Vec::new();
-    let claims = read_buffered_claims(&jwt, &mut buffer).map_err(|error| {
-        CliError::new("This does not read as a Momento token. Pass the key exactly as issued.")
-            .with_details(format!("{error}"))
-    })?;
+    let claims = decode_segment(&jwt, 1, "payload")
+        .map_err(|error| CliError::new(format!("Could not decode token: {error}")))?;
     let classified = classify(&claims, &jwt).map_err(|error| {
         CliError::new("Could not determine what kind of token this is")
             .with_details(format!("{error}"))
