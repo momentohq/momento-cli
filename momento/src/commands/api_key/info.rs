@@ -1,4 +1,3 @@
-use super::display::format_epoch_seconds;
 use super::permission_protos::{PermissionsProtoV1, PermissionsProtoV2};
 use crate::commands::custom_role::utils::Permissions;
 use crate::error::CliError;
@@ -8,6 +7,7 @@ use base64::{
     Engine,
 };
 use prost::Message;
+use serde::Deserialize;
 use serde_json::Value;
 
 const BASE64: GeneralPurpose = GeneralPurpose::new(
@@ -16,12 +16,12 @@ const BASE64: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
 );
 
-fn get_claim_string(claims: &Value, name: &str) -> Result<String, CliError> {
+fn get_claim_string(claims: &Value, name: &str) -> String {
     claims
         .get(name)
         .and_then(Value::as_str)
-        .map(String::from)
-        .ok_or(CliError::new(format!("Missing {name} claim")))
+        .unwrap_or("(missing)")
+        .to_string()
 }
 
 /// Decodes one dot-separated part of a JWT (0 = header, 1 = payload) to JSON.
@@ -52,13 +52,13 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
             Some(1) => Ok(Classified {
                 kind: "Disposable token (v1)",
                 identity_label: "Customer",
-                identity_value: get_claim_string(claims, "sub")?, // subject
+                identity_value: get_claim_string(claims, "sub"), // subject
                 permission_encoding: Some(EmbeddedPermissionEncoding::V1),
             }),
             Some(2) => Ok(Classified {
                 kind: "Disposable token (v2)",
                 identity_label: "Account",
-                identity_value: get_claim_string(claims, "a")?, // account ID
+                identity_value: get_claim_string(claims, "a"), // account ID
                 permission_encoding: Some(EmbeddedPermissionEncoding::V2),
             }),
             Some(version) => Err(CliError::new(format!(
@@ -69,13 +69,13 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
         Some("g") => Ok(Classified {
             kind: "Global API key",
             identity_label: "Key",
-            identity_value: get_claim_string(claims, "jti")?, // JWT ID
+            identity_value: get_claim_string(claims, "jti"), // JWT ID
             permission_encoding: None,
         }),
         Some("gr") => Ok(Classified {
             kind: "Global API key refresh token",
             identity_label: "Key",
-            identity_value: get_claim_string(claims, "akid")?, // API key ID (not refresh token ID)
+            identity_value: get_claim_string(claims, "akid"), // API key ID (not refresh token ID)
             permission_encoding: None,
         }),
         Some(other) => Err(CliError::new(format!("Unknown token type {other}"))),
@@ -86,7 +86,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                     Ok(Classified {
                         kind: "API token (v1)",
                         identity_label: "Customer",
-                        identity_value: get_claim_string(claims, "sub")?, // subject
+                        identity_value: get_claim_string(claims, "sub"), // subject
                         permission_encoding: Some(EmbeddedPermissionEncoding::V1),
                     })
                 } else if claims.get("cp").is_some() {
@@ -94,7 +94,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                     Ok(Classified {
                         kind: "Legacy token",
                         identity_label: "Customer",
-                        identity_value: get_claim_string(claims, "sub")?, // subject
+                        identity_value: get_claim_string(claims, "sub"), // subject
                         permission_encoding: None,
                     })
                 } else {
@@ -119,6 +119,13 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
     }
 }
 
+/// A token's permissions claim.
+pub enum EmbeddedPermissions {
+    Absent,
+    Decoded(Permissions),
+    Undecodable(CliError),
+}
+
 /// What a token decoded to.
 pub struct DecodedApiKey {
     /// What kind of Momento token this is.
@@ -128,8 +135,8 @@ pub struct DecodedApiKey {
     pub identity_value: String,
     /// The cell endpoint, when the token arrived in an envelope carrying one.
     pub endpoint: Option<String>,
-    pub expires: Option<String>,
-    pub permissions: Option<Permissions>,
+    pub expires: Option<Value>,
+    pub permissions: EmbeddedPermissions,
     pub claims: Value,
 }
 
@@ -141,26 +148,26 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
 
     let claims = decode_segment(&jwt, 1, "payload")
         .map_err(|error| CliError::new(format!("Could not decode token: {error}")))?;
-    let classified = classify(&claims, &jwt).map_err(|error| {
-        CliError::new("Could not determine what kind of token this is")
-            .with_details(format!("{error}"))
-    })?;
 
-    let expires = claims
-        .get("exp")
-        .and_then(Value::as_u64)
-        .map(format_epoch_seconds);
+    let classified = classify(&claims, &jwt).unwrap_or_else(|error| Classified {
+        kind: "(unknown)",
+        identity_label: "Unrecognized token type",
+        identity_value: format!("{error}"),
+        permission_encoding: None,
+    });
+
+    let expires = claims.get("exp");
     let permissions = permissions(
         classified.permission_encoding,
         claims.get("p").and_then(Value::as_str),
-    )?;
+    );
 
     Ok(DecodedApiKey {
         kind: classified.kind,
         identity_label: classified.identity_label,
         identity_value: classified.identity_value,
         endpoint,
-        expires,
+        expires: expires.cloned(),
         permissions,
         claims,
     })
@@ -174,14 +181,14 @@ fn unwrap_envelope(key: &str) -> (Option<String>, String) {
     #[derive(Deserialize)]
     struct Envelope {
         api_key: String,
-        endpoint: String,
+        endpoint: Option<String>,
     }
     match STANDARD
         .decode(key)
         .ok()
         .and_then(|bytes| serde_json::from_slice::<Envelope>(&bytes).ok())
     {
-        Some(envelope) => (Some(envelope.endpoint), envelope.api_key),
+        Some(envelope) => (envelope.endpoint, envelope.api_key),
         None => (None, key.to_owned()),
     }
 }
@@ -198,10 +205,20 @@ enum EmbeddedPermissionEncoding {
 fn permissions(
     encoding: Option<EmbeddedPermissionEncoding>,
     claim: Option<&str>,
-) -> Result<Option<Permissions>, CliError> {
+) -> EmbeddedPermissions {
     let (Some(encoding), Some(claim)) = (encoding, claim) else {
-        return Ok(None);
+        return EmbeddedPermissions::Absent;
     };
+    match decode_permissions(encoding, claim) {
+        Ok(permissions) => EmbeddedPermissions::Decoded(permissions),
+        Err(error) => EmbeddedPermissions::Undecodable(error),
+    }
+}
+
+fn decode_permissions(
+    encoding: EmbeddedPermissionEncoding,
+    claim: &str,
+) -> Result<Permissions, CliError> {
     let permissions = match encoding {
         EmbeddedPermissionEncoding::V1 if claim.is_empty() => Permissions {
             super_user: Some(true),
@@ -231,7 +248,7 @@ fn permissions(
             Permissions::from_v2(permissions)?
         }
     };
-    Ok(Some(permissions))
+    Ok(permissions)
 }
 
 #[cfg(test)]
@@ -255,6 +272,9 @@ mod tests {
             (Some("cell.momentohq.com".to_owned()), jwt.to_owned()),
             unwrap_envelope(&envelope),
         );
+
+        let without_endpoint = STANDARD.encode(serde_json::json!({ "api_key": jwt }).to_string());
+        assert_eq!((None, jwt.to_owned()), unwrap_envelope(&without_endpoint));
     }
 
     /// An empty `p` is how an unrestricted key is written;
@@ -262,24 +282,45 @@ mod tests {
     /// The two must not collapse into each other.
     #[test]
     fn an_empty_permissions_claim_is_super_user_but_an_absent_one_is_nothing() {
+        assert!(matches!(
+            permissions(Some(EmbeddedPermissionEncoding::V1), None),
+            EmbeddedPermissions::Absent
+        ));
+
+        let EmbeddedPermissions::Decoded(super_user) =
+            permissions(Some(EmbeddedPermissionEncoding::V1), Some(""))
+        else {
+            panic!("empty claim should decode");
+        };
         assert_eq!(
-            None,
-            permissions(Some(EmbeddedPermissionEncoding::V1), None).expect("no claim renders")
-        );
-        let super_user = permissions(Some(EmbeddedPermissionEncoding::V1), Some(""))
-            .expect("empty claim renders");
-        assert!(
-            super_user.is_some_and(|value| value.super_user.expect("has super user field")),
-            "an empty permissions claim should render as super-user",
+            Permissions {
+                super_user: Some(true),
+                rules: None,
+                conditions: None,
+            },
+            super_user
         );
     }
 
     #[test]
     fn a_permissions_claim_is_ignored_when_the_token_format_does_not_carry_permissions() {
-        assert_eq!(
-            None,
-            permissions(None, Some("not encoded permissions")).expect("claim is ignored")
-        );
+        assert!(matches!(
+            permissions(None, Some("not encoded permissions")),
+            EmbeddedPermissions::Absent
+        ));
+    }
+
+    #[test]
+    fn an_unrecognized_permissions_claim_is_reported_not_fatal() {
+        let permission_set = PermissionsProtoV2 {
+            kind: None,
+            conditions: vec![],
+        };
+        let claim = BASE64.encode(permission_set.encode_to_vec());
+        assert!(matches!(
+            permissions(Some(EmbeddedPermissionEncoding::V2), Some(&claim)),
+            EmbeddedPermissions::Undecodable(_)
+        ));
     }
 
     #[test]
@@ -289,15 +330,18 @@ mod tests {
             conditions: vec![],
         };
         let claim = BASE64.encode(permission_set.encode_to_vec());
-        let rendered = permissions(Some(EmbeddedPermissionEncoding::V2), Some(&claim))
-            .expect("v2 claim should decode");
+        let EmbeddedPermissions::Decoded(rendered) =
+            permissions(Some(EmbeddedPermissionEncoding::V2), Some(&claim))
+        else {
+            panic!("v2 claim should decode");
+        };
 
         assert_eq!(
-            Some(Permissions {
+            Permissions {
                 super_user: None,
                 rules: Some(vec![]),
                 conditions: Some(vec![])
-            }),
+            },
             rendered
         );
     }
