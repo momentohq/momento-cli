@@ -8,7 +8,6 @@ use base64::{
     Engine,
 };
 use prost::Message;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 const BASE64: GeneralPurpose = GeneralPurpose::new(
@@ -23,6 +22,14 @@ pub(crate) fn get_key_id_from_jwt(auth_token: &str) -> Result<Option<String>, Cl
     Ok(header.kid)
 }
 
+fn get_claim_string(claims: &Value, name: &str) -> Result<String, CliError> {
+    claims
+        .get(name)
+        .and_then(Value::as_str)
+        .map(String::from)
+        .ok_or(CliError::new(format!("Missing {name} claim")))
+}
+
 struct Classified {
     kind: &'static str,
     identity_label: &'static str,
@@ -30,19 +37,21 @@ struct Classified {
     permission_encoding: Option<EmbeddedPermissionEncoding>,
 }
 
-fn classify(claims: &Claims, auth_token: &str) -> Result<Classified, CliError> {
-    match claims.token_type.as_deref() {
-        Some("disposable") => match &claims.version {
+fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
+    let token_type = claims.get("t").and_then(Value::as_str);
+    let version = claims.get("ver").and_then(Value::as_i64);
+    match token_type {
+        Some("disposable") => match version {
             Some(1) => Ok(Classified {
                 kind: "Disposable token (v1)",
                 identity_label: "Customer",
-                identity_value: claims.get_subject_claim()?,
+                identity_value: get_claim_string(claims, "sub")?, // subject
                 permission_encoding: Some(EmbeddedPermissionEncoding::V1),
             }),
             Some(2) => Ok(Classified {
                 kind: "Disposable token (v2)",
                 identity_label: "Account",
-                identity_value: claims.get_account_id_claim()?,
+                identity_value: get_claim_string(claims, "a")?, // account ID
                 permission_encoding: Some(EmbeddedPermissionEncoding::V2),
             }),
             Some(version) => Err(CliError::new(format!(
@@ -53,31 +62,32 @@ fn classify(claims: &Claims, auth_token: &str) -> Result<Classified, CliError> {
         Some("g") => Ok(Classified {
             kind: "Global API key",
             identity_label: "Key",
-            identity_value: claims.get_jwt_token_id_claim()?,
+            identity_value: get_claim_string(claims, "jti")?, // JWT ID
             permission_encoding: None,
         }),
         Some("gr") => Ok(Classified {
             kind: "Global API key refresh token",
             identity_label: "Key",
-            identity_value: claims.get_api_key_id_claim()?,
+            identity_value: get_claim_string(claims, "akid")?, // API key ID (not refresh token ID)
             permission_encoding: None,
         }),
         Some(other) => Err(CliError::new(format!("Unknown token type {other}"))),
-        None => match &claims.issuer {
+        None => match claims.get("iss") {
             Some(issuer) => Err(CliError::new(format!("Unsupported issuer: {issuer}"))),
             None => {
-                if claims.version == Some(1) {
+                if version == Some(1) {
                     Ok(Classified {
                         kind: "API token (v1)",
                         identity_label: "Customer",
-                        identity_value: claims.get_subject_claim()?,
+                        identity_value: get_claim_string(claims, "sub")?, // subject
                         permission_encoding: Some(EmbeddedPermissionEncoding::V1),
                     })
-                } else if claims.control_plane_proxy_endpoint.is_some() {
+                } else if claims.get("cp").is_some() {
+                    // cp (control_plane_proxy_endpoint) only appears on legacy tokens
                     Ok(Classified {
                         kind: "Legacy token",
                         identity_label: "Customer",
-                        identity_value: claims.get_subject_claim()?,
+                        identity_value: get_claim_string(claims, "sub")?, // subject
                         permission_encoding: None,
                     })
                 } else {
@@ -98,81 +108,8 @@ fn classify(claims: &Claims, auth_token: &str) -> Result<Classified, CliError> {
     }
 }
 
-/// Claims from all token types, used for initial parsing to determine token type.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Claims {
-    #[serde(rename = "sub")]
-    pub subject: Option<String>,
-
-    #[serde(rename = "email")]
-    pub email: Option<String>,
-
-    #[serde(rename = "iss")]
-    pub issuer: Option<String>,
-
-    #[serde(rename = "ver")]
-    pub version: Option<i32>,
-
-    #[serde(rename = "cp")]
-    pub control_plane_proxy_endpoint: Option<String>, // control endpoint in Momento Legacy auth tokens
-
-    #[serde(rename = "t")]
-    pub token_type: Option<String>, // Momento token type
-
-    #[serde(rename = "jti")]
-    pub jwt_token_id: Option<String>, // Token ID on Global Api Key refresh tokens, Key ID on Global Api Keys
-
-    #[serde(rename = "a")]
-    pub account_id: Option<String>,
-
-    #[serde(rename = "akid")]
-    pub api_key_id: Option<String>, // API key ID on Global Api Key refresh tokens
-}
-
-impl Claims {
-    fn get_account_id_claim(&self) -> Result<String, CliError> {
-        match self.account_id.clone() {
-            Some(account_id) => {
-                if account_id.is_empty() {
-                    Err(CliError::new("Missing account_id claim"))
-                } else {
-                    Ok(account_id)
-                }
-            }
-            None => Err(CliError::new("Missing account_id claim")),
-        }
-    }
-
-    fn get_subject_claim(&self) -> Result<String, CliError> {
-        match self.subject.clone() {
-            Some(subject) => {
-                if subject.is_empty() {
-                    Err(CliError::new("Missing sub claim"))
-                } else {
-                    Ok(subject)
-                }
-            }
-            None => Err(CliError::new("Missing sub claim")),
-        }
-    }
-
-    fn get_jwt_token_id_claim(&self) -> Result<String, CliError> {
-        self.jwt_token_id
-            .clone()
-            .filter(|token_id| !token_id.is_empty())
-            .ok_or(CliError::new("Missing jti claim"))
-    }
-
-    fn get_api_key_id_claim(&self) -> Result<String, CliError> {
-        self.api_key_id
-            .clone()
-            .filter(|key_id| !key_id.is_empty())
-            .ok_or(CliError::new("Missing api key id claim"))
-    }
-}
-
 /// Initial read of token to determine token type.
-pub fn read_buffered_claims(auth_token: &str, buffer: &mut Vec<u8>) -> Result<Claims, CliError> {
+pub fn read_buffered_claims(auth_token: &str, buffer: &mut Vec<u8>) -> Result<Value, CliError> {
     let middle = auth_token
         .split('.')
         .nth(1)
@@ -216,16 +153,13 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
             .with_details(format!("{error}"))
     })?;
 
-    let payload = serde_json::from_slice::<Value>(&buffer).map_err(|error| {
-        CliError::new("the JWT payload is not JSON").with_details(format!("{error}"))
-    })?;
-    let expires = payload
+    let expires = claims
         .get("exp")
         .and_then(Value::as_u64)
         .map(format_epoch_seconds);
     let permissions = permissions(
         classified.permission_encoding,
-        payload.get("p").and_then(Value::as_str),
+        claims.get("p").and_then(Value::as_str),
     )?;
 
     Ok(DecodedApiKey {
@@ -235,7 +169,7 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
         endpoint,
         expires,
         permissions,
-        claims: payload,
+        claims,
     })
 }
 
