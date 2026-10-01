@@ -17,16 +17,6 @@ const BASE64: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
 );
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub enum TokenType {
-    #[serde(rename = "disposable")]
-    DisposableToken,
-    #[serde(rename = "g")]
-    GlobalApiKey,
-    #[serde(rename = "gr")]
-    GlobalApiKeyRefresh,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Identity {
     ApiTokenV1 { legacy_customer_id: String },
@@ -38,46 +28,33 @@ pub enum Identity {
     GlobalApiKeyRefresh { key_id: String },
 }
 
-impl TryFrom<&String> for TokenType {
-    type Error = serde_json::Error;
-
-    fn try_from(value: &String) -> Result<Self, Self::Error> {
-        // quote to make it look like json
-        serde_json::from_str(format!("\"{value}\"").as_str())
-    }
-}
-
 pub(crate) fn get_key_id_from_jwt(auth_token: &str) -> Result<Option<String>, CliError> {
     let header = jsonwebtoken::decode_header(auth_token)
         .map_err(|error| CliError::new(format!("{error}")))?;
     Ok(header.kid)
 }
 
-pub fn derive_identity(claims: &Claims, auth_token: &str) -> Result<Identity, CliError> {
-    match &claims.token_type {
-        Some(token_type_str) => {
-            let token_type: TokenType = token_type_str.try_into().map_err(|error| {
-                log::error!("Unable to parse token type: {error:?}");
-                CliError::new("Unable to parse token type")
-            })?;
-            match token_type {
-                TokenType::DisposableToken => match claims.version {
-                    Some(1) => Ok(Identity::ApiTokenV1Disposable {
-                        legacy_customer_id: claims.get_subject_claim()?,
-                    }),
-                    Some(2) => Ok(Identity::ApiTokenV2Disposable {
-                        account_id: claims.get_account_id_claim()?,
-                    }),
-                    _ => Err(CliError::new("Unsupported disposable token version")),
-                },
-                TokenType::GlobalApiKey => Ok(Identity::GlobalApiKey {
-                    key_id: claims.get_jwt_token_id_claim()?,
-                }),
-                TokenType::GlobalApiKeyRefresh => Ok(Identity::GlobalApiKeyRefresh {
-                    key_id: claims.get_api_key_id_claim()?,
-                }),
-            }
-        }
+fn derive_identity(claims: &Claims, auth_token: &str) -> Result<Identity, CliError> {
+    match claims.token_type.as_deref() {
+        Some("disposable") => match &claims.version {
+            Some(1) => Ok(Identity::ApiTokenV1Disposable {
+                legacy_customer_id: claims.get_subject_claim()?,
+            }),
+            Some(2) => Ok(Identity::ApiTokenV2Disposable {
+                account_id: claims.get_account_id_claim()?,
+            }),
+            Some(version) => Err(CliError::new(format!(
+                "Unsupported disposable token version {version}"
+            ))),
+            None => Err(CliError::new("No version for disposable token".to_string())),
+        },
+        Some("g") => Ok(Identity::GlobalApiKey {
+            key_id: claims.get_jwt_token_id_claim()?,
+        }),
+        Some("gr") => Ok(Identity::GlobalApiKeyRefresh {
+            key_id: claims.get_api_key_id_claim()?,
+        }),
+        Some(other) => Err(CliError::new(format!("Unknown token type {other}"))),
         None => derive_identity_without_token_type(claims, auth_token),
     }
 }
