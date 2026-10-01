@@ -58,11 +58,10 @@ fn v1_rule(permission: v1::PermissionsType) -> Result<Rule, CliError> {
                 v1::CacheRole::CacheReadOnly => vec![Read],
                 v1::CacheRole::CacheWriteOnly => vec![Write],
             },
-            caches: match required(p.cache, "cache selector")? {
-                cache_permissions::Cache::AllCaches(_) => NameSelector::All,
-                cache_permissions::Cache::CacheSelector(s) => v1_cache(s)?,
+            caches: match p.cache {
+                None | Some(cache_permissions::Cache::AllCaches(_)) => NameSelector::All,
+                Some(cache_permissions::Cache::CacheSelector(s)) => v1_cache(s)?,
             },
-            // Unset means every item: that is how the SDK writes a whole-cache permission.
             items: match p.cache_item {
                 None | Some(cache_permissions::CacheItem::AllItems(_)) => ItemSelector::All,
                 Some(cache_permissions::CacheItem::ItemSelector(s)) => {
@@ -80,18 +79,18 @@ fn v1_rule(permission: v1::PermissionsType) -> Result<Rule, CliError> {
                 v1::TopicRole::TopicReadOnly => vec![Read],
                 v1::TopicRole::TopicWriteOnly => vec![Write],
             },
-            topics: match required(p.topic, "topic selector")? {
-                topic_permissions::Topic::AllTopics(_) => PrefixSelector::All,
-                topic_permissions::Topic::TopicSelector(s) => {
+            topics: match p.topic {
+                None | Some(topic_permissions::Topic::AllTopics(_)) => PrefixSelector::All,
+                Some(topic_permissions::Topic::TopicSelector(s)) => {
                     match required(s.kind, "topic selector")? {
                         topic_selector::Kind::TopicName(n) => PrefixSelector::Name(n),
                         topic_selector::Kind::TopicNamePrefix(n) => PrefixSelector::Prefix(n),
                     }
                 }
             },
-            caches: match required(p.cache, "cache selector")? {
-                topic_permissions::Cache::AllCaches(_) => NameSelector::All,
-                topic_permissions::Cache::CacheSelector(s) => v1_cache(s)?,
+            caches: match p.cache {
+                None | Some(topic_permissions::Cache::AllCaches(_)) => NameSelector::All,
+                Some(topic_permissions::Cache::CacheSelector(s)) => v1_cache(s)?,
             },
         },
         Kind::FunctionPermissions(p) => Rule::Function {
@@ -99,18 +98,18 @@ fn v1_rule(permission: v1::PermissionsType) -> Result<Rule, CliError> {
                 v1::FunctionRole::FunctionPermitNone => vec![],
                 v1::FunctionRole::FunctionInvoke => vec![Invoke],
             },
-            functions: match required(p.function, "function selector")? {
-                function_permissions::Function::AllFunctions(_) => PrefixSelector::All,
-                function_permissions::Function::FunctionSelector(s) => {
+            functions: match p.function {
+                None | Some(function_permissions::Function::AllFunctions(_)) => PrefixSelector::All,
+                Some(function_permissions::Function::FunctionSelector(s)) => {
                     match required(s.kind, "function selector")? {
                         function_selector::Kind::FunctionName(n) => PrefixSelector::Name(n),
                         function_selector::Kind::FunctionNamePrefix(n) => PrefixSelector::Prefix(n),
                     }
                 }
             },
-            caches: match required(p.cache, "cache selector")? {
-                function_permissions::Cache::AllCaches(_) => NameSelector::All,
-                function_permissions::Cache::CacheSelector(s) => v1_cache(s)?,
+            caches: match p.cache {
+                None | Some(function_permissions::Cache::AllCaches(_)) => NameSelector::All,
+                Some(function_permissions::Cache::CacheSelector(s)) => v1_cache(s)?,
             },
         },
     })
@@ -168,9 +167,9 @@ fn v2_rule(rule: v2::Rule) -> Result<Rule, CliError> {
                 cache_rule::Cache::AllCaches(_) => NameSelector::All,
                 cache_rule::Cache::CacheSelector(s) => v2_cache(s)?,
             },
-            items: match r.cache_item {
-                None | Some(cache_rule::CacheItem::AllItems(_)) => ItemSelector::All,
-                Some(cache_rule::CacheItem::ItemSelector(s)) => {
+            items: match required(r.cache_item, "item selector")? {
+                cache_rule::CacheItem::AllItems(_) => ItemSelector::All,
+                cache_rule::CacheItem::ItemSelector(s) => {
                     match required(s.kind, "item selector")? {
                         v2::cache_item_selector::Kind::Key(k) => ItemSelector::Key(key(k)),
                         v2::cache_item_selector::Kind::KeyPrefix(k) => {
@@ -210,9 +209,9 @@ fn v2_rule(rule: v2::Rule) -> Result<Rule, CliError> {
                     v2::store_selector::Kind::StoreName(n) => NameSelector::Name(n),
                 },
             },
-            items: match r.store_item {
-                None | Some(store_rule::StoreItem::AllItems(_)) => ItemSelector::All,
-                Some(store_rule::StoreItem::ItemSelector(s)) => {
+            items: match required(r.store_item, "item selector")? {
+                store_rule::StoreItem::AllItems(_) => ItemSelector::All,
+                store_rule::StoreItem::ItemSelector(s) => {
                     match required(s.kind, "item selector")? {
                         v2::store_item_selector::Kind::Key(k) => ItemSelector::Key(key(k)),
                         v2::store_item_selector::Kind::KeyPrefix(k) => {
@@ -257,9 +256,9 @@ fn v2_rule(rule: v2::Rule) -> Result<Rule, CliError> {
                     }
                 }
             },
-            items: match r.database_item {
-                None | Some(database_rule::DatabaseItem::AllItems(_)) => ItemSelector::All,
-                Some(database_rule::DatabaseItem::ItemSelector(s)) => {
+            items: match required(r.database_item, "item selector")? {
+                database_rule::DatabaseItem::AllItems(_) => ItemSelector::All,
+                database_rule::DatabaseItem::ItemSelector(s) => {
                     match required(s.kind, "item selector")? {
                         v2::database_item_selector::Kind::Key(k) => ItemSelector::Key(key(k)),
                         v2::database_item_selector::Kind::KeyPrefix(k) => {
@@ -295,7 +294,6 @@ fn v2_condition(condition: v2::Condition) -> Result<Condition, CliError> {
 
 impl Permissions {
     /// v1 permissions: the `p` claim on v1 API tokens and v1 disposable tokens.
-    /// An empty claim is a super-user key and never reaches here.
     pub fn from_v1(permissions: PermissionsProtoV1) -> Result<Self, CliError> {
         match required(permissions.kind, "permissions")? {
             v1::permissions::Kind::SuperUser(_) => Ok(super_user()),
@@ -407,14 +405,130 @@ mod tests {
     }
 
     #[test]
-    fn test_v2_rule_unknown_is_error() {
+    fn test_v2_rule_unknown_permission_is_error() {
         let rule = v2::Rule {
             kind: Some(v2::rule::Kind::CacheRule(v2::rule::CacheRule {
                 permissions: vec![99],
                 cache: Some(v2::rule::cache_rule::Cache::AllCaches(v2::All {})),
-                cache_item: None,
+                cache_item: Some(v2::rule::cache_rule::CacheItem::AllItems(v2::All {})),
             })),
         };
         assert!(v2_rule(rule).is_err());
+    }
+
+    #[test]
+    fn test_v1_rule_unknown_role_is_error() {
+        let permission = v1::PermissionsType {
+            kind: Some(v1::permissions_type::Kind::FunctionPermissions(
+                v1::permissions_type::FunctionPermissions {
+                    role: 99,
+                    cache: None,
+                    function: None,
+                },
+            )),
+        };
+        assert!(v1_rule(permission).is_err());
+    }
+
+    #[test]
+    fn test_v1_rule_unset_selectors_place_no_limit() {
+        let topic = v1::PermissionsType {
+            kind: Some(v1::permissions_type::Kind::TopicPermissions(
+                v1::permissions_type::TopicPermissions {
+                    role: v1::TopicRole::TopicReadWrite as i32,
+                    cache: None,
+                    topic: None,
+                },
+            )),
+        };
+        let function = v1::PermissionsType {
+            kind: Some(v1::permissions_type::Kind::FunctionPermissions(
+                v1::permissions_type::FunctionPermissions {
+                    role: v1::FunctionRole::FunctionInvoke as i32,
+                    cache: None,
+                    function: None,
+                },
+            )),
+        };
+        assert_eq!(
+            Rule::Topic {
+                permissions: vec![PermissionAction::Read, PermissionAction::Write],
+                topics: PrefixSelector::All,
+                caches: NameSelector::All,
+            },
+            v1_rule(topic).expect("v1 topic permission converts"),
+        );
+        assert_eq!(
+            Rule::Function {
+                permissions: vec![PermissionAction::Invoke],
+                functions: PrefixSelector::All,
+                caches: NameSelector::All,
+            },
+            v1_rule(function).expect("v1 function permission converts"),
+        );
+    }
+
+    #[test]
+    fn test_rule_and_condition_unset_or_unrecognized_is_error() {
+        let cache_rule = |cache, cache_item| v2::Rule {
+            kind: Some(v2::rule::Kind::CacheRule(v2::rule::CacheRule {
+                permissions: vec![v2::CacheApiPermissions::CacheRead as i32],
+                cache,
+                cache_item,
+            })),
+        };
+        let all_caches = || Some(v2::rule::cache_rule::Cache::AllCaches(v2::All {}));
+        let all_items = || Some(v2::rule::cache_rule::CacheItem::AllItems(v2::All {}));
+
+        assert!(v1_rule(v1::PermissionsType { kind: None }).is_err());
+        assert!(v1_rule(v1::PermissionsType {
+            kind: Some(v1::permissions_type::Kind::CachePermissions(
+                v1::permissions_type::CachePermissions {
+                    role: v1::CacheRole::CacheReadWrite as i32,
+                    cache: Some(
+                        v1::permissions_type::cache_permissions::Cache::CacheSelector(
+                            v1::permissions_type::CacheSelector { kind: None },
+                        ),
+                    ),
+                    cache_item: None,
+                },
+            )),
+        })
+        .is_err());
+
+        assert!(v2_rule(v2::Rule { kind: None }).is_err());
+        assert!(v2_rule(cache_rule(None, all_items())).is_err());
+        assert!(v2_rule(cache_rule(all_caches(), None)).is_err());
+        assert!(v2_rule(cache_rule(
+            Some(v2::rule::cache_rule::Cache::CacheSelector(
+                v2::CacheSelector { kind: None }
+            )),
+            all_items(),
+        ))
+        .is_err());
+        assert!(v2_rule(cache_rule(
+            all_caches(),
+            Some(v2::rule::cache_rule::CacheItem::ItemSelector(
+                v2::CacheItemSelector { kind: None }
+            )),
+        ))
+        .is_err());
+        assert!(v2_rule(cache_rule(all_caches(), all_items())).is_ok());
+
+        let with_condition = |condition| PermissionsProtoV2 {
+            kind: Some(v2::permission_set::Kind::Explicit(
+                v2::ExplicitPermissions { rules: vec![] },
+            )),
+            conditions: vec![v2::Condition { condition }],
+        };
+        assert!(Permissions::from_v2(with_condition(None)).is_err());
+        assert!(
+            Permissions::from_v2(with_condition(Some(v2::condition::Condition::IpFilter(
+                v2::IpFilter {
+                    allowed_cidr_ranges: vec![v2::ip_filter::CidrRange { range: None }],
+                }
+            ))))
+            .is_err()
+        );
     }
 }

@@ -53,7 +53,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                 kind: "Disposable token (v1)",
                 identity_label: "Customer",
                 identity_value: get_claim_string(claims, "sub"), // subject
-                permission_encoding: Some(EmbeddedPermissionEncoding::V1),
+                permission_encoding: Some(EmbeddedPermissionEncoding::V1DisposableToken),
             }),
             Some(2) => Ok(Classified {
                 kind: "Disposable token (v2)",
@@ -87,7 +87,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                         kind: "API token (v1)",
                         identity_label: "Customer",
                         identity_value: get_claim_string(claims, "sub"), // subject
-                        permission_encoding: Some(EmbeddedPermissionEncoding::V1),
+                        permission_encoding: Some(EmbeddedPermissionEncoding::V1ApiKey),
                     })
                 } else if claims.get("cp").is_some() {
                     // cp (control_plane_proxy_endpoint) only appears on legacy tokens
@@ -193,7 +193,8 @@ fn unwrap_envelope(key: &str) -> (Option<String>, String) {
 
 #[derive(Clone, Copy)]
 enum EmbeddedPermissionEncoding {
-    V1,
+    V1ApiKey,
+    V1DisposableToken,
     V2,
 }
 
@@ -201,8 +202,23 @@ fn permissions(
     encoding: Option<EmbeddedPermissionEncoding>,
     claim: Option<&str>,
 ) -> EmbeddedPermissions {
-    let (Some(encoding), Some(claim)) = (encoding, claim) else {
+    let Some(encoding) = encoding else {
         return EmbeddedPermissions::Absent;
+    };
+    let claim = match (encoding, claim) {
+        (EmbeddedPermissionEncoding::V1ApiKey, Some("") | None) => {
+            return EmbeddedPermissions::Decoded(super_user())
+        }
+        (EmbeddedPermissionEncoding::V1DisposableToken, Some("")) => {
+            return EmbeddedPermissions::Decoded(super_user())
+        }
+        (EmbeddedPermissionEncoding::V1DisposableToken, None) => {
+            return EmbeddedPermissions::Undecodable(CliError::new(
+                "Missing the required permissions claim",
+            ));
+        }
+        (EmbeddedPermissionEncoding::V2, Some("") | None) => return EmbeddedPermissions::Absent,
+        (_, Some(claim)) => claim,
     };
     match decode_permissions(encoding, claim) {
         Ok(permissions) => EmbeddedPermissions::Decoded(permissions),
@@ -214,20 +230,19 @@ fn decode_permissions(
     encoding: EmbeddedPermissionEncoding,
     claim: &str,
 ) -> Result<Permissions, CliError> {
-    if claim.is_empty() && matches!(encoding, EmbeddedPermissionEncoding::V1) {
-        return Ok(super_user());
-    }
     let bytes = BASE64.decode(claim).map_err(|error| {
         CliError::new("Could not base64-decode the permissions claim")
             .with_details(format!("{error}"))
     })?;
     let permissions = match encoding {
-        EmbeddedPermissionEncoding::V1 => Permissions::from_v1(
-            PermissionsProtoV1::decode(bytes.as_slice()).map_err(|error| {
-                CliError::new("Could not decode the v1 permissions protobuf")
-                    .with_details(format!("{error}"))
-            })?,
-        )?,
+        EmbeddedPermissionEncoding::V1ApiKey | EmbeddedPermissionEncoding::V1DisposableToken => {
+            Permissions::from_v1(PermissionsProtoV1::decode(bytes.as_slice()).map_err(
+                |error| {
+                    CliError::new("Could not decode the v1 permissions protobuf")
+                        .with_details(format!("{error}"))
+                },
+            )?)?
+        }
         EmbeddedPermissionEncoding::V2 => Permissions::from_v2(
             PermissionsProtoV2::decode(bytes.as_slice()).map_err(|error| {
                 CliError::new("Could not decode the v2 permissions protobuf")
@@ -340,28 +355,37 @@ mod tests {
         assert_eq!((None, jwt.to_owned()), unwrap_envelope(&without_endpoint));
     }
 
-    /// A token without the `p` claim is fully restricted,
-    /// while a v1 with an empty `p` is fully unrestricted.
     #[test]
-    fn test_permissions_with_no_claim_vs_empty_claim() {
-        assert!(matches!(
-            permissions(Some(EmbeddedPermissionEncoding::V1), None),
-            EmbeddedPermissions::Absent
-        ));
+    fn test_permissions_with_no_claim_or_empty_claim() {
+        // v1 API token with an empty or missing `p` is a super user (fully unrestricted):
+        for (encoding, claim) in [
+            (EmbeddedPermissionEncoding::V1ApiKey, None),
+            (EmbeddedPermissionEncoding::V1ApiKey, Some("")),
+        ] {
+            let EmbeddedPermissions::Decoded(super_user) = permissions(Some(encoding), claim)
+            else {
+                panic!("v1 claim should decode");
+            };
+            assert_eq!(
+                Permissions {
+                    super_user: Some(true),
+                    rules: None,
+                    conditions: None,
+                },
+                super_user
+            );
+        }
 
-        let EmbeddedPermissions::Decoded(super_user) =
-            permissions(Some(EmbeddedPermissionEncoding::V1), Some(""))
-        else {
-            panic!("empty claim should decode");
-        };
-        assert_eq!(
-            Permissions {
-                super_user: Some(true),
-                rules: None,
-                conditions: None,
-            },
-            super_user
-        );
+        // v2 with an empty or missing `p` has 0 permissions (fully restricted):
+        for (encoding, claim) in [
+            (EmbeddedPermissionEncoding::V2, None),
+            (EmbeddedPermissionEncoding::V2, Some("")),
+        ] {
+            assert!(matches!(
+                permissions(Some(encoding), claim),
+                EmbeddedPermissions::Absent
+            ));
+        }
     }
 
     #[test]
@@ -369,19 +393,6 @@ mod tests {
         assert!(matches!(
             permissions(None, Some("not encoded permissions")),
             EmbeddedPermissions::Absent
-        ));
-    }
-
-    #[test]
-    fn test_permissions_with_unrecognized_claim_is_reported_not_fatal() {
-        let permission_set = PermissionsProtoV2 {
-            kind: None,
-            conditions: vec![],
-        };
-        let claim = BASE64.encode(permission_set.encode_to_vec());
-        assert!(matches!(
-            permissions(Some(EmbeddedPermissionEncoding::V2), Some(&claim)),
-            EmbeddedPermissions::Undecodable(_)
         ));
     }
 
