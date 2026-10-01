@@ -17,54 +17,68 @@ const BASE64: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
 );
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Identity {
-    ApiTokenV1 { legacy_customer_id: String },
-    ApiTokenV1Disposable { legacy_customer_id: String },
-    ApiTokenV2Disposable { account_id: String },
-    LegacyToken { legacy_customer_id: String },
-    CustomerSignedToken { key_id: String },
-    GlobalApiKey { key_id: String },
-    GlobalApiKeyRefresh { key_id: String },
-}
-
 pub(crate) fn get_key_id_from_jwt(auth_token: &str) -> Result<Option<String>, CliError> {
     let header = jsonwebtoken::decode_header(auth_token)
         .map_err(|error| CliError::new(format!("{error}")))?;
     Ok(header.kid)
 }
 
-fn derive_identity(claims: &Claims, auth_token: &str) -> Result<Identity, CliError> {
+struct Classified {
+    kind: &'static str,
+    identity_label: &'static str,
+    identity_value: String,
+    permission_encoding: Option<EmbeddedPermissionEncoding>,
+}
+
+fn classify(claims: &Claims, auth_token: &str) -> Result<Classified, CliError> {
     match claims.token_type.as_deref() {
         Some("disposable") => match &claims.version {
-            Some(1) => Ok(Identity::ApiTokenV1Disposable {
-                legacy_customer_id: claims.get_subject_claim()?,
+            Some(1) => Ok(Classified {
+                kind: "Disposable token (v1)",
+                identity_label: "Customer",
+                identity_value: claims.get_subject_claim()?,
+                permission_encoding: Some(EmbeddedPermissionEncoding::V1),
             }),
-            Some(2) => Ok(Identity::ApiTokenV2Disposable {
-                account_id: claims.get_account_id_claim()?,
+            Some(2) => Ok(Classified {
+                kind: "Disposable token (v2)",
+                identity_label: "Account",
+                identity_value: claims.get_account_id_claim()?,
+                permission_encoding: Some(EmbeddedPermissionEncoding::V2),
             }),
             Some(version) => Err(CliError::new(format!(
                 "Unsupported disposable token version {version}"
             ))),
             None => Err(CliError::new("No version for disposable token".to_string())),
         },
-        Some("g") => Ok(Identity::GlobalApiKey {
-            key_id: claims.get_jwt_token_id_claim()?,
+        Some("g") => Ok(Classified {
+            kind: "Global API key",
+            identity_label: "Key",
+            identity_value: claims.get_jwt_token_id_claim()?,
+            permission_encoding: None,
         }),
-        Some("gr") => Ok(Identity::GlobalApiKeyRefresh {
-            key_id: claims.get_api_key_id_claim()?,
+        Some("gr") => Ok(Classified {
+            kind: "Global API key refresh token",
+            identity_label: "Key",
+            identity_value: claims.get_api_key_id_claim()?,
+            permission_encoding: None,
         }),
         Some(other) => Err(CliError::new(format!("Unknown token type {other}"))),
         None => match &claims.issuer {
             Some(issuer) => Err(CliError::new(format!("Unsupported issuer: {issuer}"))),
             None => {
                 if claims.version == Some(1) {
-                    Ok(Identity::ApiTokenV1 {
-                        legacy_customer_id: claims.get_subject_claim()?,
+                    Ok(Classified {
+                        kind: "API token (v1)",
+                        identity_label: "Customer",
+                        identity_value: claims.get_subject_claim()?,
+                        permission_encoding: Some(EmbeddedPermissionEncoding::V1),
                     })
                 } else if claims.control_plane_proxy_endpoint.is_some() {
-                    Ok(Identity::LegacyToken {
-                        legacy_customer_id: claims.get_subject_claim()?,
+                    Ok(Classified {
+                        kind: "Legacy token",
+                        identity_label: "Customer",
+                        identity_value: claims.get_subject_claim()?,
+                        permission_encoding: None,
                     })
                 } else {
                     // The only way to identify a customer signed token is by checking that
@@ -72,7 +86,12 @@ fn derive_identity(claims: &Claims, auth_token: &str) -> Result<Identity, CliErr
                     // other token types were found.
                     let key_id =
                         get_key_id_from_jwt(auth_token)?.ok_or(CliError::new("Missing key id"))?;
-                    Ok(Identity::CustomerSignedToken { key_id })
+                    Ok(Classified {
+                        kind: "Customer-signed token",
+                        identity_label: "Signing key",
+                        identity_value: key_id,
+                        permission_encoding: None,
+                    })
                 }
             }
         },
@@ -170,10 +189,10 @@ pub fn read_buffered_claims(auth_token: &str, buffer: &mut Vec<u8>) -> Result<Cl
 /// What a token decoded to.
 pub struct DecodedApiKey {
     /// What kind of Momento token this is.
-    pub kind: String,
+    pub kind: &'static str,
     /// Who it identifies — the meaning depends on `kind`, so the label does too.
     pub identity_label: &'static str,
-    pub identity: String,
+    pub identity_value: String,
     /// The cell endpoint, when the token arrived in an envelope carrying one.
     pub endpoint: Option<String>,
     pub expires: Option<String>,
@@ -192,21 +211,10 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
         CliError::new("This does not read as a Momento token. Pass the key exactly as issued.")
             .with_details(format!("{error}"))
     })?;
-    let identity = derive_identity(&claims, &jwt).map_err(|error| {
+    let classified = classify(&claims, &jwt).map_err(|error| {
         CliError::new("Could not determine what kind of token this is")
             .with_details(format!("{error}"))
     })?;
-    let permission_encoding = match identity {
-        Identity::ApiTokenV1 { .. } | Identity::ApiTokenV1Disposable { .. } => {
-            Some(EmbeddedPermissionEncoding::V1)
-        }
-        Identity::ApiTokenV2Disposable { .. } => Some(EmbeddedPermissionEncoding::V2),
-        Identity::LegacyToken { .. }
-        | Identity::CustomerSignedToken { .. }
-        | Identity::GlobalApiKey { .. }
-        | Identity::GlobalApiKeyRefresh { .. } => None,
-    };
-    let (kind, identity_label, identity_value) = describe(&identity);
 
     let payload = serde_json::from_slice::<Value>(&buffer).map_err(|error| {
         CliError::new("the JWT payload is not JSON").with_details(format!("{error}"))
@@ -216,43 +224,19 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
         .and_then(Value::as_u64)
         .map(format_epoch_seconds);
     let permissions = permissions(
-        permission_encoding,
+        classified.permission_encoding,
         payload.get("p").and_then(Value::as_str),
     )?;
 
     Ok(DecodedApiKey {
-        kind,
-        identity_label,
-        identity: identity_value,
+        kind: classified.kind,
+        identity_label: classified.identity_label,
+        identity_value: classified.identity_value,
         endpoint,
         expires,
         permissions,
         claims: payload,
     })
-}
-
-/// The token kind, and what its identity claim *means*.
-fn describe(identity: &Identity) -> (String, &'static str, String) {
-    let (kind, label, value) = match identity {
-        Identity::ApiTokenV1 { legacy_customer_id } => {
-            ("API token (v1)", "Customer", legacy_customer_id)
-        }
-        Identity::ApiTokenV1Disposable { legacy_customer_id } => {
-            ("Disposable token (v1)", "Customer", legacy_customer_id)
-        }
-        Identity::ApiTokenV2Disposable { account_id } => {
-            ("Disposable token (v2)", "Account", account_id)
-        }
-        Identity::LegacyToken { legacy_customer_id } => {
-            ("Legacy token", "Customer", legacy_customer_id)
-        }
-        Identity::CustomerSignedToken { key_id } => {
-            ("Customer-signed token", "Signing key", key_id)
-        }
-        Identity::GlobalApiKey { key_id } => ("Global API key", "Key", key_id),
-        Identity::GlobalApiKeyRefresh { key_id } => ("Global API key refresh token", "Key", key_id),
-    };
-    (kind.to_owned(), label, value.to_string())
 }
 
 /// Console- and SDK-issued keys arrive as base64 JSON carrying the cell
