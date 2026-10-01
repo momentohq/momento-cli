@@ -35,6 +35,7 @@ pub enum Identity {
     LegacyToken { legacy_customer_id: String },
     CustomerSignedToken { key_id: String },
     GlobalApiKey { key_id: String },
+    GlobalApiKeyRefresh { key_id: String },
 }
 
 impl TryFrom<&String> for TokenType {
@@ -72,9 +73,9 @@ pub fn derive_identity(claims: &Claims, auth_token: &str) -> Result<Identity, Cl
                 TokenType::GlobalApiKey => Ok(Identity::GlobalApiKey {
                     key_id: claims.get_jwt_token_id_claim()?,
                 }),
-                TokenType::GlobalApiKeyRefresh => {
-                    Err(CliError::new("Cannot decode a refresh token"))
-                }
+                TokenType::GlobalApiKeyRefresh => Ok(Identity::GlobalApiKeyRefresh {
+                    key_id: claims.get_api_key_id_claim()?,
+                }),
             }
         }
         None => derive_identity_without_token_type(claims, auth_token),
@@ -130,10 +131,13 @@ pub struct Claims {
     pub token_type: Option<String>, // Momento token type
 
     #[serde(rename = "jti")]
-    pub jwt_token_id: Option<String>, // Refresh tokens, Key ID on Global Api Keys
+    pub jwt_token_id: Option<String>, // Token ID on Global Api Key refresh tokens, Key ID on Global Api Keys
 
     #[serde(rename = "a")]
     pub account_id: Option<String>,
+
+    #[serde(rename = "akid")]
+    pub api_key_id: Option<String>, // API key ID on Global Api Key refresh tokens
 }
 
 impl Claims {
@@ -168,6 +172,13 @@ impl Claims {
             .clone()
             .filter(|token_id| !token_id.is_empty())
             .ok_or(CliError::new("Missing jti claim"))
+    }
+
+    fn get_api_key_id_claim(&self) -> Result<String, CliError> {
+        self.api_key_id
+            .clone()
+            .filter(|key_id| !key_id.is_empty())
+            .ok_or(CliError::new("Missing api key id claim"))
     }
 }
 
@@ -222,7 +233,8 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
         Identity::ApiTokenV2Disposable { .. } => Some(EmbeddedPermissionEncoding::V2),
         Identity::LegacyToken { .. }
         | Identity::CustomerSignedToken { .. }
-        | Identity::GlobalApiKey { .. } => None,
+        | Identity::GlobalApiKey { .. }
+        | Identity::GlobalApiKeyRefresh { .. } => None,
     };
     let (kind, identity_label, identity_value) = describe(&identity);
 
@@ -268,6 +280,7 @@ fn describe(identity: &Identity) -> (String, &'static str, String) {
             ("Customer-signed token", "Signing key", key_id)
         }
         Identity::GlobalApiKey { key_id } => ("Global API key", "Key", key_id),
+        Identity::GlobalApiKeyRefresh { key_id } => ("Global API key refresh token", "Key", key_id),
     };
     (kind.to_owned(), label, value.to_string())
 }
