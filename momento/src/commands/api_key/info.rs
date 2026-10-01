@@ -57,7 +57,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
             }),
             Some(2) => Ok(Classified {
                 kind: "Disposable token (v2)",
-                identity_label: "Account",
+                identity_label: "Account ID",
                 identity_value: get_claim_string(claims, "a"), // account ID
                 permission_encoding: Some(EmbeddedPermissionEncoding::V2),
             }),
@@ -68,13 +68,13 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
         },
         Some("g") => Ok(Classified {
             kind: "Global API key",
-            identity_label: "Key",
+            identity_label: "Key ID",
             identity_value: get_claim_string(claims, "jti"), // JWT ID
             permission_encoding: None,
         }),
         Some("gr") => Ok(Classified {
             kind: "Global API key refresh token",
-            identity_label: "Key",
+            identity_label: "Key ID",
             identity_value: get_claim_string(claims, "akid"), // API key ID (not refresh token ID)
             permission_encoding: None,
         }),
@@ -109,7 +109,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                         .to_string();
                     Ok(Classified {
                         kind: "Customer-signed token",
-                        identity_label: "Signing key",
+                        identity_label: "Signing Key ID",
                         identity_value: key_id,
                         permission_encoding: None,
                     })
