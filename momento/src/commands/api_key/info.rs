@@ -55,34 +55,27 @@ fn derive_identity(claims: &Claims, auth_token: &str) -> Result<Identity, CliErr
             key_id: claims.get_api_key_id_claim()?,
         }),
         Some(other) => Err(CliError::new(format!("Unknown token type {other}"))),
-        None => derive_identity_without_token_type(claims, auth_token),
-    }
-}
-
-fn derive_identity_without_token_type(
-    claims: &Claims,
-    auth_token: &str,
-) -> Result<Identity, CliError> {
-    match &claims.issuer {
-        Some(issuer) => Err(CliError::new(format!("Unsupported issuer: {issuer}"))),
-        None => {
-            if claims.version == Some(1) {
-                Ok(Identity::ApiTokenV1 {
-                    legacy_customer_id: claims.get_subject_claim()?,
-                })
-            } else if claims.control_plane_proxy_endpoint.is_some() {
-                Ok(Identity::LegacyToken {
-                    legacy_customer_id: claims.get_subject_claim()?,
-                })
-            } else {
-                // The only way to identify a customer signed token is by checking that
-                // a keyid exists in the header, and none of the other claim tags identifying
-                // other token types were found.
-                let key_id =
-                    get_key_id_from_jwt(auth_token)?.ok_or(CliError::new("Missing key id"))?;
-                Ok(Identity::CustomerSignedToken { key_id })
+        None => match &claims.issuer {
+            Some(issuer) => Err(CliError::new(format!("Unsupported issuer: {issuer}"))),
+            None => {
+                if claims.version == Some(1) {
+                    Ok(Identity::ApiTokenV1 {
+                        legacy_customer_id: claims.get_subject_claim()?,
+                    })
+                } else if claims.control_plane_proxy_endpoint.is_some() {
+                    Ok(Identity::LegacyToken {
+                        legacy_customer_id: claims.get_subject_claim()?,
+                    })
+                } else {
+                    // The only way to identify a customer signed token is by checking that
+                    // a keyid exists in the header, and none of the other claim tags identifying
+                    // other token types were found.
+                    let key_id =
+                        get_key_id_from_jwt(auth_token)?.ok_or(CliError::new("Missing key id"))?;
+                    Ok(Identity::CustomerSignedToken { key_id })
+                }
             }
-        }
+        },
     }
 }
 
