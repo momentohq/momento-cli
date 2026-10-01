@@ -37,7 +37,7 @@ pub async fn create_key(
     Ok(())
 }
 
-pub async fn get_key_info(api_key: String) -> Result<(), CliError> {
+pub fn get_key_info(api_key: String) -> Result<(), CliError> {
     let decoded = decode(api_key.trim())?;
     console_data!("{decoded}");
     Ok(())

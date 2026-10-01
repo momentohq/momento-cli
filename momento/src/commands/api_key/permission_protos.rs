@@ -12,7 +12,7 @@ use prost::UnknownEnumValue;
 pub use v1::Permissions as PermissionsProtoV1;
 pub use v2::PermissionSet as PermissionsProtoV2;
 
-fn super_user() -> Permissions {
+pub fn super_user() -> Permissions {
     Permissions {
         super_user: Some(true),
         rules: None,
@@ -343,7 +343,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn v1_roles_become_actions_and_an_unset_item_selector_is_every_item() {
+    fn test_permissions_from_v1() {
         let permissions = PermissionsProtoV1 {
             kind: Some(v1::permissions::Kind::Explicit(v1::ExplicitPermissions {
                 permissions: vec![v1::PermissionsType {
@@ -382,7 +382,7 @@ mod tests {
     }
 
     #[test]
-    fn v2_explicit_permissions_keep_their_conditions() {
+    fn test_permissions_from_v2() {
         let permissions = PermissionsProtoV2 {
             kind: Some(v2::permission_set::Kind::Explicit(
                 v2::ExplicitPermissions { rules: vec![] },
@@ -407,7 +407,7 @@ mod tests {
     }
 
     #[test]
-    fn an_unknown_permission_value_is_an_error_not_a_silent_drop() {
+    fn test_v2_rule_unknown_is_error() {
         let rule = v2::Rule {
             kind: Some(v2::rule::Kind::CacheRule(v2::rule::CacheRule {
                 permissions: vec![99],

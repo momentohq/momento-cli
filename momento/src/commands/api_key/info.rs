@@ -1,4 +1,4 @@
-use super::permission_protos::{PermissionsProtoV1, PermissionsProtoV2};
+use super::permission_protos::{super_user, PermissionsProtoV1, PermissionsProtoV2};
 use crate::commands::custom_role::utils::Permissions;
 use crate::error::CliError;
 
@@ -64,7 +64,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
             Some(version) => Err(CliError::new(format!(
                 "Unsupported disposable token version {version}"
             ))),
-            None => Err(CliError::new("No version for disposable token".to_string())),
+            None => Err(CliError::new("No version for disposable token")),
         },
         Some("g") => Ok(Classified {
             kind: "Global API key",
@@ -105,7 +105,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                     let key_id = header
                         .get("kid")
                         .and_then(Value::as_str)
-                        .ok_or(CliError::new("Missing key id".to_string()))?
+                        .ok_or(CliError::new("Missing key id"))?
                         .to_string();
                     Ok(Classified {
                         kind: "Customer-signed token",
@@ -173,10 +173,8 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
     })
 }
 
-/// Console- and SDK-issued keys arrive as base64 JSON carrying the cell
-/// endpoint alongside the JWT; everything else is the JWT itself.
-/// Anything that does not read as the envelope is passed through untouched,
-/// and fails later as a bad JWT if that is what it is.
+/// Console- and SDK-issued keys arrive as base64 JSON,
+/// carrying the cell endpoint alongside the JWT.
 fn unwrap_envelope(key: &str) -> (Option<String>, String) {
     #[derive(Deserialize)]
     struct Envelope {
@@ -193,9 +191,6 @@ fn unwrap_envelope(key: &str) -> (Option<String>, String) {
     }
 }
 
-/// The `p` claim: a base64 protobuf permission set, on the token kinds that carry one.
-/// Present but empty means super-user — that is how an unrestricted key is written, not an error.
-/// `None` means this kind has no permissions claim at all.
 #[derive(Clone, Copy)]
 enum EmbeddedPermissionEncoding {
     V1,
@@ -219,34 +214,26 @@ fn decode_permissions(
     encoding: EmbeddedPermissionEncoding,
     claim: &str,
 ) -> Result<Permissions, CliError> {
+    if claim.is_empty() && matches!(encoding, EmbeddedPermissionEncoding::V1) {
+        return Ok(super_user());
+    }
+    let bytes = BASE64.decode(claim).map_err(|error| {
+        CliError::new("Could not base64-decode the permissions claim")
+            .with_details(format!("{error}"))
+    })?;
     let permissions = match encoding {
-        EmbeddedPermissionEncoding::V1 if claim.is_empty() => Permissions {
-            super_user: Some(true),
-            rules: None,
-            conditions: None,
-        },
-        EmbeddedPermissionEncoding::V1 => {
-            let bytes = BASE64.decode(claim).map_err(|error| {
-                CliError::new("Could not base64-decode the permissions claim")
-                    .with_details(format!("{error}"))
-            })?;
-            let permissions = PermissionsProtoV1::decode(bytes.as_slice()).map_err(|error| {
+        EmbeddedPermissionEncoding::V1 => Permissions::from_v1(
+            PermissionsProtoV1::decode(bytes.as_slice()).map_err(|error| {
                 CliError::new("Could not decode the v1 permissions protobuf")
                     .with_details(format!("{error}"))
-            })?;
-            Permissions::from_v1(permissions)?
-        }
-        EmbeddedPermissionEncoding::V2 => {
-            let bytes = BASE64.decode(claim).map_err(|error| {
-                CliError::new("Could not base64-decode the permissions claim")
-                    .with_details(format!("{error}"))
-            })?;
-            let permissions = PermissionsProtoV2::decode(bytes.as_slice()).map_err(|error| {
+            })?,
+        )?,
+        EmbeddedPermissionEncoding::V2 => Permissions::from_v2(
+            PermissionsProtoV2::decode(bytes.as_slice()).map_err(|error| {
                 CliError::new("Could not decode the v2 permissions protobuf")
                     .with_details(format!("{error}"))
-            })?;
-            Permissions::from_v2(permissions)?
-        }
+            })?,
+        )?,
     };
     Ok(permissions)
 }
@@ -256,12 +243,8 @@ mod tests {
     use super::*;
     use momento_protos::permission_rules::{permission_set::Kind as KindV2, ExplicitPermissions};
 
-    /// A console key hides its JWT in an envelope; a bare token is itself.
-    /// Getting this wrong means trying to decode the envelope as a JWT and
-    /// reporting nonsense, so both shapes are pinned — along with the endpoint,
-    /// which only the envelope carries.
     #[test]
-    fn envelopes_are_unwrapped_and_bare_tokens_pass_through() {
+    fn test_unwrap_envelope_and_preserve_bare_token() {
         let jwt = "aaa.bbb.ccc";
         assert_eq!((None, jwt.to_owned()), unwrap_envelope(jwt));
 
@@ -277,11 +260,10 @@ mod tests {
         assert_eq!((None, jwt.to_owned()), unwrap_envelope(&without_endpoint));
     }
 
-    /// An empty `p` is how an unrestricted key is written;
-    /// a token kind without the claim has no permissions to show at all.
-    /// The two must not collapse into each other.
+    /// A token without the `p` claim is fully restricted,
+    /// while a v1 with an empty `p` is fully unrestricted.
     #[test]
-    fn an_empty_permissions_claim_is_super_user_but_an_absent_one_is_nothing() {
+    fn test_permissions_with_no_claim_vs_empty_claim() {
         assert!(matches!(
             permissions(Some(EmbeddedPermissionEncoding::V1), None),
             EmbeddedPermissions::Absent
@@ -303,7 +285,7 @@ mod tests {
     }
 
     #[test]
-    fn a_permissions_claim_is_ignored_when_the_token_format_does_not_carry_permissions() {
+    fn test_permissions_for_token_kind_without_permissions() {
         assert!(matches!(
             permissions(None, Some("not encoded permissions")),
             EmbeddedPermissions::Absent
@@ -311,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn an_unrecognized_permissions_claim_is_reported_not_fatal() {
+    fn test_permissions_with_unrecognized_claim_is_reported_not_fatal() {
         let permission_set = PermissionsProtoV2 {
             kind: None,
             conditions: vec![],
@@ -324,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn v2_permissions_are_decoded_with_the_v2_schema() {
+    fn test_permissions_with_v2_schema() {
         let permission_set = PermissionsProtoV2 {
             kind: Some(KindV2::Explicit(ExplicitPermissions { rules: vec![] })),
             conditions: vec![],
