@@ -1,9 +1,7 @@
 use super::display::format_epoch_seconds;
+use super::permission_protos::{PermissionsProtoV1, PermissionsProtoV2};
 use crate::commands::custom_role::utils::Permissions;
 use crate::error::CliError;
-
-use momento_protos::permission_messages::Permissions as PermissionsProtoV1;
-use momento_protos::permission_rules::PermissionSet as PermissionsProtoV2;
 
 use base64::{
     engine::{general_purpose::STANDARD, GeneralPurpose},
@@ -198,7 +196,7 @@ pub struct DecodedApiKey {
     /// The cell endpoint, when the token arrived in an envelope carrying one.
     pub endpoint: Option<String>,
     pub expires: Option<String>,
-    pub permissions: Option<String>,
+    pub permissions: Option<Permissions>,
     pub claims: Value,
 }
 
@@ -306,17 +304,16 @@ enum EmbeddedPermissionEncoding {
 fn permissions(
     encoding: Option<EmbeddedPermissionEncoding>,
     claim: Option<&str>,
-) -> Result<Option<String>, CliError> {
+) -> Result<Option<Permissions>, CliError> {
     let (Some(encoding), Some(claim)) = (encoding, claim) else {
         return Ok(None);
     };
-    let rendered = match encoding {
+    let permissions = match encoding {
         EmbeddedPermissionEncoding::V1 if claim.is_empty() => Permissions {
             super_user: Some(true),
             rules: None,
             conditions: None,
-        }
-        .to_string(),
+        },
         EmbeddedPermissionEncoding::V1 => {
             let bytes = BASE64.decode(claim).map_err(|error| {
                 CliError::new("Could not base64-decode the permissions claim")
@@ -326,7 +323,7 @@ fn permissions(
                 CliError::new("Could not decode the v1 permissions protobuf")
                     .with_details(format!("{error}"))
             })?;
-            format!("{permissions:#?}")
+            Permissions::from_v1(permissions)?
         }
         EmbeddedPermissionEncoding::V2 => {
             let bytes = BASE64.decode(claim).map_err(|error| {
@@ -337,15 +334,16 @@ fn permissions(
                 CliError::new("Could not decode the v2 permissions protobuf")
                     .with_details(format!("{error}"))
             })?;
-            format!("{permissions:#?}")
+            Permissions::from_v2(permissions)?
         }
     };
-    Ok(Some(rendered))
+    Ok(Some(permissions))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use momento_protos::permission_rules::{permission_set::Kind as KindV2, ExplicitPermissions};
 
     /// A console key hides its JWT in an envelope; a bare token is itself.
     /// Getting this wrong means trying to decode the envelope as a JWT and
@@ -377,7 +375,7 @@ mod tests {
         let super_user = permissions(Some(EmbeddedPermissionEncoding::V1), Some(""))
             .expect("empty claim renders");
         assert!(
-            super_user.is_some_and(|value| value.contains("super")),
+            super_user.is_some_and(|value| value.super_user.expect("has super user field")),
             "an empty permissions claim should render as super-user",
         );
     }
@@ -387,6 +385,26 @@ mod tests {
         assert_eq!(
             None,
             permissions(None, Some("not encoded permissions")).expect("claim is ignored")
+        );
+    }
+
+    #[test]
+    fn v2_permissions_are_decoded_with_the_v2_schema() {
+        let permission_set = PermissionsProtoV2 {
+            kind: Some(KindV2::Explicit(ExplicitPermissions { rules: vec![] })),
+            conditions: vec![],
+        };
+        let claim = BASE64.encode(permission_set.encode_to_vec());
+        let rendered = permissions(Some(EmbeddedPermissionEncoding::V2), Some(&claim))
+            .expect("v2 claim should decode");
+
+        assert_eq!(
+            Some(Permissions {
+                super_user: None,
+                rules: Some(vec![]),
+                conditions: Some(vec![])
+            }),
+            rendered
         );
     }
 }
