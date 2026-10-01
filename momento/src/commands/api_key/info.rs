@@ -12,16 +12,12 @@ use base64::{
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::borrow::Cow;
-use std::sync::LazyLock;
 
-pub static BASE64: LazyLock<GeneralPurpose> = LazyLock::new(|| {
-    GeneralPurpose::new(
-        &base64::alphabet::URL_SAFE,
-        base64::engine::general_purpose::GeneralPurposeConfig::new()
-            .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
-    )
-});
+const BASE64: GeneralPurpose = GeneralPurpose::new(
+    &base64::alphabet::URL_SAFE,
+    base64::engine::general_purpose::GeneralPurposeConfig::new()
+        .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
+);
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum TokenType {
@@ -34,19 +30,19 @@ pub enum TokenType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Identity<'a> {
-    ApiTokenV1 { legacy_customer_id: Cow<'a, str> },
-    ApiTokenV1Disposable { legacy_customer_id: Cow<'a, str> },
-    ApiTokenV2Disposable { account_id: Cow<'a, str> },
-    LegacyToken { legacy_customer_id: Cow<'a, str> },
-    CustomerSignedToken { key_id: Cow<'a, str> },
-    GlobalApiKey { key_id: Cow<'a, str> },
+pub enum Identity {
+    ApiTokenV1 { legacy_customer_id: String },
+    ApiTokenV1Disposable { legacy_customer_id: String },
+    ApiTokenV2Disposable { account_id: String },
+    LegacyToken { legacy_customer_id: String },
+    CustomerSignedToken { key_id: String },
+    GlobalApiKey { key_id: String },
 }
 
-impl TryFrom<&str> for TokenType {
+impl TryFrom<&String> for TokenType {
     type Error = serde_json::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
         // quote to make it look like json
         serde_json::from_str(format!("\"{value}\"").as_str())
     }
@@ -58,11 +54,8 @@ pub(crate) fn get_key_id_from_jwt(auth_token: &str) -> Result<Option<String>, Cl
     Ok(header.kid)
 }
 
-pub fn derive_identity<'a>(
-    claims: &'a Claims<'a>,
-    auth_token: &str,
-) -> Result<Identity<'a>, CliError> {
-    match claims.token_type {
+pub fn derive_identity(claims: &Claims, auth_token: &str) -> Result<Identity, CliError> {
+    match &claims.token_type {
         Some(token_type_str) => {
             let token_type: TokenType = token_type_str.try_into().map_err(|error| {
                 log::error!("Unable to parse token type: {error:?}");
@@ -71,15 +64,15 @@ pub fn derive_identity<'a>(
             match token_type {
                 TokenType::DisposableToken => match claims.version {
                     Some(1) => Ok(Identity::ApiTokenV1Disposable {
-                        legacy_customer_id: Cow::Borrowed(claims.get_subject_claim()?),
+                        legacy_customer_id: claims.get_subject_claim()?,
                     }),
                     Some(2) => Ok(Identity::ApiTokenV2Disposable {
-                        account_id: Cow::Borrowed(claims.get_account_id_claim()?),
+                        account_id: claims.get_account_id_claim()?,
                     }),
                     _ => Err(CliError::new("Unsupported disposable token version")),
                 },
                 TokenType::GlobalApiKey => Ok(Identity::GlobalApiKey {
-                    key_id: Cow::Borrowed(claims.get_jwt_token_id_claim()?),
+                    key_id: claims.get_jwt_token_id_claim()?,
                 }),
                 TokenType::GlobalApiKeyRefresh => {
                     Err(CliError::new("Cannot decode a refresh token"))
@@ -90,20 +83,20 @@ pub fn derive_identity<'a>(
     }
 }
 
-fn derive_identity_without_token_type<'a>(
-    claims: &'a Claims<'a>,
+fn derive_identity_without_token_type(
+    claims: &Claims,
     auth_token: &str,
-) -> Result<Identity<'a>, CliError> {
-    match claims.issuer {
+) -> Result<Identity, CliError> {
+    match &claims.issuer {
         Some(issuer) => Err(CliError::new(format!("Unsupported issuer: {issuer}"))),
         None => {
             if claims.version == Some(1) {
                 Ok(Identity::ApiTokenV1 {
-                    legacy_customer_id: Cow::Borrowed(claims.get_subject_claim()?),
+                    legacy_customer_id: claims.get_subject_claim()?,
                 })
             } else if claims.control_plane_proxy_endpoint.is_some() {
                 Ok(Identity::LegacyToken {
-                    legacy_customer_id: claims.get_subject_claim()?.into(),
+                    legacy_customer_id: claims.get_subject_claim()?,
                 })
             } else {
                 // The only way to identify a customer signed token is by checking that
@@ -111,9 +104,7 @@ fn derive_identity_without_token_type<'a>(
                 // other token types were found.
                 let key_id =
                     get_key_id_from_jwt(auth_token)?.ok_or(CliError::new("Missing key id"))?;
-                Ok(Identity::CustomerSignedToken {
-                    key_id: Cow::Owned(key_id),
-                })
+                Ok(Identity::CustomerSignedToken { key_id })
             }
         }
     }
@@ -121,38 +112,35 @@ fn derive_identity_without_token_type<'a>(
 
 /// Claims from all token types, used for initial parsing to determine token type.
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Claims<'a> {
-    /// Borrowed from the buffer when the claim needs no JSON unescaping, owned when it
-    /// does. v1-issued disposable tokens carry the caller's `token_id` here, and that is
-    /// arbitrary customer text.
-    #[serde(rename = "sub", borrow)]
-    pub subject: Option<Cow<'a, str>>,
+pub struct Claims {
+    #[serde(rename = "sub")]
+    pub subject: Option<String>,
 
     #[serde(rename = "email")]
-    pub email: Option<&'a str>,
+    pub email: Option<String>,
 
     #[serde(rename = "iss")]
-    pub issuer: Option<&'a str>,
+    pub issuer: Option<String>,
 
     #[serde(rename = "ver")]
     pub version: Option<i32>,
 
     #[serde(rename = "cp")]
-    pub control_plane_proxy_endpoint: Option<&'a str>, // control endpoint in Momento Legacy auth tokens
+    pub control_plane_proxy_endpoint: Option<String>, // control endpoint in Momento Legacy auth tokens
 
     #[serde(rename = "t")]
-    pub token_type: Option<&'a str>, // Momento token type
+    pub token_type: Option<String>, // Momento token type
 
     #[serde(rename = "jti")]
-    pub jwt_token_id: Option<&'a str>, // Refresh tokens, Key ID on Global Api Keys
+    pub jwt_token_id: Option<String>, // Refresh tokens, Key ID on Global Api Keys
 
     #[serde(rename = "a")]
-    pub account_id: Option<&'a str>,
+    pub account_id: Option<String>,
 }
 
-impl Claims<'_> {
-    fn get_account_id_claim(&self) -> Result<&str, CliError> {
-        match self.account_id {
+impl Claims {
+    fn get_account_id_claim(&self) -> Result<String, CliError> {
+        match self.account_id.clone() {
             Some(account_id) => {
                 if account_id.is_empty() {
                     Err(CliError::new("Missing account_id claim"))
@@ -164,8 +152,8 @@ impl Claims<'_> {
         }
     }
 
-    fn get_subject_claim(&self) -> Result<&str, CliError> {
-        match self.subject.as_deref() {
+    fn get_subject_claim(&self) -> Result<String, CliError> {
+        match self.subject.clone() {
             Some(subject) => {
                 if subject.is_empty() {
                     Err(CliError::new("Missing sub claim"))
@@ -177,19 +165,16 @@ impl Claims<'_> {
         }
     }
 
-    fn get_jwt_token_id_claim(&self) -> Result<&str, CliError> {
+    fn get_jwt_token_id_claim(&self) -> Result<String, CliError> {
         self.jwt_token_id
+            .clone()
             .filter(|token_id| !token_id.is_empty())
             .ok_or(CliError::new("Missing jti claim"))
     }
 }
 
 /// Initial read of token to determine token type.
-/// Parse the claims section as cheaply as possible, by mapping the claims onto the input buffer.
-pub fn read_buffered_claims<'a>(
-    auth_token: &str,
-    buffer: &'a mut Vec<u8>,
-) -> Result<Claims<'a>, CliError> {
+pub fn read_buffered_claims(auth_token: &str, buffer: &mut Vec<u8>) -> Result<Claims, CliError> {
     let middle = auth_token
         .split('.')
         .nth(1)
@@ -267,7 +252,7 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
 }
 
 /// The token kind, and what its identity claim *means*.
-fn describe(identity: &Identity<'_>) -> (String, &'static str, String) {
+fn describe(identity: &Identity) -> (String, &'static str, String) {
     let (kind, label, value) = match identity {
         Identity::ApiTokenV1 { legacy_customer_id } => {
             ("API token (v1)", "Customer", legacy_customer_id)
