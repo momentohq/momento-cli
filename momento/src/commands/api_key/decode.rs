@@ -154,7 +154,7 @@ pub struct DecodedApiKey {
 /// That is the point — a token that fails validation can still decode here,
 /// which is what you need when one is behaving unexpectedly.
 pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
-    let (endpoint, jwt) = unwrap_envelope(key);
+    let (endpoint, jwt) = unwrap_envelope(key)?;
 
     let claims = decode_segment(&jwt, 1, "payload").map_err(|error| {
         CliError::new(format!("Could not decode token: {}", error.msg))
@@ -190,19 +190,23 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
 
 /// Console- and SDK-issued keys arrive as base64 JSON,
 /// carrying the cell endpoint alongside the JWT.
-fn unwrap_envelope(key: &str) -> (Option<String>, String) {
+fn unwrap_envelope(key: &str) -> Result<(Option<String>, String), CliError> {
     #[derive(Deserialize)]
     struct Envelope {
-        api_key: String,
+        api_key: Option<String>,
         endpoint: Option<String>,
     }
     match STANDARD
         .decode(key)
         .ok()
         .and_then(|bytes| serde_json::from_slice::<Envelope>(&bytes).ok())
+        .or_else(|| serde_json::from_str::<Envelope>(key).ok())
     {
-        Some(envelope) => (envelope.endpoint, envelope.api_key),
-        None => (None, key.to_owned()),
+        Some(envelope) => match envelope.api_key {
+            Some(api_key) => Ok((envelope.endpoint, api_key)),
+            None => Err(CliError::new("Missing api_key field")),
+        },
+        None => Ok((None, key.to_owned())),
     }
 }
 
@@ -359,18 +363,39 @@ mod tests {
     #[test]
     fn test_unwrap_envelope_and_preserve_bare_token() {
         let jwt = "aaa.bbb.ccc";
-        assert_eq!((None, jwt.to_owned()), unwrap_envelope(jwt));
+        assert_eq!(
+            (None, jwt.to_owned()),
+            unwrap_envelope(jwt).expect("should preserve bare JWT")
+        );
 
         let envelope = STANDARD.encode(
             serde_json::json!({ "endpoint": "cell.momentohq.com", "api_key": jwt }).to_string(),
         );
         assert_eq!(
             (Some("cell.momentohq.com".to_owned()), jwt.to_owned()),
-            unwrap_envelope(&envelope),
+            unwrap_envelope(&envelope).expect("should unwrap envelope"),
         );
 
+        let plaintext_envelope =
+            serde_json::json!({ "endpoint": "cell.momentohq.com", "api_key": jwt }).to_string();
+        assert_eq!(
+            (Some("cell.momentohq.com".to_owned()), jwt.to_owned()),
+            unwrap_envelope(&plaintext_envelope).expect("should unwrap envelope"),
+        );
+
+        let without_api_key = STANDARD.encode(
+            serde_json::json!({ "endpoint": "cell.momentohq.com", "auth_token": jwt }).to_string(),
+        );
+        assert!(matches!(
+            unwrap_envelope(&without_api_key),
+            Err(CliError { msg, .. }) if msg.contains("api_key"),
+        ));
+
         let without_endpoint = STANDARD.encode(serde_json::json!({ "api_key": jwt }).to_string());
-        assert_eq!((None, jwt.to_owned()), unwrap_envelope(&without_endpoint));
+        assert_eq!(
+            (None, jwt.to_owned()),
+            unwrap_envelope(&without_endpoint).expect("should unwrap envelope")
+        );
     }
 
     #[test]
