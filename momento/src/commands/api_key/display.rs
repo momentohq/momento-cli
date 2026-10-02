@@ -70,9 +70,6 @@ impl fmt::Display for DecodedApiKey {
             EmbeddedPermissions::Decoded(permissions) => write!(f, "\n{permissions}")?,
             EmbeddedPermissions::Undecodable(error) => {
                 write!(f, "\nPermissions: could not be shown: {}", error.msg)?;
-                if let Some(details) = error.details() {
-                    write!(f, " ({details})")?;
-                }
                 write!(f, "\n  The raw claim is under \"p\" below.")?;
             }
         }

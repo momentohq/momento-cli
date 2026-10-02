@@ -6,6 +6,7 @@ use base64::{
     engine::{general_purpose::STANDARD, GeneralPurpose},
     Engine,
 };
+use log::warn;
 use prost::Message;
 use serde::Deserialize;
 use serde_json::Value;
@@ -30,11 +31,12 @@ fn decode_segment(jwt: &str, index: usize, name: &str) -> Result<Value, CliError
         .split('.')
         .nth(index)
         .ok_or(CliError::new("Not a JWT; expected dot-separated parts"))?;
-    let bytes = BASE64
-        .decode(segment)
-        .map_err(|error| CliError::new(format!("JWT {name} is not base64 ({error})")))?;
-    serde_json::from_slice::<Value>(&bytes)
-        .map_err(|error| CliError::new(format!("JWT {name} is not JSON ({error})")))
+    let bytes = BASE64.decode(segment).map_err(|error| {
+        CliError::new(format!("JWT {name} is not base64")).with_details(format!("{error:#?}"))
+    })?;
+    serde_json::from_slice::<Value>(&bytes).map_err(|error| {
+        CliError::new(format!("JWT {name} is not JSON")).with_details(format!("{error:#?}"))
+    })
 }
 
 struct Classified {
@@ -62,7 +64,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                 permission_encoding: Some(EmbeddedPermissionEncoding::V2),
             }),
             Some(version) => Err(CliError::new(format!(
-                "Unsupported disposable token version {version}"
+                "Unknown disposable token version: {version}"
             ))),
             None => Err(CliError::new("No version for disposable token")),
         },
@@ -78,7 +80,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
             identity_value: get_claim_string(claims, "akid"), // API key ID (not refresh token ID)
             permission_encoding: None,
         }),
-        Some(other) => Err(CliError::new(format!("Unknown token type {other}"))),
+        Some(other) => Err(CliError::new(format!("Unknown token type: {other}"))),
         None => match claims.get("iss").and_then(Value::as_str) {
             Some("gomomento.com/refresh") => Ok(Classified {
                 kind: "API token (v1) refresh token",
@@ -86,7 +88,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                 identity_value: get_claim_string(claims, "jti"), // JWT ID
                 permission_encoding: None,
             }),
-            Some(issuer) => Err(CliError::new(format!("Unsupported issuer: {issuer}"))),
+            Some(issuer) => Err(CliError::new(format!("Unknown issuer: {issuer}"))),
             None => {
                 if version == Some(1) {
                     Ok(Classified {
@@ -111,7 +113,9 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                     let key_id = header
                         .get("kid")
                         .and_then(Value::as_str)
-                        .ok_or(CliError::new("Missing key id"))?
+                        .ok_or(CliError::new(
+                            "No recognized token type claims, and no kid in the header",
+                        ))?
                         .to_string();
                     Ok(Classified {
                         kind: "Customer-signed token",
@@ -152,14 +156,19 @@ pub struct DecodedApiKey {
 pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
     let (endpoint, jwt) = unwrap_envelope(key);
 
-    let claims = decode_segment(&jwt, 1, "payload")
-        .map_err(|error| CliError::new(format!("Could not decode token: {error}")))?;
+    let claims = decode_segment(&jwt, 1, "payload").map_err(|error| {
+        CliError::new(format!("Could not decode token: {}", error.msg))
+            .with_optional_details(error.details())
+    })?;
 
-    let classified = classify(&claims, &jwt).unwrap_or_else(|error| Classified {
-        kind: "(unknown)",
-        identity_label: "Unrecognized token type",
-        identity_value: format!("{error}"),
-        permission_encoding: None,
+    let classified = classify(&claims, &jwt).unwrap_or_else(|error| {
+        warn!("{error:#?}"); // for verbose mode
+        Classified {
+            kind: "(unknown)",
+            identity_label: "Reason",
+            identity_value: error.msg,
+            permission_encoding: None,
+        }
     });
 
     let expires = claims.get("exp");
@@ -228,7 +237,10 @@ fn permissions(
     };
     match decode_permissions(encoding, claim) {
         Ok(permissions) => EmbeddedPermissions::Decoded(permissions),
-        Err(error) => EmbeddedPermissions::Undecodable(error),
+        Err(error) => {
+            warn!("{error:#?}"); // for verbose mode
+            EmbeddedPermissions::Undecodable(error)
+        }
     }
 }
 
@@ -238,21 +250,21 @@ fn decode_permissions(
 ) -> Result<Permissions, CliError> {
     let bytes = BASE64.decode(claim).map_err(|error| {
         CliError::new("Could not base64-decode the permissions claim")
-            .with_details(format!("{error}"))
+            .with_details(format!("{error:#?}"))
     })?;
     let permissions = match encoding {
         EmbeddedPermissionEncoding::V1ApiKey | EmbeddedPermissionEncoding::V1DisposableToken => {
             Permissions::from_v1(PermissionsProtoV1::decode(bytes.as_slice()).map_err(
                 |error| {
                     CliError::new("Could not decode the v1 permissions protobuf")
-                        .with_details(format!("{error}"))
+                        .with_details(format!("{error:#?}"))
                 },
             )?)?
         }
         EmbeddedPermissionEncoding::V2 => Permissions::from_v2(
             PermissionsProtoV2::decode(bytes.as_slice()).map_err(|error| {
                 CliError::new("Could not decode the v2 permissions protobuf")
-                    .with_details(format!("{error}"))
+                    .with_details(format!("{error:#?}"))
             })?,
         )?,
     };

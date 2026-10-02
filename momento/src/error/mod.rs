@@ -45,6 +45,11 @@ impl CliError {
         self
     }
 
+    pub fn with_optional_details(mut self, detailed_msg: Option<String>) -> Self {
+        self.detailed_msg = detailed_msg;
+        self
+    }
+
     pub fn details(&self) -> Option<String> {
         self.detailed_msg.clone()
     }

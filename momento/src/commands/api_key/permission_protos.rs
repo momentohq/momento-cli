@@ -21,7 +21,7 @@ pub fn super_user() -> Permissions {
 }
 
 fn required<T>(value: Option<T>, what: &str) -> Result<T, CliError> {
-    value.ok_or_else(|| CliError::new(format!("unrecognized or missing {what}")))
+    value.ok_or_else(|| CliError::new(format!("Unknown or missing {what}")))
 }
 
 fn actions<E: TryFrom<i32, Error = UnknownEnumValue>>(
@@ -35,7 +35,7 @@ fn actions<E: TryFrom<i32, Error = UnknownEnumValue>>(
 }
 
 fn unknown(error: UnknownEnumValue) -> CliError {
-    CliError::new(format!("unrecognized permission value {}", error.0))
+    CliError::new(format!("Unknown permission value: {}", error.0))
 }
 
 /// Keys are bytes; show them as text, which is what they almost always are.
@@ -469,7 +469,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rule_and_condition_unset_or_unrecognized_is_error() {
+    fn test_rule_and_condition_unset_or_unknown_is_error() {
         let cache_rule = |cache, cache_item| v2::Rule {
             kind: Some(v2::rule::Kind::CacheRule(v2::rule::CacheRule {
                 permissions: vec![v2::CacheApiPermissions::CacheRead as i32],
