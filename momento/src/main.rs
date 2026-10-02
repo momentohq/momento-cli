@@ -38,65 +38,79 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
         })?
         .as_secs();
     match args.command {
-        momento_cli_opts::Subcommand::ApiKey { api_key, operation } => {
-            let (creds, _) = get_creds_and_config(&args.profile).await?;
-            let credential_provider = creds.override_and_authenticate(api_key, None)?;
+        momento_cli_opts::Subcommand::ApiKey { api_key, operation } => match operation {
+            momento_cli_opts::ApiKeyCommand::AuthenticatedSubcommand(operation) => {
+                let (creds, _) = get_creds_and_config(&args.profile).await?;
+                let credential_provider = creds.override_and_authenticate(api_key, None)?;
 
-            let mga_endpoint =
-                determine_mga_endpoint(credential_provider.cache_http_endpoint().to_string());
-            let auth_token = credential_provider.auth_token().to_string();
+                let mga_endpoint =
+                    determine_mga_endpoint(credential_provider.cache_http_endpoint().to_string());
+                let auth_token = credential_provider.auth_token().to_string();
 
-            match operation {
-                momento_cli_opts::ApiKeyCommand::Create {
-                    description,
-                    role_name,
-                    role_id,
-                    expires_at_epoch_seconds,
-                    expires_in,
-                    expires_on,
-                    exclude_refresh_token,
-                } => {
-                    let role_selector = determine_role_selector(role_id, role_name)?;
-                    let role = determine_role(
-                        mga_endpoint.clone(),
-                        auth_token.clone(),
-                        &role_selector,
-                        true,
-                    )
-                    .await?;
-                    let expiry =
-                        determine_expiry(expires_at_epoch_seconds, expires_in, expires_on, now)?;
-
-                    commands::api_key::key_cli::create_key(
-                        mga_endpoint,
-                        auth_token,
+                match operation {
+                    momento_cli_opts::AuthenticatedApiKeyCommand::Create {
                         description,
-                        role.id,
-                        expiry,
+                        role_name,
+                        role_id,
+                        expires_at_epoch_seconds,
+                        expires_in,
+                        expires_on,
                         exclude_refresh_token,
-                    )
-                    .await?
-                }
-                momento_cli_opts::ApiKeyCommand::Refresh {
-                    refresh_token,
-                    expires_at_epoch_seconds,
-                    expires_in,
-                    expires_on,
-                } => {
-                    let expiry =
-                        determine_expiry(expires_at_epoch_seconds, expires_in, expires_on, now)?;
+                    } => {
+                        let role_selector = determine_role_selector(role_id, role_name)?;
+                        let role = determine_role(
+                            mga_endpoint.clone(),
+                            auth_token.clone(),
+                            &role_selector,
+                            true,
+                        )
+                        .await?;
+                        let expiry = determine_expiry(
+                            expires_at_epoch_seconds,
+                            expires_in,
+                            expires_on,
+                            now,
+                        )?;
 
-                    commands::api_key::key_cli::refresh_key(mga_endpoint, refresh_token, expiry)
+                        commands::api_key::key_cli::create_key(
+                            mga_endpoint,
+                            auth_token,
+                            description,
+                            role.id,
+                            expiry,
+                            exclude_refresh_token,
+                        )
                         .await?
-                }
-                momento_cli_opts::ApiKeyCommand::Revoke { id } => {
-                    commands::api_key::key_cli::revoke_key(mga_endpoint, auth_token, id).await?
-                }
-                momento_cli_opts::ApiKeyCommand::List { limit } => {
-                    commands::api_key::key_cli::list_keys(mga_endpoint, auth_token, limit).await?
+                    }
+                    momento_cli_opts::AuthenticatedApiKeyCommand::Refresh {
+                        refresh_token,
+                        expires_at_epoch_seconds,
+                        expires_in,
+                        expires_on,
+                    } => {
+                        let expiry = determine_expiry(
+                            expires_at_epoch_seconds,
+                            expires_in,
+                            expires_on,
+                            now,
+                        )?;
+
+                        commands::api_key::key_cli::refresh_key(mga_endpoint, refresh_token, expiry)
+                            .await?
+                    }
+                    momento_cli_opts::AuthenticatedApiKeyCommand::Revoke { id } => {
+                        commands::api_key::key_cli::revoke_key(mga_endpoint, auth_token, id).await?
+                    }
+                    momento_cli_opts::AuthenticatedApiKeyCommand::List { limit } => {
+                        commands::api_key::key_cli::list_keys(mga_endpoint, auth_token, limit)
+                            .await?
+                    }
                 }
             }
-        }
+            momento_cli_opts::ApiKeyCommand::Decode { api_key } => {
+                commands::api_key::key_cli::decode_key(api_key)?
+            }
+        },
         momento_cli_opts::Subcommand::Role { api_key, operation } => {
             let (creds, _) = get_creds_and_config(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, None)?;

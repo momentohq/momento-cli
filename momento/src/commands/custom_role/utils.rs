@@ -93,7 +93,7 @@ pub enum Rule {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Permissions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub super_user: Option<bool>,

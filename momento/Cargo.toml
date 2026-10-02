@@ -25,6 +25,8 @@ indicatif = "0.17.8"
 flate2 = "1.0.28"
 http = "1.4.0"
 form_urlencoded = "1.2.2"
+base64 = "0.23.1"
+prost = "0.14.4"
 
 [dev-dependencies]
 assert_cmd = "2.0.2"
@@ -44,7 +46,10 @@ features = [ "macros",]
 path = "../momento-cli-opts"
 
 [dependencies.momento]
-version = "0.68.2"
+version = "0.69.0"
+
+[dependencies.momento-protos]
+version = "0.138.1"
 
 [dependencies.futures]
 version = "0.3.28"
