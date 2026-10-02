@@ -1,4 +1,4 @@
-use super::info::{DecodedApiKey, EmbeddedPermissions};
+use super::decode::{DecodedApiKey, EmbeddedPermissions};
 use super::utils::{ApiKeyInfo, ApiKeyResponse};
 
 use chrono::prelude::DateTime;

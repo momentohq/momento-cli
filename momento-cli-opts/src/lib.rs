@@ -894,7 +894,7 @@ pub enum ApiKeyCommand {
     AuthenticatedSubcommand(AuthenticatedApiKeyCommand),
 
     #[command(about = "Parse embedded data from a Momento API key")]
-    Info {
+    Decode {
         #[arg(
             value_parser = NonEmptyStringValueParser::new(),
             help = "The Momento API key or token that you want to parse. \

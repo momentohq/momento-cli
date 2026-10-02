@@ -107,8 +107,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                 }
             }
-            momento_cli_opts::ApiKeyCommand::Info { api_key } => {
-                commands::api_key::key_cli::get_key_info(api_key)?
+            momento_cli_opts::ApiKeyCommand::Decode { api_key } => {
+                commands::api_key::key_cli::decode_key(api_key)?
             }
         },
         momento_cli_opts::Subcommand::Role { api_key, operation } => {
