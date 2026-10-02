@@ -79,7 +79,13 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
             permission_encoding: None,
         }),
         Some(other) => Err(CliError::new(format!("Unknown token type {other}"))),
-        None => match claims.get("iss") {
+        None => match claims.get("iss").and_then(Value::as_str) {
+            Some("gomomento.com/refresh") => Ok(Classified {
+                kind: "API token (v1) refresh token",
+                identity_label: "Refresh Token ID",
+                identity_value: get_claim_string(claims, "jti"), // JWT ID
+                permission_encoding: None,
+            }),
             Some(issuer) => Err(CliError::new(format!("Unsupported issuer: {issuer}"))),
             None => {
                 if version == Some(1) {
