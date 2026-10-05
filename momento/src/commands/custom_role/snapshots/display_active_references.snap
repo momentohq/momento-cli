@@ -1,0 +1,20 @@
+---
+source: momento/src/commands/custom_role/display.rs
+expression: active_references.to_string()
+---
+Account Members:
+- jane@example.com
+- raj@example.com
+Invited Account Members:
+- sam@example.com
+- jose@example.com
+- manny@example.com
+API Keys:
+- Key ID: foo-bar
+  Account ID: a-abcdefg
+  Description: For deploying to CI/CD environments
+  Issued At: 2024-06-26 00:00:00 UTC
+- Key ID: hello-world
+  Account ID: a-012345
+  Description: Another API key
+  Issued At: 2024-06-26 00:00:00 UTC
