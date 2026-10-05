@@ -756,7 +756,7 @@ https://github.com/momentohq/functions/"
 }
 
 #[derive(Debug, Parser)]
-pub enum ApiKeyCommand {
+pub enum AuthenticatedApiKeyCommand {
     #[command(
     about = "Generate a Momento API key",
     group(
@@ -885,6 +885,22 @@ pub enum ApiKeyCommand {
             value_name = "LIMIT_PER_PAGE",
         )]
         limit: Option<u32>,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum ApiKeyCommand {
+    #[command(flatten)]
+    AuthenticatedSubcommand(AuthenticatedApiKeyCommand),
+
+    #[command(about = "Parse embedded data from a Momento API key")]
+    Decode {
+        #[arg(
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "The Momento API key or token that you want to parse. \
+                    This can be a console/SDK envelope or a bare JWT"
+        )]
+        api_key: String,
     },
 }
 
