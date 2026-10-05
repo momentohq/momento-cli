@@ -200,7 +200,11 @@ pub async fn determine_role(
     selector: &RoleSelector,
     all: bool,
 ) -> Result<CustomRoleResponse, CliError> {
-    let role_text = if all { "role" } else { "custom role" };
+    let (role_text, list_command) = if all {
+        ("role", "momento role list --all")
+    } else {
+        ("custom role", "momento role list")
+    };
     let selector_text = match selector {
         RoleSelector::ById(id) => format!("ID {id}"),
         RoleSelector::ByName(name) => format!("name {name}"),
@@ -244,12 +248,7 @@ pub async fn determine_role(
                         return Err(CliError::new(format!("No {role_text}s found")));
                     } else {
                         return Err(CliError::new(format!(
-                            "No {role_text} has {selector_text}.\n\nListing {role_text}s:\n\n{}",
-                            full_roles_list
-                                .iter()
-                                .map(|role| role.to_string())
-                                .collect::<Vec<String>>()
-                                .join("\n\n")
+                            "No {role_text} has {selector_text}. Check `{list_command}`"
                         )));
                     }
                 }
