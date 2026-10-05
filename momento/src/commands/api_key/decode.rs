@@ -39,8 +39,21 @@ fn decode_segment(jwt: &str, index: usize, name: &str) -> Result<Value, CliError
     })
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TokenKind {
+    DisposableV1,
+    DisposableV2,
+    GlobalApiKey,
+    GlobalApiKeyRefreshToken,
+    ApiTokenV1,
+    ApiTokenV1RefreshToken,
+    Legacy,
+    CustomerSigned,
+    Unknown,
+}
+
 struct Classified {
-    kind: &'static str,
+    kind: TokenKind,
     identity_label: &'static str,
     identity_value: String,
     permission_encoding: Option<EmbeddedPermissionEncoding>,
@@ -52,13 +65,13 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
     match token_type {
         Some("disposable") => match version {
             Some(1) => Ok(Classified {
-                kind: "Disposable token (v1)",
+                kind: TokenKind::DisposableV1,
                 identity_label: "Customer",
                 identity_value: get_claim_string(claims, "sub"), // subject
                 permission_encoding: Some(EmbeddedPermissionEncoding::V1DisposableToken),
             }),
             Some(2) => Ok(Classified {
-                kind: "Disposable token (v2)",
+                kind: TokenKind::DisposableV2,
                 identity_label: "Account ID",
                 identity_value: get_claim_string(claims, "a"), // account ID
                 permission_encoding: Some(EmbeddedPermissionEncoding::V2),
@@ -69,13 +82,13 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
             None => Err(CliError::new("No version for disposable token")),
         },
         Some("g") => Ok(Classified {
-            kind: "Global API key",
+            kind: TokenKind::GlobalApiKey,
             identity_label: "Key ID",
             identity_value: get_claim_string(claims, "jti"), // JWT ID
             permission_encoding: None,
         }),
         Some("gr") => Ok(Classified {
-            kind: "Global API key refresh token",
+            kind: TokenKind::GlobalApiKeyRefreshToken,
             identity_label: "Key ID",
             identity_value: get_claim_string(claims, "akid"), // API key ID (not refresh token ID)
             permission_encoding: None,
@@ -83,7 +96,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
         Some(other) => Err(CliError::new(format!("Unknown token type: {other}"))),
         None => match claims.get("iss").and_then(Value::as_str) {
             Some("gomomento.com/refresh") => Ok(Classified {
-                kind: "API token (v1) refresh token",
+                kind: TokenKind::ApiTokenV1RefreshToken,
                 identity_label: "Refresh Token ID",
                 identity_value: get_claim_string(claims, "jti"), // JWT ID
                 permission_encoding: None,
@@ -92,7 +105,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
             None => {
                 if version == Some(1) {
                     Ok(Classified {
-                        kind: "API token (v1)",
+                        kind: TokenKind::ApiTokenV1,
                         identity_label: "Customer",
                         identity_value: get_claim_string(claims, "sub"), // subject
                         permission_encoding: Some(EmbeddedPermissionEncoding::V1ApiKey),
@@ -100,7 +113,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                 } else if claims.get("cp").is_some() {
                     // cp (control_plane_proxy_endpoint) only appears on legacy tokens
                     Ok(Classified {
-                        kind: "Legacy token",
+                        kind: TokenKind::Legacy,
                         identity_label: "Customer",
                         identity_value: get_claim_string(claims, "sub"), // subject
                         permission_encoding: None,
@@ -118,7 +131,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                         ))?
                         .to_string();
                     Ok(Classified {
-                        kind: "Customer-signed token",
+                        kind: TokenKind::CustomerSigned,
                         identity_label: "Signing Key ID",
                         identity_value: key_id,
                         permission_encoding: None,
@@ -139,7 +152,7 @@ pub enum EmbeddedPermissions {
 /// What a token decoded to.
 pub struct DecodedApiKey {
     /// What kind of Momento token this is.
-    pub kind: &'static str,
+    pub kind: TokenKind,
     /// Who it identifies — the meaning depends on `kind`, so the label does too.
     pub identity_label: &'static str,
     pub identity_value: String,
@@ -164,7 +177,7 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
     let classified = classify(&claims, &jwt).unwrap_or_else(|error| {
         warn!("{error:#?}"); // for verbose mode
         Classified {
-            kind: "(unknown)",
+            kind: TokenKind::Unknown,
             identity_label: "Reason",
             identity_value: error.msg,
             permission_encoding: None,
@@ -295,43 +308,43 @@ mod tests {
             (
                 json!({}),
                 json!({ "t": "disposable", "ver": 1, "sub": "c" }),
-                "Disposable token (v1)",
+                TokenKind::DisposableV1,
                 "c",
             ),
             (
                 json!({}),
                 json!({ "t": "disposable", "ver": 2, "a": "acct" }),
-                "Disposable token (v2)",
+                TokenKind::DisposableV2,
                 "acct",
             ),
             (
                 json!({}),
                 json!({ "t": "g", "jti": "k" }),
-                "Global API key",
+                TokenKind::GlobalApiKey,
                 "k",
             ),
             (
                 json!({}),
                 json!({ "t": "gr", "akid": "k" }),
-                "Global API key refresh token",
+                TokenKind::GlobalApiKeyRefreshToken,
                 "k",
             ),
             (
                 json!({}),
                 json!({ "ver": 1, "sub": "c" }),
-                "API token (v1)",
+                TokenKind::ApiTokenV1,
                 "c",
             ),
             (
                 json!({}),
                 json!({ "cp": "x", "sub": "c" }),
-                "Legacy token",
+                TokenKind::Legacy,
                 "c",
             ),
             (
                 json!({ "kid": "sk" }),
                 json!({ "sub": "c" }),
-                "Customer-signed token",
+                TokenKind::CustomerSigned,
                 "sk",
             ),
         ];
@@ -354,7 +367,7 @@ mod tests {
             json!({}), // no kid in header
         ] {
             let decoded = decode(&jwt(json!({}), claims.clone())).expect("should decode");
-            assert_eq!("(unknown)", decoded.kind);
+            assert_eq!(TokenKind::Unknown, decoded.kind);
             assert_eq!(claims, decoded.claims);
         }
         assert!(decode("not-a-jwt").is_err());
