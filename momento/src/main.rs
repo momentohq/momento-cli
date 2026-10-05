@@ -22,6 +22,7 @@ use crate::{
         determine_current_function_version, determine_metrics_config_change, determine_wasm_source,
         InvocationOptions,
     },
+    config::Credentials,
     utils::console::console_info,
 };
 
@@ -100,11 +101,18 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 expires_in,
                 expires_on,
             } => {
-                let api_endpoint = get_creds_for_profile(&args.profile)
-                    .await
-                    .ok()
-                    .and_then(|creds| creds.get_api_endpoint());
+                // Determine endpoint from --api-key override or --profile
+                let api_endpoint = match api_key
+                    .and_then(|api_key| Credentials::DisposableToken(api_key).get_api_endpoint())
+                {
+                    Some(api_endpoint) => Some(api_endpoint),
+                    None => get_creds_for_profile(&args.profile)
+                        .await
+                        .ok()
+                        .and_then(|creds| creds.get_api_endpoint()),
+                };
                 let mga_endpoint = determine_mga_endpoint(api_endpoint.as_deref());
+
                 let expiry =
                     determine_expiry(expires_at_epoch_seconds, expires_in, expires_on, now)?;
 
