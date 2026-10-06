@@ -3,7 +3,7 @@ use crate::commands::utils::{
     MomentoHttpResponse,
 };
 use crate::error::CliError;
-use momento_cli_opts::Bounds;
+use momento_cli_opts::{Bounds, CLUSTER_POOL_ARGS_TEXT, FLEX_POOL_ARGS_TEXT};
 
 use http::Method;
 use serde::{Deserialize, Serialize};
@@ -233,10 +233,9 @@ pub fn determine_provisioning(
             zones,
         }),
         _ => {
-            let shared_args = "--replicas-per-shard\n--zones";
             let help_text = format!(
-                "For a cluster-mode pool, specify all of:\n--instance-type\n--shard-count\n{shared_args}\n\n\
-                 For a flex-mode pool, specify all of:\n--capacity-gib\n{shared_args}"
+                "For a cluster-mode pool, specify all of:\n{CLUSTER_POOL_ARGS_TEXT}\n\n\
+                 For a flex-mode pool, specify all of:\n{FLEX_POOL_ARGS_TEXT}"
             );
             return Err(CliError::new(format!(
                 "{}\n\n{help_text}",
@@ -270,7 +269,6 @@ pub fn determine_provisioning_update(
     if !has_cluster_field && !has_flex_field && !has_ambiguous_field {
         return Ok(None);
     }
-    let shared_args = "--replicas-per-shard\n--zones";
     let update = match mode {
         CapacityPoolProvisioningMode::Cluster if !has_flex_field => {
             let replicas_per_shard = replicas_per_shard.map(pinned).transpose()?;
@@ -291,13 +289,13 @@ pub fn determine_provisioning_update(
         CapacityPoolProvisioningMode::Cluster => {
             return Err(CliError::new(format!(
                 "Conflicting arguments: This is a cluster-mode pool, and --capacity-gib is only for flex-mode pools.\n\n\
-                 For a cluster-mode pool, update one or more of:\n--instance-type\n--shard-count\n{shared_args}",
+                 For a cluster-mode pool, update one or more of:\n{CLUSTER_POOL_ARGS_TEXT}",
             )));
         }
         CapacityPoolProvisioningMode::Flex => {
             return Err(CliError::new(format!(
                 "Conflicting arguments: This is a flex-mode pool, and --instance-type and --shard-count are only for cluster-mode pools.\n\n\
-                 For a flex-mode pool, update one or more of:\n--capacity-gib\n{shared_args}",
+                 For a flex-mode pool, update one or more of:\n{FLEX_POOL_ARGS_TEXT}",
             )));
         }
     };
@@ -339,11 +337,10 @@ pub fn build_pool_update_body(
             },
         },
         (None, None) => {
-            let shared_args = "--replicas-per-shard\n--zones";
             return Err(CliError::new(format!(
                 "Missing argument(s).\n\n\
-                 For a cluster-mode pool, update one or more of:\n--instance-type\n--shard-count\n{shared_args}\n\
-                 For a flex-mode pool, update one or more of:\n--capacity-gib\n{shared_args}\n\
+                 For a cluster-mode pool, update one or more of:\n{CLUSTER_POOL_ARGS_TEXT}\n\
+                 For a flex-mode pool, update one or more of:\n{FLEX_POOL_ARGS_TEXT}\n\
                  For either pool mode, you can also configure metrics:\n--metrics-iam-role (and --metrics-region)\n--disable-metrics\n--remove-metrics-config"
             )));
         }

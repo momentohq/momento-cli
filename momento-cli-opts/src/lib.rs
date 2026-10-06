@@ -423,6 +423,11 @@ pub enum FunctionCommand {
     ListWasms {},
 }
 
+// For help text over in `momento` validation:
+pub const CLUSTER_POOL_ARGS_TEXT: &str =
+    "--instance-type\n--shard-count\n--replicas-per-shard\n--zones";
+pub const FLEX_POOL_ARGS_TEXT: &str = "--capacity-gib\n--replicas-per-shard\n--zones";
+
 #[derive(Debug, Parser)]
 pub enum CapacityPoolCommand {
     #[command(about = "Create a Momento capacity pool")]
