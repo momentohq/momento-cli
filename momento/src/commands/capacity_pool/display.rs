@@ -163,6 +163,7 @@ impl fmt::Display for CapacityPoolResponse {
                 ),
             }
         )?;
+        write!(f, "\nMetrics Config: {}", self.metrics_config)?;
         if let Some(diagnostics) = &self.diagnostics {
             let string = diagnostics.to_string();
             write!(
@@ -410,6 +411,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: "inherit".to_string(),
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: Some(40),
@@ -457,6 +459,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: "cloudwatch".to_string(),
             diagnostics: Some(diagnostics),
             // create-pool sends back only the requested ranges, no current/concrete values
             allocation: FlexAllocation {
@@ -513,6 +516,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: "cloudwatch".to_string(),
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -542,6 +546,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: "disabled".to_string(),
             diagnostics: Some(CapacityPoolDiagnostics(vec![])),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -571,6 +576,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: "disabled".to_string(),
             diagnostics: None,
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -613,6 +619,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: "disabled".to_string(),
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -642,6 +649,7 @@ mod tests {
                         "zones": ["use1-az1", "use1-az2"]
                     }
                 },
+                "metrics_config": "disabled",
                 "diagnostics": [
                     {
                         "insufficient_capacity": {

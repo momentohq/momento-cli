@@ -9,6 +9,7 @@ Cluster Provisioning:
 - Shard Count: 3
 - Replicas: 1 per shard
 - Availability Zones: usw2-az1
+Metrics Config: disabled
 Diagnostics:
 - something_something
   state: active

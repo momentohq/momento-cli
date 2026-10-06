@@ -8,6 +8,7 @@ Flex Provisioning:
 - Capacity: 32..128 GiB
 - Replicas: 1..2 per shard
 - Availability Zones: use1-az1, use1-az2
+Metrics Config: cloudwatch
 Diagnostics:
 - something_something
   state: active

@@ -131,6 +131,7 @@ pub struct CapacityPoolResponse {
     pub name: String,
     pub status: String,
     pub provisioning: CapacityPoolProvisioning,
+    pub metrics_config: String,
     pub diagnostics: Option<CapacityPoolDiagnostics>,
     #[serde(flatten)]
     /// Flex-/managed-mode pools only
@@ -1180,6 +1181,7 @@ mod tests {
                         "zones": ["use1-az1", "use1-az2"]
                     }
                 },
+                "metrics_config": "inherit",
                 "diagnostics": [{"stuck": {"state": "resolved"}}],
                 "current_capacity_gib": 40,
                 "current_replicas_per_shard": 2,
@@ -1191,6 +1193,8 @@ mod tests {
 
         assert_eq!("hello world", pool.name);
         assert_eq!("creating", pool.status);
+        assert_eq!("inherit", pool.metrics_config);
+
         let CapacityPoolProvisioning::Flex(provisioning) = &pool.provisioning else {
             panic!("expected flex provisioning, got {:?}", pool.provisioning);
         };
@@ -1239,6 +1243,7 @@ mod tests {
                         "zones": ["use1-az3", "use1-az4", "use1-az5"]
                     }
                 },
+                "metrics_config": "cloudwatch",
                 "diagnostics": [{"stuck": {"state": "resolved"}}],
                 "abc": {"X": "x", "Y": "y", "Z": "z"},
                 "hello": "world",
@@ -1248,6 +1253,8 @@ mod tests {
 
         assert_eq!("hello world", pool.name);
         assert_eq!("creating", pool.status);
+        assert_eq!("cloudwatch", pool.metrics_config);
+
         let CapacityPoolProvisioning::Cluster {
             instance_type,
             shard_count,
@@ -1304,6 +1311,7 @@ mod tests {
                         "zones": ["use1-az1"]
                     }
                 },
+                "metrics_config": "disabled",
                 "diagnostics": [],
                 "abc": {"X": "x", "Y": "y", "Z": "z"},
                 "hello": "world",
@@ -1361,6 +1369,7 @@ mod tests {
                         "zones": ["use1-az1"]
                     }
                 },
+                "metrics_config": "disabled",
                 "abc": {"X": "x", "Y": "y", "Z": "z"},
                 "hello": "world",
                 "answer": 42
@@ -1418,6 +1427,7 @@ mod tests {
                         "zones": ["use1-az1"]
                     }
                 },
+                "metrics_config": "disabled",
                 "diagnostics": [{"stuck": {"state": "resolved"}}]
             }"#,
         );
