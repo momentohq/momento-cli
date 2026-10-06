@@ -97,6 +97,25 @@ pub enum CapacityPoolProvisioningUpdate {
     },
 }
 
+impl CapacityPoolProvisioningUpdate {
+    /// Server requires at least an empty "provisioning": { "my_mode": {} }
+    pub fn empty(mode: CapacityPoolProvisioningMode) -> Self {
+        match mode {
+            CapacityPoolProvisioningMode::Cluster => CapacityPoolProvisioningUpdate::Cluster {
+                instance_type: None,
+                shard_count: None,
+                replicas_per_shard: None,
+                zones: vec![],
+            },
+            CapacityPoolProvisioningMode::Flex => CapacityPoolProvisioningUpdate::Flex {
+                capacity: None,
+                replication: None,
+                zones: vec![],
+            },
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct CapacityPool {
     pub provisioning: CapacityPoolProvisioning,
@@ -173,12 +192,15 @@ pub struct CapacityPoolResponse {
 impl CapacityPoolResponse {
     /// If provisioning bounds change, then target changes as needed on *next* reconciler tick.
     /// Until then, hide the target for clarity.
-    pub fn hide_lagging_target(&mut self, provisioning_update: CapacityPoolProvisioningUpdate) {
-        if let CapacityPoolProvisioningUpdate::Flex {
+    pub fn hide_lagging_target(
+        &mut self,
+        provisioning_update: Option<CapacityPoolProvisioningUpdate>,
+    ) {
+        if let Some(CapacityPoolProvisioningUpdate::Flex {
             capacity,
             replication,
             ..
-        } = provisioning_update
+        }) = provisioning_update
         {
             if capacity.is_some() {
                 self.allocation.target_capacity_gib = None;
@@ -260,9 +282,13 @@ pub fn determine_provisioning_update(
     replicas_per_shard: Option<Bounds>,
     capacity_gib: Option<Bounds>,
     zones: Vec<String>,
-) -> Result<CapacityPoolProvisioningUpdate, CliError> {
+) -> Result<Option<CapacityPoolProvisioningUpdate>, CliError> {
     let has_cluster_field = instance_type.is_some() || shard_count.is_some();
     let has_flex_field = capacity_gib.is_some();
+    let has_ambiguous_field = replicas_per_shard.is_some() || !zones.is_empty();
+    if !has_cluster_field && !has_flex_field && !has_ambiguous_field {
+        return Ok(None);
+    }
     let shared_args = "--replicas-per-shard\n--zones";
     let update = match mode {
         CapacityPoolProvisioningMode::Cluster if !has_flex_field => {
@@ -294,7 +320,7 @@ pub fn determine_provisioning_update(
             )));
         }
     };
-    Ok(update)
+    Ok(Some(update))
 }
 
 fn build_request_url(endpoint: String, pool_name: Option<String>) -> String {
@@ -541,12 +567,12 @@ mod tests {
         )
         .expect("a single cluster-mode field should be a valid update");
 
-        let CapacityPoolProvisioningUpdate::Cluster {
+        let Some(CapacityPoolProvisioningUpdate::Cluster {
             instance_type,
             shard_count,
             replicas_per_shard,
             zones,
-        } = update
+        }) = update
         else {
             panic!("expected a cluster-mode update, got {update:?}");
         };
@@ -568,12 +594,12 @@ mod tests {
         )
         .expect("all cluster-mode fields should be a valid update");
 
-        let CapacityPoolProvisioningUpdate::Cluster {
+        let Some(CapacityPoolProvisioningUpdate::Cluster {
             instance_type,
             shard_count,
             replicas_per_shard,
             zones,
-        } = update
+        }) = update
         else {
             panic!("expected a cluster-mode update, got {update:?}");
         };
@@ -595,11 +621,11 @@ mod tests {
         )
         .expect("a single flex-mode field should be a valid update");
 
-        let CapacityPoolProvisioningUpdate::Flex {
+        let Some(CapacityPoolProvisioningUpdate::Flex {
             capacity,
             replication,
             zones,
-        } = update
+        }) = update
         else {
             panic!("expected a flex-mode update, got {update:?}");
         };
@@ -622,11 +648,11 @@ mod tests {
         )
         .expect("all flex-mode fields should be a valid update");
 
-        let CapacityPoolProvisioningUpdate::Flex {
+        let Some(CapacityPoolProvisioningUpdate::Flex {
             capacity,
             replication,
             zones,
-        } = update
+        }) = update
         else {
             panic!("expected a flex-mode update, got {update:?}");
         };
@@ -652,7 +678,7 @@ mod tests {
             zones.clone(),
         )
         .expect("a zones-only update should be valid in cluster mode");
-        let CapacityPoolProvisioningUpdate::Cluster { zones: got, .. } = update else {
+        let Some(CapacityPoolProvisioningUpdate::Cluster { zones: got, .. }) = update else {
             panic!("expected a cluster-mode update, got {update:?}");
         };
         assert_eq!(zones, got);
@@ -666,7 +692,7 @@ mod tests {
             zones.clone(),
         )
         .expect("a zones-only update should be valid in flex mode");
-        let CapacityPoolProvisioningUpdate::Flex { zones: got, .. } = update else {
+        let Some(CapacityPoolProvisioningUpdate::Flex { zones: got, .. }) = update else {
             panic!("expected a flex-mode update, got {update:?}");
         };
         assert_eq!(zones, got);
@@ -683,9 +709,9 @@ mod tests {
             vec![],
         )
         .expect("a replicas-only update should be valid in cluster mode");
-        let CapacityPoolProvisioningUpdate::Cluster {
+        let Some(CapacityPoolProvisioningUpdate::Cluster {
             replicas_per_shard, ..
-        } = update
+        }) = update
         else {
             panic!("expected a cluster-mode update, got {update:?}");
         };
@@ -700,7 +726,7 @@ mod tests {
             vec![],
         )
         .expect("a replicas-only update should be valid in flex mode");
-        let CapacityPoolProvisioningUpdate::Flex { replication, .. } = update else {
+        let Some(CapacityPoolProvisioningUpdate::Flex { replication, .. }) = update else {
             panic!("expected a flex-mode update, got {update:?}");
         };
         let replication = replication.expect("replication should be updated");
@@ -718,20 +744,8 @@ mod tests {
             None,
             vec![],
         )
-        .expect("a cluster-mode update with no fields should be valid");
-        let CapacityPoolProvisioningUpdate::Cluster {
-            instance_type,
-            shard_count,
-            replicas_per_shard,
-            zones,
-        } = update
-        else {
-            panic!("expected a cluster-mode update, got {update:?}");
-        };
-        assert!(instance_type.is_none());
-        assert!(shard_count.is_none());
-        assert!(replicas_per_shard.is_none());
-        assert!(zones.is_empty());
+        .expect("a cluster-mode update with no fields should return");
+        assert!(update.is_none());
 
         let update = determine_provisioning_update(
             CapacityPoolProvisioningMode::Flex,
@@ -741,18 +755,8 @@ mod tests {
             None,
             vec![],
         )
-        .expect("a flex-mode update with no fields should be valid");
-        let CapacityPoolProvisioningUpdate::Flex {
-            capacity,
-            replication,
-            zones,
-        } = update
-        else {
-            panic!("expected a flex-mode update, got {update:?}");
-        };
-        assert!(capacity.is_none());
-        assert!(replication.is_none());
-        assert!(zones.is_empty());
+        .expect("a flex-mode update with no fields should return");
+        assert!(update.is_none());
     }
 
     #[test]

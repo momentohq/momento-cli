@@ -570,8 +570,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             name.clone(),
                         )
                         .await?;
+                        let provisioning_mode = existing_pool.provisioning.mode();
                         let provisioning_update = determine_provisioning_update(
-                            existing_pool.provisioning.mode(),
+                            provisioning_mode,
                             instance_type,
                             shard_count,
                             replicas_per_shard,
@@ -591,6 +592,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             api_endpoint,
                             auth_token,
                             name,
+                            provisioning_mode,
                             provisioning_update,
                             metrics_config,
                         )
