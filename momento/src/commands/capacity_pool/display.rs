@@ -462,6 +462,7 @@ mod tests {
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::CloudWatch {
                 customer_iam_role: "arn:aws:iam::123456789012:my_momento_metrics".to_string(),
+                region: None,
             },
             diagnostics: Some(diagnostics),
             // create-pool sends back only the requested ranges, no current/concrete values
@@ -521,6 +522,7 @@ mod tests {
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::CloudWatch {
                 customer_iam_role: "arn:aws:iam::123456789012:my_momento_metrics".to_string(),
+                region: None,
             },
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {

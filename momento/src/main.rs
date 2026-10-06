@@ -511,6 +511,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         capacity_gib,
                         zones,
                         metrics_iam_role,
+                        metrics_region,
                         disable_metrics,
                     } => {
                         let provisioning = determine_provisioning(
@@ -520,8 +521,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             capacity_gib,
                             zones,
                         )?;
-                        let metrics_config =
-                            determine_metrics_config(metrics_iam_role, disable_metrics, false)?;
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            metrics_region,
+                            disable_metrics,
+                            false,
+                        )?;
                         commands::capacity_pool::pool_cli::create_pool(
                             api_endpoint,
                             auth_token,
@@ -556,6 +561,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         capacity_gib,
                         zones,
                         metrics_iam_role,
+                        metrics_region,
                         disable_metrics,
                         remove_metrics_config,
                     } => {
@@ -569,6 +575,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )?;
                         let metrics_config = determine_metrics_config(
                             metrics_iam_role,
+                            metrics_region,
                             disable_metrics,
                             remove_metrics_config,
                         )?;
@@ -612,10 +619,15 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         pool_name,
                         name,
                         metrics_iam_role,
+                        metrics_region,
                         disable_metrics,
                     } => {
-                        let metrics_config =
-                            determine_metrics_config(metrics_iam_role, disable_metrics, false)?;
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            metrics_region,
+                            disable_metrics,
+                            false,
+                        )?;
                         commands::database::database_cli::create_database(
                             api_endpoint,
                             valkey_hostname,
@@ -638,11 +650,13 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     momento_cli_opts::DatabaseCommand::Update {
                         name,
                         metrics_iam_role,
+                        metrics_region,
                         disable_metrics,
                         remove_metrics_config,
                     } => {
                         let metrics_config = determine_metrics_config(
                             metrics_iam_role,
+                            metrics_region,
                             disable_metrics,
                             remove_metrics_config,
                         )?;

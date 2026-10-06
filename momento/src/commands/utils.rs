@@ -12,21 +12,27 @@ use std::{fmt, fmt::Debug};
 #[serde(rename_all = "snake_case")]
 pub enum CustomerMetricsConfig {
     Disabled,
-    CloudWatch { customer_iam_role: String },
+    CloudWatch {
+        customer_iam_role: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        region: Option<String>,
+    },
     Inherit,
 }
 
 pub fn determine_metrics_config(
     metrics_iam_role: Option<String>,
+    metrics_region: Option<String>,
     disable_metrics: bool,
     remove_metrics_config: bool,
 ) -> Result<Option<CustomerMetricsConfig>, CliError> {
     let metrics_config = match (metrics_iam_role, remove_metrics_config, disable_metrics) {
         (None, true, false) => Some(CustomerMetricsConfig::Inherit),
         (None, false, true) => Some(CustomerMetricsConfig::Disabled),
-        (Some(customer_iam_role), false, false) => {
-            Some(CustomerMetricsConfig::CloudWatch { customer_iam_role })
-        }
+        (Some(customer_iam_role), false, false) => Some(CustomerMetricsConfig::CloudWatch {
+            customer_iam_role,
+            region: metrics_region,
+        }),
         (None, false, false) => None,
         (Some(_), true, _) | (Some(_), _, true) | (_, true, true) => {
             // This should never happen; clap requires at most 1 metrics config field.
@@ -46,9 +52,14 @@ impl fmt::Display for CustomerMetricsConfig {
             match self {
                 CustomerMetricsConfig::Inherit => "none (follows account-wide default)".to_string(),
                 CustomerMetricsConfig::Disabled => "disabled".to_string(),
-                CustomerMetricsConfig::CloudWatch { customer_iam_role } => {
-                    format!("enabled (IAM role: {customer_iam_role})")
-                }
+                CustomerMetricsConfig::CloudWatch {
+                    customer_iam_role,
+                    region: None,
+                } => format!("enabled (IAM role: {customer_iam_role})"),
+                CustomerMetricsConfig::CloudWatch {
+                    customer_iam_role,
+                    region: Some(region),
+                } => format!("enabled (IAM role: {customer_iam_role}, region: {region})"),
             }
         )
     }
@@ -182,5 +193,87 @@ pub async fn call_momento_http_api<T: DeserializeOwned + Debug + Serialize>(
 impl From<reqwest::Error> for CliError {
     fn from(e: reqwest::Error) -> Self {
         CliError::new(format!("{e} (reqwest error)")).with_details(format!("{e:#?}"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ARN: &str = "arn:aws:iam::123456789012:role/my_momento_metrics";
+
+    #[test]
+    fn test_determine_metrics_config_with_region() {
+        let config = determine_metrics_config(
+            Some(ARN.to_string()),
+            Some("us-east-1".to_string()),
+            false,
+            false,
+        )
+        .expect("should accept valid metrics config args");
+        assert_eq!(
+            Some(CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: ARN.to_string(),
+                region: Some("us-east-1".to_string()),
+            }),
+            config
+        );
+    }
+
+    #[test]
+    fn test_serialize_metrics_config() {
+        let with_region = CustomerMetricsConfig::CloudWatch {
+            customer_iam_role: ARN.to_string(),
+            region: Some("us-east-1".to_string()),
+        };
+        assert_eq!(
+            serde_json::json!({"cloud_watch": {"customer_iam_role": ARN, "region": "us-east-1"}}),
+            serde_json::to_value(&with_region).expect("metrics config should serialize")
+        );
+
+        let without_region = CustomerMetricsConfig::CloudWatch {
+            customer_iam_role: ARN.to_string(),
+            region: None,
+        };
+        assert_eq!(
+            serde_json::json!({"cloud_watch": {"customer_iam_role": ARN}}),
+            serde_json::to_value(&without_region).expect("metrics config should serialize")
+        );
+    }
+
+    #[test]
+    fn test_deserialize_metrics_config() {
+        let metrics_config = serde_json::from_str::<CustomerMetricsConfig>(
+            &serde_json::json!({"cloud_watch": {"customer_iam_role": ARN}}).to_string(),
+        )
+        .expect("should parse metrics config");
+        assert_eq!(
+            CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: ARN.to_string(),
+                region: None,
+            },
+            metrics_config
+        );
+    }
+
+    #[test]
+    fn test_display_metrics_config() {
+        let with_region = CustomerMetricsConfig::CloudWatch {
+            customer_iam_role: ARN.to_string(),
+            region: Some("us-east-1".to_string()),
+        };
+        assert_eq!(
+            format!("enabled (IAM role: {ARN}, region: us-east-1)"),
+            with_region.to_string()
+        );
+
+        let without_region = CustomerMetricsConfig::CloudWatch {
+            customer_iam_role: ARN.to_string(),
+            region: None,
+        };
+        assert_eq!(
+            format!("enabled (IAM role: {ARN})"),
+            without_region.to_string()
+        );
     }
 }

@@ -1300,7 +1300,7 @@ mod tests {
         assert_eq!("creating", pool.status);
         assert!(matches!(
             pool.metrics_config,
-            CustomerMetricsConfig::CloudWatch { customer_iam_role }
+            CustomerMetricsConfig::CloudWatch { customer_iam_role, region: None }
             if customer_iam_role == "arn:aws:iam::123456789012:my_momento_metrics"
         ));
 
