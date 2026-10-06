@@ -137,10 +137,10 @@ pub fn determine_endpoint(endpoint_arg: String) -> String {
     endpoint
 }
 
-pub fn determine_mga_endpoint(api_endpoint: String) -> String {
+pub fn determine_mga_endpoint(api_endpoint: Option<&str>) -> String {
     format!(
         "https://mga.registry.{}.a.momentohq.com",
-        if api_endpoint.ends_with(".preprod.a.momentohq.com") {
+        if api_endpoint.is_some_and(|endpoint| endpoint.ends_with(".preprod.a.momentohq.com")) {
             "preprod"
         } else {
             "prod"
@@ -236,14 +236,15 @@ mod tests {
     #[test]
     fn test_determine_mga_endpoint() {
         let api_endpoints = [
-            "cell-us-east-1-1.prod.a.momentohq.com",
-            "cell-4-us-west-2-1.prod.a.momentohq.com",
-            "cell-foo-bar-us-northeast-3-1.prod.a.momentohq.com",
-            "supercalifragilistixexpialidocious.momentohq.com",
+            Some("cell-us-east-1-1.prod.a.momentohq.com"),
+            Some("cell-4-us-west-2-1.prod.a.momentohq.com"),
+            Some("cell-foo-bar-us-northeast-3-1.prod.a.momentohq.com"),
+            Some("supercalifragilistixexpialidocious.momentohq.com"),
+            None, // Use default if no endpoint specified (e.g. `momento api-key refresh` with broken v1 profile)
         ];
         let expected = "https://mga.registry.prod.a.momentohq.com";
         for endpoint in api_endpoints {
-            let actual = determine_mga_endpoint(endpoint.to_string());
+            let actual = determine_mga_endpoint(endpoint);
             assert_eq!(expected, actual);
         }
     }

@@ -827,41 +827,6 @@ pub enum AuthenticatedApiKeyCommand {
         exclude_refresh_token: bool,
     },
 
-    #[command(about = "Refresh a Momento API key")]
-    Refresh {
-        #[arg(
-            long,
-            short = 't',
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "The refresh token returned from when the key was generated or last refreshed",
-            value_name = "REFRESH_TOKEN",
-        )]
-        refresh_token: String,
-
-        #[arg(
-            long,
-            help = "Shortened expiry as unix epoch seconds. \
-                    When this, --expires-in, and --expires-on are all unset, \
-                    calculates the same lifetime as the original key"
-        )]
-        expires_at_epoch_seconds: Option<u64>,
-
-        #[arg(
-            long,
-            value_parser = humantime::parse_duration,
-            help = "Shortened expiry as a duration from now, e.g. 30d or 12h",
-        )]
-        expires_in: Option<Duration>,
-
-        #[arg(
-            long,
-            value_parser = parse_date,
-            help = "Shortened expiry as a date (YYYY-MM-DD). If set, the key expires at \
-                    midnight UTC at the beginning of that date",
-        )]
-        expires_on: Option<NaiveDate>,
-    },
-
     #[command(about = "Revoke a Momento API key, disabling it immediately")]
     Revoke {
         #[arg(
@@ -901,6 +866,41 @@ pub enum ApiKeyCommand {
                     This can be a console/SDK envelope or a bare JWT"
         )]
         api_key: String,
+    },
+
+    #[command(about = "Refresh a Momento API key")]
+    Refresh {
+        #[arg(
+            long,
+            short = 't',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "The refresh token returned from when the key was generated or last refreshed",
+            value_name = "REFRESH_TOKEN",
+        )]
+        refresh_token: String,
+
+        #[arg(
+            long,
+            help = "Shortened expiry as unix epoch seconds. \
+                    When this, --expires-in, and --expires-on are all unset, \
+                    calculates the same lifetime as the original key"
+        )]
+        expires_at_epoch_seconds: Option<u64>,
+
+        #[arg(
+            long,
+            value_parser = humantime::parse_duration,
+            help = "Shortened expiry as a duration from now, e.g. 30d or 12h",
+        )]
+        expires_in: Option<Duration>,
+
+        #[arg(
+            long,
+            value_parser = parse_date,
+            help = "Shortened expiry as a date (YYYY-MM-DD). If set, the key expires at \
+                    midnight UTC at the beginning of that date",
+        )]
+        expires_on: Option<NaiveDate>,
     },
 }
 
