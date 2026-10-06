@@ -97,25 +97,6 @@ pub enum CapacityPoolProvisioningUpdate {
     },
 }
 
-impl CapacityPoolProvisioningUpdate {
-    /// Server requires at least an empty "provisioning": { "my_mode": {} }
-    pub fn empty(mode: CapacityPoolProvisioningMode) -> Self {
-        match mode {
-            CapacityPoolProvisioningMode::Cluster => CapacityPoolProvisioningUpdate::Cluster {
-                instance_type: None,
-                shard_count: None,
-                replicas_per_shard: None,
-                zones: vec![],
-            },
-            CapacityPoolProvisioningMode::Flex => CapacityPoolProvisioningUpdate::Flex {
-                capacity: None,
-                replication: None,
-                zones: vec![],
-            },
-        }
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct CapacityPool {
     pub provisioning: CapacityPoolProvisioning,
@@ -328,6 +309,46 @@ fn build_request_url(endpoint: String, pool_name: Option<String>) -> String {
         None => format!("{endpoint}/capacity_pool"),
         Some(name) => format!("{endpoint}/capacity_pool/{name}"),
     }
+}
+
+pub fn build_pool_update_body(
+    provisioning_mode: CapacityPoolProvisioningMode,
+    provisioning_update: Option<CapacityPoolProvisioningUpdate>,
+    metrics_config: Option<CustomerMetricsConfig>,
+) -> Result<serde_json::Value, CliError> {
+    let update = match (provisioning_update, &metrics_config) {
+        (Some(provisioning_update), _) => CapacityPoolUpdate {
+            metrics_config,
+            provisioning: provisioning_update,
+        },
+        (None, Some(_)) => CapacityPoolUpdate {
+            metrics_config,
+            // Server requires at least an empty "provisioning": { "my_mode": {} }
+            provisioning: match provisioning_mode {
+                CapacityPoolProvisioningMode::Cluster => CapacityPoolProvisioningUpdate::Cluster {
+                    instance_type: None,
+                    shard_count: None,
+                    replicas_per_shard: None,
+                    zones: vec![],
+                },
+                CapacityPoolProvisioningMode::Flex => CapacityPoolProvisioningUpdate::Flex {
+                    capacity: None,
+                    replication: None,
+                    zones: vec![],
+                },
+            },
+        },
+        (None, None) => {
+            let shared_args = "--replicas-per-shard\n--zones";
+            return Err(CliError::new(format!(
+                "Missing argument(s).\n\n\
+                 For a cluster-mode pool, update one or more of:\n--instance-type\n--shard-count\n{shared_args}\n\
+                 For a flex-mode pool, update one or more of:\n--capacity-gib\n{shared_args}\n\
+                 For either pool mode, you can also configure metrics:\n--metrics-iam-role (and --metrics-region)\n--disable-metrics\n--remove-metrics-config"
+            )));
+        }
+    };
+    Ok(serde_json::to_value(update)?)
 }
 
 pub async fn call_pool_api(

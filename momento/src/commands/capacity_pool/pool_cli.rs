@@ -1,7 +1,7 @@
 use super::utils::{
-    call_pool_api, call_pool_delete_api, call_pool_list_api, CapacityPool,
+    build_pool_update_body, call_pool_api, call_pool_delete_api, call_pool_list_api, CapacityPool,
     CapacityPoolProvisioning, CapacityPoolProvisioningMode, CapacityPoolProvisioningUpdate,
-    CapacityPoolResponse, CapacityPoolUpdate,
+    CapacityPoolResponse,
 };
 use crate::commands::capacity_pool::utils::ListCapacityPoolsResponse;
 use crate::commands::utils::CustomerMetricsConfig;
@@ -91,26 +91,11 @@ pub async fn update_pool(
     provisioning_update: Option<CapacityPoolProvisioningUpdate>,
     metrics_config: Option<CustomerMetricsConfig>,
 ) -> Result<(), CliError> {
-    let data = match (&provisioning_update, &metrics_config) {
-        (Some(provisioning_update), _) => serde_json::to_value(CapacityPoolUpdate {
-            provisioning: provisioning_update.clone(),
-            metrics_config,
-        })?,
-        (None, Some(_)) => serde_json::to_value(CapacityPoolUpdate {
-            // Server requires at least an empty "provisioning": { "my_mode": {} }
-            provisioning: CapacityPoolProvisioningUpdate::empty(provisioning_mode),
-            metrics_config,
-        })?,
-        (None, None) => {
-            let shared_args = "--replicas-per-shard\n--zones";
-            return Err(CliError::new(format!(
-                "Missing argument(s).\n\n\
-                 For a cluster-mode pool, update one or more of:\n--instance-type\n--shard-count\n{shared_args}\n\
-                 For a flex-mode pool, update one or more of:\n--capacity-gib\n{shared_args}\n\
-                 For either pool mode, you can also configure metrics:\n--metrics-iam-role (and --metrics-region)\n--disable-metrics\n--remove-metrics-config"
-            )));
-        }
-    };
+    let data = build_pool_update_body(
+        provisioning_mode,
+        provisioning_update.clone(),
+        metrics_config,
+    )?;
     match call_pool_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
         Parsed(mut pool) => {
             pool.hide_lagging_target(provisioning_update);
