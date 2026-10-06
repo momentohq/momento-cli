@@ -68,6 +68,35 @@ pub async fn describe_database(
     Ok(())
 }
 
+pub async fn update_database(
+    api_endpoint: String,
+    auth_token: String,
+    database_name: String,
+    metrics_config: Option<CustomerMetricsConfig>,
+) -> Result<(), CliError> {
+    let data = serde_json::json!({"metrics_config": metrics_config});
+    match call_database_api(
+        Method::PATCH,
+        api_endpoint,
+        auth_token,
+        database_name.clone(),
+        Some(data),
+    )
+    .await?
+    {
+        Parsed(database) => {
+            console_data!("Updating database!\n\n{database}");
+        }
+        Unparseable(response_text) => {
+            console_data!("Updating database!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
+        }
+    };
+    Ok(())
+}
+
 pub async fn delete_database(
     endpoint: String,
     auth_token: String,

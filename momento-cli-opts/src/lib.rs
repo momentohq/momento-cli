@@ -670,6 +670,46 @@ pub enum DatabaseCommand {
         )]
         name: String,
     },
+    #[command(
+    about = "Update a Momento database",
+    group(
+    clap::ArgGroup::new("database-metrics")
+    .required(true),
+    ),
+    )]
+    Update {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to update",
+            value_name = "DATABASE"
+        )]
+        name: String,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this database",
+            value_name = "IAM_ROLE",
+            group = "database-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
+            default_value_t = false,
+            group = "database-metrics"
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this database's metrics configuration so it follows your account-wide default",
+            default_value_t = false,
+            group = "database-metrics"
+        )]
+        remove_metrics_config: bool,
+    },
     #[command(about = "Delete a Momento database")]
     Delete {
         #[arg(

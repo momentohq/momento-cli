@@ -643,6 +643,25 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
+                    momento_cli_opts::DatabaseCommand::Update {
+                        name,
+                        metrics_iam_role,
+                        disable_metrics,
+                        remove_metrics_config,
+                    } => {
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            disable_metrics,
+                            remove_metrics_config,
+                        )?;
+                        commands::database::database_cli::update_database(
+                            api_endpoint,
+                            auth_token,
+                            name,
+                            metrics_config,
+                        )
+                        .await?
+                    }
                     momento_cli_opts::DatabaseCommand::Delete { name } => {
                         commands::database::database_cli::delete_database(
                             api_endpoint,
