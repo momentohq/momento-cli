@@ -489,13 +489,6 @@ pub enum CapacityPoolCommand {
             group = "pool-metrics"
         )]
         disable_metrics: bool,
-        #[arg(
-            long = "remove-metrics-config",
-            help = "Remove this pool's metrics configuration so it follows your account-wide default",
-            default_value_t = false,
-            group = "pool-metrics"
-        )]
-        remove_metrics_config: bool,
     },
     #[command(about = "Get your capacity pool's lifecycle status")]
     GetStatus {
@@ -651,13 +644,6 @@ pub enum DatabaseCommand {
             group = "database-metrics"
         )]
         disable_metrics: bool,
-        #[arg(
-            long = "remove-metrics-config",
-            help = "Remove this database's metrics configuration so it follows your account-wide default",
-            default_value_t = false,
-            group = "database-metrics"
-        )]
-        remove_metrics_config: bool,
     },
     #[command(about = "Get the details of your Momento database")]
     Describe {

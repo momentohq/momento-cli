@@ -512,7 +512,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         zones,
                         metrics_iam_role,
                         disable_metrics,
-                        remove_metrics_config,
                     } => {
                         let provisioning = determine_provisioning(
                             instance_type,
@@ -521,11 +520,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             capacity_gib,
                             zones,
                         )?;
-                        let metrics_config = determine_metrics_config(
-                            metrics_iam_role,
-                            disable_metrics,
-                            remove_metrics_config,
-                        )?;
+                        let metrics_config =
+                            determine_metrics_config(metrics_iam_role, disable_metrics, false)?;
                         commands::capacity_pool::pool_cli::create_pool(
                             api_endpoint,
                             auth_token,
@@ -617,13 +613,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         name,
                         metrics_iam_role,
                         disable_metrics,
-                        remove_metrics_config,
                     } => {
-                        let metrics_config = determine_metrics_config(
-                            metrics_iam_role,
-                            disable_metrics,
-                            remove_metrics_config,
-                        )?;
+                        let metrics_config =
+                            determine_metrics_config(metrics_iam_role, disable_metrics, false)?;
                         commands::database::database_cli::create_database(
                             api_endpoint,
                             valkey_hostname,
