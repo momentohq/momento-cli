@@ -1,6 +1,6 @@
 use super::utils::{
     CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics, CapacityPoolProvisioning,
-    CapacityPoolResponse, FlexAllocation, FlexProvisioning,
+    CapacityPoolResponse, CustomerMetricsConfig, FlexAllocation, FlexProvisioning,
 };
 
 use chrono::prelude::DateTime;
@@ -42,6 +42,22 @@ fn format_flex_provisioning(
          - Availability Zones: {}",
         provisioning.zones.join(", ")
     )
+}
+
+impl fmt::Display for CustomerMetricsConfig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                CustomerMetricsConfig::Inherit => "none (follows account-wide default)".to_string(),
+                CustomerMetricsConfig::Disabled => "disabled".to_string(),
+                CustomerMetricsConfig::CloudWatch { customer_iam_role } => {
+                    format!("enabled (IAM role: {customer_iam_role})")
+                }
+            }
+        )
+    }
 }
 
 /// Fields worth reading first; everything else follows in the order the API sent it.
@@ -411,7 +427,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
-            metrics_config: "inherit".to_string(),
+            metrics_config: CustomerMetricsConfig::Inherit,
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: Some(40),
@@ -459,7 +475,9 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
-            metrics_config: "cloudwatch".to_string(),
+            metrics_config: CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: "arn:aws:iam::123456789012:my_momento_metrics".to_string(),
+            },
             diagnostics: Some(diagnostics),
             // create-pool sends back only the requested ranges, no current/concrete values
             allocation: FlexAllocation {
@@ -516,7 +534,9 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
-            metrics_config: "cloudwatch".to_string(),
+            metrics_config: CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: "arn:aws:iam::123456789012:my_momento_metrics".to_string(),
+            },
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -546,7 +566,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
-            metrics_config: "disabled".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: Some(CapacityPoolDiagnostics(vec![])),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -576,7 +596,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
-            metrics_config: "disabled".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: None,
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -619,7 +639,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
-            metrics_config: "disabled".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: None,

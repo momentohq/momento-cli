@@ -1,6 +1,7 @@
 use super::utils::{
-    call_pool_api, call_pool_delete_api, call_pool_list_api, CapacityPoolProvisioning,
-    CapacityPoolProvisioningUpdate,
+    call_pool_api, call_pool_delete_api, call_pool_list_api, CapacityPool,
+    CapacityPoolProvisioning, CapacityPoolProvisioningUpdate, CapacityPoolUpdate,
+    CustomerMetricsConfig,
 };
 use crate::commands::capacity_pool::utils::ListCapacityPoolsResponse;
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
@@ -14,8 +15,12 @@ pub async fn create_pool(
     auth_token: String,
     name: String,
     provisioning: CapacityPoolProvisioning,
+    metrics_config: Option<CustomerMetricsConfig>,
 ) -> Result<(), CliError> {
-    let data = serde_json::json!({"provisioning": provisioning});
+    let data = serde_json::to_value(CapacityPool {
+        provisioning,
+        metrics_config,
+    })?;
     match call_pool_api(Method::POST, endpoint, auth_token, name, Some(data)).await? {
         Parsed(pool) => {
             console_data!("Creating capacity pool!\n\n{pool}");
@@ -67,8 +72,12 @@ pub async fn update_pool(
     auth_token: String,
     name: String,
     provisioning_update: CapacityPoolProvisioningUpdate,
+    metrics_config: Option<CustomerMetricsConfig>,
 ) -> Result<(), CliError> {
-    let data = serde_json::json!({"provisioning": provisioning_update});
+    let data = serde_json::to_value(CapacityPoolUpdate {
+        provisioning: provisioning_update.clone(),
+        metrics_config,
+    })?;
     match call_pool_api(Method::PATCH, endpoint, auth_token, name, Some(data)).await? {
         Parsed(mut pool) => {
             pool.hide_lagging_target(provisioning_update);

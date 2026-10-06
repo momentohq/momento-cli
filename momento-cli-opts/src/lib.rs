@@ -473,6 +473,29 @@ pub enum CapacityPoolCommand {
             value_name = "AVAILABILITY_ZONES"
         )]
         zones: Vec<String>,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this pool",
+            value_name = "IAM_ROLE",
+            group = "pool-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this pool's's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
+            default_value_t = false,
+            group = "pool-metrics"
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this pool's metrics configuration so it follows your account-wide default",
+            default_value_t = false,
+            group = "pool-metrics"
+        )]
+        remove_metrics_config: bool,
     },
     #[command(about = "Get your capacity pool's lifecycle status")]
     GetStatus {
@@ -554,6 +577,29 @@ pub enum CapacityPoolCommand {
             value_name = "NEW_AVAILABILITY_ZONES",
         )]
         zones: Vec<String>,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this pool",
+            value_name = "IAM_ROLE",
+            group = "pool-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this pool's's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
+            default_value_t = false,
+            group = "pool-metrics"
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this pool's metrics configuration so it follows your account-wide default",
+            default_value_t = false,
+            group = "pool-metrics"
+        )]
+        remove_metrics_config: bool,
     },
     #[command(about = "Delete a Momento capacity pool")]
     Delete {

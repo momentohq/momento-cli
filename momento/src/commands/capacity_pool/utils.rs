@@ -7,13 +7,13 @@ use momento_cli_opts::{Bounds, CapacityPoolProvisioningMode};
 use http::Method;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CapacityBounds {
     pub min_gib: u32,
     pub max_gib: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ReplicationBounds {
     pub min_replicas_per_shard: u32,
     pub max_replicas_per_shard: u32,
@@ -57,7 +57,7 @@ pub enum CapacityPoolProvisioning {
     Flex(FlexProvisioning),
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub enum CapacityPoolProvisioningUpdate {
     #[serde(rename = "explicit")]
     Cluster {
@@ -79,6 +79,28 @@ pub enum CapacityPoolProvisioningUpdate {
         #[serde(skip_serializing_if = "Vec::is_empty")]
         zones: Vec<String>,
     },
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomerMetricsConfig {
+    Disabled,
+    CloudWatch { customer_iam_role: String },
+    Inherit,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CapacityPool {
+    pub provisioning: CapacityPoolProvisioning,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics_config: Option<CustomerMetricsConfig>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CapacityPoolUpdate {
+    pub provisioning: CapacityPoolProvisioningUpdate,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics_config: Option<CustomerMetricsConfig>,
 }
 
 /// A single diagnostic, which the API sends as a one-entry object keyed by kind:
@@ -131,7 +153,7 @@ pub struct CapacityPoolResponse {
     pub name: String,
     pub status: String,
     pub provisioning: CapacityPoolProvisioning,
-    pub metrics_config: String,
+    pub metrics_config: CustomerMetricsConfig,
     pub diagnostics: Option<CapacityPoolDiagnostics>,
     #[serde(flatten)]
     /// Flex-/managed-mode pools only
@@ -202,8 +224,8 @@ pub fn determine_provisioning(
         _ => {
             let shared_args = "--replicas-per-shard\n--zones";
             let help_text = format!(
-                "For cluster mode, specify all of:\n--instance-type\n--shard-count\n{shared_args}\n\n\
-                 For flex mode, specify all of:\n--capacity-gib\n{shared_args}"
+                "In a cluster-mode pool, specify all of:\n--instance-type\n--shard-count\n{shared_args}\n\n\
+                 In a flex-mode pool, specify all of:\n--capacity-gib\n{shared_args}"
             );
             return Err(CliError::new(format!(
                 "{}\n\n{help_text}",
@@ -240,8 +262,7 @@ pub fn determine_provisioning_update(
         has_ambiguous_field,
         mode.clone(),
     ) {
-        (true, false, _, None | Some(CapacityPoolProvisioningMode::Cluster))
-        | (_, false, true, Some(CapacityPoolProvisioningMode::Cluster)) => {
+        (true, false, _, None) | (_, false, _, Some(CapacityPoolProvisioningMode::Cluster)) => {
             let replicas_per_shard = replicas_per_shard.map(pinned).transpose()?;
             CapacityPoolProvisioningUpdate::Cluster {
                 instance_type,
@@ -250,8 +271,7 @@ pub fn determine_provisioning_update(
                 zones,
             }
         }
-        (false, true, _, None | Some(CapacityPoolProvisioningMode::Flex))
-        | (false, _, true, Some(CapacityPoolProvisioningMode::Flex)) => {
+        (false, true, _, None) | (false, _, _, Some(CapacityPoolProvisioningMode::Flex)) => {
             CapacityPoolProvisioningUpdate::Flex {
                 capacity: capacity_gib.map(CapacityBounds::from),
                 replication: replicas_per_shard.map(ReplicationBounds::from),
@@ -259,24 +279,21 @@ pub fn determine_provisioning_update(
             }
         }
         _ => {
-            let shared_args = "--replicas-per-shard\n--zones";
-            let help_text = format!(
-                "For cluster mode, specify one or more of:\n--instance-type\n--shard-count\n\n\
-                 For flex mode, specify one or more of:\n--capacity-gib\n\n\
-                 With a mode specified, you can also specify one or more of:\n{shared_args}"
-            );
+            let help_text =
+                "In a cluster-mode pool, update one or more of:\n--instance-type\n--shard-count\n\n\
+                 In a flex-mode pool, update one or more of:\n--capacity-gib\n\n\
+                 For any other updates, you must specify one of:\n--mode flex\n--mode cluster";
             return Err(CliError::new(format!(
                 "{}\n\n{help_text}",
                 match (has_cluster_field, has_flex_field, has_ambiguous_field, mode,) {
-                    (false, false, true, None) => "Missing --mode.",
-                    (false, false, false, _) => "Missing field(s) to update.",
+                    (false, false, _, None) => "Missing --mode.",
                     (true, true, _, _)
                     | (true, _, _, Some(CapacityPoolProvisioningMode::Flex))
                     | (_, true, _, Some(CapacityPoolProvisioningMode::Cluster)) =>
                         "Conflicting arguments.",
                     (true, false, _, None | Some(CapacityPoolProvisioningMode::Cluster))
                     | (false, true, _, None | Some(CapacityPoolProvisioningMode::Flex))
-                    | (false, false, true, Some(_)) => {
+                    | (false, false, _, Some(_)) => {
                         // This should never happen; valid combination that should have been identified earlier.
                         "Sorry, something went wrong!"
                     }
@@ -285,6 +302,26 @@ pub fn determine_provisioning_update(
         }
     };
     Ok(update)
+}
+
+pub fn determine_metrics_config(
+    metrics_iam_role: Option<String>,
+    disable_metrics: bool,
+    remove_metrics_config: bool,
+) -> Result<Option<CustomerMetricsConfig>, CliError> {
+    let metrics_config = match (metrics_iam_role, remove_metrics_config, disable_metrics) {
+        (None, true, false) => Some(CustomerMetricsConfig::Inherit),
+        (None, false, true) => Some(CustomerMetricsConfig::Disabled),
+        (Some(customer_iam_role), false, false) => {
+            Some(CustomerMetricsConfig::CloudWatch { customer_iam_role })
+        }
+        (None, false, false) => None,
+        (Some(_), true, _) | (Some(_), _, true) | (_, true, true) => {
+            // This should never happen; clap requires exactly 1 metrics config field.
+            return Err(CliError::new("Please provide exactly 1 field to update."));
+        }
+    };
+    Ok(metrics_config)
 }
 
 fn build_request_url(endpoint: String, pool_name: Option<String>) -> String {
@@ -700,18 +737,49 @@ mod tests {
 
     #[test]
     fn test_determine_provisioning_update_with_no_fields() {
-        for mode in [
-            CapacityPoolProvisioningMode::Cluster,
-            CapacityPoolProvisioningMode::Flex,
-        ] {
-            let case = format!("{mode:?} mode");
-            let err = determine_provisioning_update(Some(mode), None, None, None, None, vec![])
-                .expect_err(&format!(
-                    "{case}: an update with no fields should be rejected"
-                ));
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Cluster),
+            None,
+            None,
+            None,
+            None,
+            vec![],
+        )
+        .expect("a cluster-mode update with no fields should be valid");
+        let CapacityPoolProvisioningUpdate::Cluster {
+            instance_type,
+            shard_count,
+            replicas_per_shard,
+            zones,
+        } = update
+        else {
+            panic!("expected a cluster-mode update, got {update:?}");
+        };
+        assert!(instance_type.is_none());
+        assert!(shard_count.is_none());
+        assert!(replicas_per_shard.is_none());
+        assert!(zones.is_empty());
 
-            assert_reason_for(&case, &err, "Missing field");
-        }
+        let update = determine_provisioning_update(
+            Some(CapacityPoolProvisioningMode::Flex),
+            None,
+            None,
+            None,
+            None,
+            vec![],
+        )
+        .expect("a flex-mode update with no fields should be valid");
+        let CapacityPoolProvisioningUpdate::Flex {
+            capacity,
+            replication,
+            zones,
+        } = update
+        else {
+            panic!("expected a flex-mode update, got {update:?}");
+        };
+        assert!(capacity.is_none());
+        assert!(replication.is_none());
+        assert!(zones.is_empty());
     }
 
     #[test]
@@ -887,7 +955,7 @@ mod tests {
         let err = determine_provisioning_update(None, None, None, None, None, vec![])
             .expect_err("an update with no fields and no mode should be rejected");
 
-        assert_reason(&err, "Missing field");
+        assert_reason(&err, "Missing --mode");
     }
 
     #[test]
@@ -1193,7 +1261,7 @@ mod tests {
 
         assert_eq!("hello world", pool.name);
         assert_eq!("creating", pool.status);
-        assert_eq!("inherit", pool.metrics_config);
+        assert_eq!(CustomerMetricsConfig::Inherit, pool.metrics_config);
 
         let CapacityPoolProvisioning::Flex(provisioning) = &pool.provisioning else {
             panic!("expected flex provisioning, got {:?}", pool.provisioning);
@@ -1243,7 +1311,11 @@ mod tests {
                         "zones": ["use1-az3", "use1-az4", "use1-az5"]
                     }
                 },
-                "metrics_config": "cloudwatch",
+                "metrics_config": {
+                    "cloud_watch": {
+                        "customer_iam_role": "arn:aws:iam::123456789012:my_momento_metrics"
+                    }
+                },
                 "diagnostics": [{"stuck": {"state": "resolved"}}],
                 "abc": {"X": "x", "Y": "y", "Z": "z"},
                 "hello": "world",
@@ -1253,7 +1325,11 @@ mod tests {
 
         assert_eq!("hello world", pool.name);
         assert_eq!("creating", pool.status);
-        assert_eq!("cloudwatch", pool.metrics_config);
+        assert!(matches!(
+            pool.metrics_config,
+            CustomerMetricsConfig::CloudWatch { customer_iam_role }
+            if customer_iam_role == "arn:aws:iam::123456789012:my_momento_metrics"
+        ));
 
         let CapacityPoolProvisioning::Cluster {
             instance_type,

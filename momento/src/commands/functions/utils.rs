@@ -57,7 +57,7 @@ pub fn determine_current_function_version(
 /// Resolves the mutually-exclusive metrics flags into a change to apply to the function's
 /// metrics configuration, or `None` when no metrics flag was provided (leave it unchanged).
 /// The flags are mutually exclusive at the CLI layer, so at most one is set here.
-pub fn determine_metrics_config_change(
+pub fn determine_function_metrics_config_change(
     metrics_iam_role: Option<String>,
     disable_metrics: bool,
     remove_metrics_config: bool,

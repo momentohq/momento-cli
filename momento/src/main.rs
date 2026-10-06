@@ -16,11 +16,13 @@ use utils::{
 
 use crate::{
     commands::api_key::utils::determine_expiry,
-    commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
+    commands::capacity_pool::utils::{
+        determine_metrics_config, determine_provisioning, determine_provisioning_update,
+    },
     commands::custom_role::utils::{determine_role, determine_role_selector},
     commands::functions::utils::{
-        determine_current_function_version, determine_metrics_config_change, determine_wasm_source,
-        InvocationOptions,
+        determine_current_function_version, determine_function_metrics_config_change,
+        determine_wasm_source, InvocationOptions,
     },
     utils::console::console_info,
 };
@@ -393,7 +395,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             id_uploaded_wasm,
                             version_uploaded_wasm,
                         )?;
-                        let metrics_change = determine_metrics_config_change(
+                        let metrics_change = determine_function_metrics_config_change(
                             metrics_iam_role,
                             disable_metrics,
                             remove_metrics_config,
@@ -422,7 +424,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         let cache_name = cache_name.unwrap_or(config.cache);
                         let new_version =
                             determine_current_function_version(pin_version, use_latest_version);
-                        let metrics_change = determine_metrics_config_change(
+                        let metrics_change = determine_function_metrics_config_change(
                             metrics_iam_role,
                             disable_metrics,
                             remove_metrics_config,
@@ -509,6 +511,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         replicas_per_shard,
                         capacity_gib,
                         zones,
+                        metrics_iam_role,
+                        disable_metrics,
+                        remove_metrics_config,
                     } => {
                         let provisioning = determine_provisioning(
                             instance_type,
@@ -517,11 +522,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             capacity_gib,
                             zones,
                         )?;
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            disable_metrics,
+                            remove_metrics_config,
+                        )?;
                         commands::capacity_pool::pool_cli::create_pool(
                             api_endpoint,
                             auth_token,
                             name,
                             provisioning,
+                            metrics_config,
                         )
                         .await?
                     }
@@ -549,6 +560,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         replicas_per_shard,
                         capacity_gib,
                         zones,
+                        metrics_iam_role,
+                        disable_metrics,
+                        remove_metrics_config,
                     } => {
                         let provisioning_update = determine_provisioning_update(
                             mode,
@@ -558,11 +572,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             capacity_gib,
                             zones,
                         )?;
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            disable_metrics,
+                            remove_metrics_config,
+                        )?;
                         commands::capacity_pool::pool_cli::update_pool(
                             api_endpoint,
                             auth_token,
                             name,
                             provisioning_update,
+                            metrics_config,
                         )
                         .await?
                     }
