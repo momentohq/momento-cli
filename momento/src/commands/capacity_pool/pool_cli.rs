@@ -67,6 +67,21 @@ pub async fn describe_pool(
     Ok(())
 }
 
+/// The pool's current metrics config, for filling in what an `update` didn't specify.
+pub async fn fetch_pool_metrics_config(
+    endpoint: String,
+    auth_token: String,
+    name: String,
+) -> Result<CustomerMetricsConfig, CliError> {
+    match call_pool_api(Method::GET, endpoint, auth_token, name.clone(), None).await? {
+        Parsed(pool) => Ok(pool.metrics_config),
+        Unparseable(response_text) => Err(CliError::new(format!(
+            "Couldn't read the current details of capacity pool {name}"
+        ))
+        .with_details(response_text)),
+    }
+}
+
 pub async fn update_pool(
     endpoint: String,
     auth_token: String,

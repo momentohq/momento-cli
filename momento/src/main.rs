@@ -565,6 +565,13 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
+                        let existing_metrics_config =
+                            commands::capacity_pool::pool_cli::fetch_pool_metrics_config(
+                                api_endpoint.clone(),
+                                auth_token.clone(),
+                                name.clone(),
+                            )
+                            .await?;
                         let provisioning_update = determine_provisioning_update(
                             mode,
                             instance_type,
@@ -578,7 +585,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             metrics_region,
                             disable_metrics,
                             remove_metrics_config,
-                        )?;
+                        )?
+                        .map(|config| config.with_default_region(existing_metrics_config.region()));
                         commands::capacity_pool::pool_cli::update_pool(
                             api_endpoint,
                             auth_token,
@@ -654,12 +662,20 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
+                        let existing_metrics_config =
+                            commands::database::database_cli::fetch_database_metrics_config(
+                                api_endpoint.clone(),
+                                auth_token.clone(),
+                                name.clone(),
+                            )
+                            .await?;
                         let metrics_config = determine_metrics_config(
                             metrics_iam_role,
                             metrics_region,
                             disable_metrics,
                             remove_metrics_config,
-                        )?;
+                        )?
+                        .map(|config| config.with_default_region(existing_metrics_config.region()));
                         commands::database::database_cli::update_database(
                             api_endpoint,
                             auth_token,

@@ -591,7 +591,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long = "metrics-region",
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Deliver this pool's metrics to your own CloudWatch account in this AWS region [default: the region this pool runs in]",
+            help = "Deliver this pool's metrics to your own CloudWatch account in this AWS region; omit to leave unchanged",
             value_name = "REGION",
             requires = "metrics_iam_role",
             conflicts_with_all = ["disable_metrics", "remove_metrics_config"]
@@ -711,7 +711,7 @@ pub enum DatabaseCommand {
         #[arg(
             long = "metrics-region",
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Deliver this database's metrics to your own CloudWatch account in this AWS region [default: the region this database runs in]",
+            help = "Deliver this database's metrics to your own CloudWatch account in this AWS region; omit to leave unchanged",
             value_name = "REGION",
             requires = "metrics_iam_role",
             conflicts_with_all = ["disable_metrics", "remove_metrics_config"]

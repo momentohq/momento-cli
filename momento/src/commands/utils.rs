@@ -20,6 +20,16 @@ pub enum CustomerMetricsConfig {
     Inherit,
 }
 
+impl CustomerMetricsConfig {
+    pub fn region(self) -> Option<String> {
+        if let CustomerMetricsConfig::CloudWatch { region, .. } = self {
+            region
+        } else {
+            None
+        }
+    }
+}
+
 pub fn determine_metrics_config(
     metrics_iam_role: Option<String>,
     metrics_region: Option<String>,
@@ -42,6 +52,25 @@ pub fn determine_metrics_config(
         }
     };
     Ok(metrics_config)
+}
+
+impl CustomerMetricsConfig {
+    /// A CloudWatch config update without a region keeps the existing config's region.
+    pub fn with_default_region(self, default: Option<String>) -> Self {
+        match (self, default) {
+            (
+                CustomerMetricsConfig::CloudWatch {
+                    customer_iam_role,
+                    region: None,
+                },
+                Some(default_region),
+            ) => CustomerMetricsConfig::CloudWatch {
+                customer_iam_role,
+                region: Some(default_region),
+            },
+            (config, _) => config,
+        }
+    }
 }
 
 impl fmt::Display for CustomerMetricsConfig {
@@ -217,6 +246,61 @@ mod tests {
                 region: Some("us-east-1".to_string()),
             }),
             config
+        );
+    }
+
+    #[test]
+    fn test_metrics_config_region() {
+        assert_eq!(
+            Some("us-east-1".to_string()),
+            CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: ARN.to_string(),
+                region: Some("us-east-1".to_string()),
+            }
+            .region()
+        );
+
+        assert!(CustomerMetricsConfig::CloudWatch {
+            customer_iam_role: ARN.to_string(),
+            region: None,
+        }
+        .region()
+        .is_none());
+
+        assert!(CustomerMetricsConfig::Disabled.region().is_none());
+        assert!(CustomerMetricsConfig::Inherit.region().is_none());
+    }
+
+    #[test]
+    fn test_metrics_config_with_default_region() {
+        let without_region = || CustomerMetricsConfig::CloudWatch {
+            customer_iam_role: ARN.to_string(),
+            region: None,
+        };
+        let with_region = |region: &str| CustomerMetricsConfig::CloudWatch {
+            customer_iam_role: ARN.to_string(),
+            region: Some(region.to_string()),
+        };
+
+        assert_eq!(
+            with_region("us-east-1"),
+            without_region().with_default_region(Some("us-east-1".to_string())),
+            "should fall back to the default region"
+        );
+        assert_eq!(
+            with_region("us-west-2"),
+            with_region("us-west-2").with_default_region(Some("us-east-1".to_string())),
+            "should override the default region"
+        );
+        assert_eq!(
+            without_region(),
+            without_region().with_default_region(None),
+            "should have no region if none specified and no default"
+        );
+        assert_eq!(
+            CustomerMetricsConfig::Disabled,
+            CustomerMetricsConfig::Disabled.with_default_region(Some("us-east-1".to_string())),
+            "should disable metrics and ignore default region"
         );
     }
 

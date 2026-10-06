@@ -68,6 +68,21 @@ pub async fn describe_database(
     Ok(())
 }
 
+/// The database's current metrics config, for filling in what an `update` didn't specify.
+pub async fn fetch_database_metrics_config(
+    api_endpoint: String,
+    auth_token: String,
+    name: String,
+) -> Result<CustomerMetricsConfig, CliError> {
+    match call_database_api(Method::GET, api_endpoint, auth_token, name.clone(), None).await? {
+        Parsed(database) => Ok(database.metrics_config),
+        Unparseable(response_text) => Err(CliError::new(format!(
+            "Couldn't read the current details of database {name}"
+        ))
+        .with_details(response_text)),
+    }
+}
+
 pub async fn update_database(
     api_endpoint: String,
     auth_token: String,
