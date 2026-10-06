@@ -29,8 +29,10 @@ pub fn determine_metrics_config(
         }
         (None, false, false) => None,
         (Some(_), true, _) | (Some(_), _, true) | (_, true, true) => {
-            // This should never happen; clap requires exactly 1 metrics config field.
-            return Err(CliError::new("Please provide exactly 1 field to update."));
+            // This should never happen; clap requires at most 1 metrics config field.
+            return Err(CliError::new(
+                "Please provide at most 1 metrics config field.",
+            ));
         }
     };
     Ok(metrics_config)
