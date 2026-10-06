@@ -1,5 +1,6 @@
 use crate::commands::utils::{
-    call_momento_http_api, call_momento_http_api_raw, MomentoHttpData, MomentoHttpResponse,
+    call_momento_http_api, call_momento_http_api_raw, CustomerMetricsConfig, MomentoHttpData,
+    MomentoHttpResponse,
 };
 use crate::error::CliError;
 use momento_cli_opts::{Bounds, CapacityPoolProvisioningMode};
@@ -79,14 +80,6 @@ pub enum CapacityPoolProvisioningUpdate {
         #[serde(skip_serializing_if = "Vec::is_empty")]
         zones: Vec<String>,
     },
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum CustomerMetricsConfig {
-    Disabled,
-    CloudWatch { customer_iam_role: String },
-    Inherit,
 }
 
 #[derive(Debug, Serialize)]
@@ -302,26 +295,6 @@ pub fn determine_provisioning_update(
         }
     };
     Ok(update)
-}
-
-pub fn determine_metrics_config(
-    metrics_iam_role: Option<String>,
-    disable_metrics: bool,
-    remove_metrics_config: bool,
-) -> Result<Option<CustomerMetricsConfig>, CliError> {
-    let metrics_config = match (metrics_iam_role, remove_metrics_config, disable_metrics) {
-        (None, true, false) => Some(CustomerMetricsConfig::Inherit),
-        (None, false, true) => Some(CustomerMetricsConfig::Disabled),
-        (Some(customer_iam_role), false, false) => {
-            Some(CustomerMetricsConfig::CloudWatch { customer_iam_role })
-        }
-        (None, false, false) => None,
-        (Some(_), true, _) | (Some(_), _, true) | (_, true, true) => {
-            // This should never happen; clap requires exactly 1 metrics config field.
-            return Err(CliError::new("Please provide exactly 1 field to update."));
-        }
-    };
-    Ok(metrics_config)
 }
 
 fn build_request_url(endpoint: String, pool_name: Option<String>) -> String {

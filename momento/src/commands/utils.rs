@@ -4,8 +4,55 @@ use http::Method;
 use log::{info, warn};
 use reqwest;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::fmt::Debug;
+use std::{fmt, fmt::Debug};
 
+// Structs & Args:
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomerMetricsConfig {
+    Disabled,
+    CloudWatch { customer_iam_role: String },
+    Inherit,
+}
+
+pub fn determine_metrics_config(
+    metrics_iam_role: Option<String>,
+    disable_metrics: bool,
+    remove_metrics_config: bool,
+) -> Result<Option<CustomerMetricsConfig>, CliError> {
+    let metrics_config = match (metrics_iam_role, remove_metrics_config, disable_metrics) {
+        (None, true, false) => Some(CustomerMetricsConfig::Inherit),
+        (None, false, true) => Some(CustomerMetricsConfig::Disabled),
+        (Some(customer_iam_role), false, false) => {
+            Some(CustomerMetricsConfig::CloudWatch { customer_iam_role })
+        }
+        (None, false, false) => None,
+        (Some(_), true, _) | (Some(_), _, true) | (_, true, true) => {
+            // This should never happen; clap requires exactly 1 metrics config field.
+            return Err(CliError::new("Please provide exactly 1 field to update."));
+        }
+    };
+    Ok(metrics_config)
+}
+
+impl fmt::Display for CustomerMetricsConfig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                CustomerMetricsConfig::Inherit => "none (follows account-wide default)".to_string(),
+                CustomerMetricsConfig::Disabled => "disabled".to_string(),
+                CustomerMetricsConfig::CloudWatch { customer_iam_role } => {
+                    format!("enabled (IAM role: {customer_iam_role})")
+                }
+            }
+        )
+    }
+}
+
+// API Calls:
 pub enum MomentoHttpData {
     Json(serde_json::Value),
     String(String),

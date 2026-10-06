@@ -1,6 +1,6 @@
 use super::utils::{
     CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics, CapacityPoolProvisioning,
-    CapacityPoolResponse, CustomerMetricsConfig, FlexAllocation, FlexProvisioning,
+    CapacityPoolResponse, FlexAllocation, FlexProvisioning,
 };
 
 use chrono::prelude::DateTime;
@@ -42,22 +42,6 @@ fn format_flex_provisioning(
          - Availability Zones: {}",
         provisioning.zones.join(", ")
     )
-}
-
-impl fmt::Display for CustomerMetricsConfig {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                CustomerMetricsConfig::Inherit => "none (follows account-wide default)".to_string(),
-                CustomerMetricsConfig::Disabled => "disabled".to_string(),
-                CustomerMetricsConfig::CloudWatch { customer_iam_role } => {
-                    format!("enabled (IAM role: {customer_iam_role})")
-                }
-            }
-        )
-    }
 }
 
 /// Fields worth reading first; everything else follows in the order the API sent it.
@@ -208,6 +192,7 @@ mod tests {
     use super::super::utils::test_utils::field_map;
     use super::super::utils::{CapacityBounds, ReplicationBounds};
     use super::*;
+    use crate::commands::utils::CustomerMetricsConfig;
 
     use serde_json::json;
 

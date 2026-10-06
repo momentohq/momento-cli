@@ -16,14 +16,13 @@ use utils::{
 
 use crate::{
     commands::api_key::utils::determine_expiry,
-    commands::capacity_pool::utils::{
-        determine_metrics_config, determine_provisioning, determine_provisioning_update,
-    },
+    commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
     commands::custom_role::utils::{determine_role, determine_role_selector},
     commands::functions::utils::{
         determine_current_function_version, determine_function_metrics_config_change,
         determine_wasm_source, InvocationOptions,
     },
+    commands::utils::determine_metrics_config,
     utils::console::console_info,
 };
 
@@ -613,13 +612,25 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::DatabaseCommand::Create { pool_name, name } => {
+                    momento_cli_opts::DatabaseCommand::Create {
+                        pool_name,
+                        name,
+                        metrics_iam_role,
+                        disable_metrics,
+                        remove_metrics_config,
+                    } => {
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            disable_metrics,
+                            remove_metrics_config,
+                        )?;
                         commands::database::database_cli::create_database(
                             api_endpoint,
                             valkey_hostname,
                             auth_token,
                             pool_name,
                             name,
+                            metrics_config,
                         )
                         .await?
                     }

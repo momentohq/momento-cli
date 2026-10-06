@@ -1,5 +1,6 @@
 use crate::commands::utils::{
-    call_momento_http_api, call_momento_http_api_raw, MomentoHttpData, MomentoHttpResponse,
+    call_momento_http_api, call_momento_http_api_raw, CustomerMetricsConfig, MomentoHttpData,
+    MomentoHttpResponse,
 };
 use crate::error::CliError;
 use crate::utils::console::console_data;
@@ -7,10 +8,18 @@ use crate::utils::console::console_data;
 use http::Method;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize)]
+pub struct Database {
+    pub pool_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metrics_config: Option<CustomerMetricsConfig>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DatabaseResponse {
     pub name: String,
     pub pool_name: String,
+    pub metrics_config: CustomerMetricsConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

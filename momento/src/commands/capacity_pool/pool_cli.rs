@@ -1,9 +1,9 @@
 use super::utils::{
     call_pool_api, call_pool_delete_api, call_pool_list_api, CapacityPool,
     CapacityPoolProvisioning, CapacityPoolProvisioningUpdate, CapacityPoolUpdate,
-    CustomerMetricsConfig,
 };
 use crate::commands::capacity_pool::utils::ListCapacityPoolsResponse;
+use crate::commands::utils::CustomerMetricsConfig;
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
 

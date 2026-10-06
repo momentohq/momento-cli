@@ -1,6 +1,9 @@
-use super::utils::{call_database_api, call_database_delete_api, call_database_list_api};
+use super::utils::{call_database_api, call_database_delete_api, call_database_list_api, Database};
 use crate::commands::database::utils::{print_valkey_cli_sample, ListDatabasesResponse};
-use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::commands::utils::{
+    CustomerMetricsConfig,
+    MomentoHttpResponse::{Parsed, Unparseable},
+};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
@@ -12,24 +15,23 @@ pub async fn create_database(
     auth_token: String,
     pool_name: String,
     database_name: String,
+    metrics_config: Option<CustomerMetricsConfig>,
 ) -> Result<(), CliError> {
+    let data = serde_json::to_value(Database {
+        pool_name,
+        metrics_config,
+    })?;
     match call_database_api(
         Method::POST,
         api_endpoint,
         auth_token,
         database_name.clone(),
-        Some(serde_json::json!({
-            "pool_name": pool_name
-        })),
+        Some(data),
     )
     .await?
     {
         Parsed(database) => {
-            console_data!(
-                "Creating database!\n\nName: {}\nCapacity Pool: {}",
-                database.name,
-                database.pool_name,
-            );
+            console_data!("Creating database!\n\n{database}");
         }
         Unparseable(response_text) => {
             console_data!("Creating database!");
@@ -51,11 +53,7 @@ pub async fn describe_database(
     let database_name =
         match call_database_api(Method::GET, api_endpoint, auth_token, name, None).await? {
             Parsed(database) => {
-                console_data!(
-                    "Your database:\n\nName: {}\nCapacity Pool: {}",
-                    database.name,
-                    database.pool_name
-                );
+                console_data!("Your database:\n\n{database}");
                 database.name
             }
             Unparseable(response_text) => {
@@ -97,11 +95,7 @@ pub async fn list_databases(
             } else {
                 console_data!("Databases:");
                 databases_list.iter().for_each(|database| {
-                    console_data!(
-                        "\nName: {}\nCapacity Pool: {}",
-                        database.name,
-                        database.pool_name
-                    );
+                    console_data!("\n{database}");
                 });
                 if databases_list.len() == 1 {
                     Some(databases_list[0].name.clone())
