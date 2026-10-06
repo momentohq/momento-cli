@@ -79,7 +79,7 @@ pub async fn update_database(
         Method::PATCH,
         api_endpoint,
         auth_token,
-        database_name.clone(),
+        database_name,
         Some(data),
     )
     .await?
