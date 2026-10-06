@@ -598,7 +598,7 @@ pub enum CapacityPoolCommand {
         metrics_region: Option<String>,
         #[arg(
             long = "disable-metrics",
-            help = "Disable delivery of this pool's's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
+            help = "Disable delivery of this pool's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
             default_value_t = false,
             group = "pool-metrics"
         )]
@@ -649,7 +649,7 @@ pub enum DatabaseCommand {
         #[arg(
             long = "metrics-iam-role",
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this database",
+            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. Overrides your capacity pool's default for just this database",
             value_name = "IAM_ROLE",
             group = "database-metrics"
         )]
@@ -665,7 +665,7 @@ pub enum DatabaseCommand {
         metrics_region: Option<String>,
         #[arg(
             long = "disable-metrics",
-            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your account-wide default for just this database",
+            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your capacity pool's default for just this database",
             default_value_t = false,
             group = "database-metrics"
         )]
@@ -702,7 +702,7 @@ pub enum DatabaseCommand {
         #[arg(
             long = "metrics-iam-role",
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this database",
+            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. Overrides your capacity pool's default for just this database",
             value_name = "IAM_ROLE",
             group = "database-metrics"
         )]
@@ -718,14 +718,14 @@ pub enum DatabaseCommand {
         metrics_region: Option<String>,
         #[arg(
             long = "disable-metrics",
-            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your account-wide default for just this database",
+            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your capacity pool's default for just this database",
             default_value_t = false,
             group = "database-metrics"
         )]
         disable_metrics: bool,
         #[arg(
             long = "remove-metrics-config",
-            help = "Remove this database's metrics configuration so it follows your account-wide default",
+            help = "Remove this database's metrics configuration so it follows your capacity pool's default",
             default_value_t = false,
             group = "database-metrics"
         )]

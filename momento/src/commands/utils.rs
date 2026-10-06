@@ -79,7 +79,7 @@ impl fmt::Display for CustomerMetricsConfig {
             f,
             "{}",
             match self {
-                CustomerMetricsConfig::Inherit => "none (follows account-wide default)".to_string(),
+                CustomerMetricsConfig::Inherit => "inherits configuration".to_string(),
                 CustomerMetricsConfig::Disabled => "disabled".to_string(),
                 CustomerMetricsConfig::CloudWatch {
                     customer_iam_role,
