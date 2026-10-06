@@ -1,4 +1,4 @@
-use super::decode::{DecodedApiKey, EmbeddedPermissions};
+use super::decode::{DecodedApiKey, EmbeddedPermissions, TokenKind};
 use super::utils::{ApiKeyInfo, ApiKeyResponse};
 
 use chrono::prelude::DateTime;
@@ -45,6 +45,22 @@ impl fmt::Display for ApiKeyResponse {
             write!(f, "\nPrevious Key ID: {previous_key_id}")?;
         }
         Ok(())
+    }
+}
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match self {
+            TokenKind::DisposableV1 => "Disposable token (v1)",
+            TokenKind::DisposableV2 => "Disposable token (v2)",
+            TokenKind::GlobalApiKey => "Global API key",
+            TokenKind::GlobalApiKeyRefreshToken => "Global API key refresh token",
+            TokenKind::ApiTokenV1 => "API token (v1)",
+            TokenKind::ApiTokenV1RefreshToken => "API token (v1) refresh token",
+            TokenKind::Legacy => "Legacy token",
+            TokenKind::CustomerSigned => "Customer-signed token",
+            TokenKind::Unknown => "(unknown)",
+        })
     }
 }
 
