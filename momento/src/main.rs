@@ -554,7 +554,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                     momento_cli_opts::CapacityPoolCommand::Update {
                         name,
-                        mode,
                         instance_type,
                         shard_count,
                         replicas_per_shard,
@@ -565,15 +564,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
-                        let existing_metrics_config =
-                            commands::capacity_pool::pool_cli::fetch_pool_metrics_config(
-                                api_endpoint.clone(),
-                                auth_token.clone(),
-                                name.clone(),
-                            )
-                            .await?;
+                        let existing_pool = commands::capacity_pool::pool_cli::fetch_pool(
+                            api_endpoint.clone(),
+                            auth_token.clone(),
+                            name.clone(),
+                        )
+                        .await?;
                         let provisioning_update = determine_provisioning_update(
-                            mode,
+                            existing_pool.provisioning.mode(),
                             instance_type,
                             shard_count,
                             replicas_per_shard,
@@ -586,7 +584,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             disable_metrics,
                             remove_metrics_config,
                         )?
-                        .map(|config| config.with_default_region(existing_metrics_config.region()));
+                        .map(|config| {
+                            config.with_default_region(existing_pool.metrics_config.region())
+                        });
                         commands::capacity_pool::pool_cli::update_pool(
                             api_endpoint,
                             auth_token,

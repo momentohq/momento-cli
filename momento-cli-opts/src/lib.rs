@@ -8,7 +8,7 @@ mod utils;
 use chrono::NaiveDate;
 use std::time::Duration;
 use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
-pub use utils::{Bounds, CapacityPoolProvisioningMode, ROLE_PERMISSIONS_SAMPLE};
+pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
@@ -531,12 +531,6 @@ pub enum CapacityPoolCommand {
             value_name = "POOL"
         )]
         name: String,
-        #[arg(
-            long,
-            value_enum,
-            help = "The pool's provisioning mode (cluster or flex)"
-        )]
-        mode: Option<CapacityPoolProvisioningMode>,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),

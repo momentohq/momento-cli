@@ -1,6 +1,7 @@
 use super::utils::{
     call_pool_api, call_pool_delete_api, call_pool_list_api, CapacityPool,
-    CapacityPoolProvisioning, CapacityPoolProvisioningUpdate, CapacityPoolUpdate,
+    CapacityPoolProvisioning, CapacityPoolProvisioningUpdate, CapacityPoolResponse,
+    CapacityPoolUpdate,
 };
 use crate::commands::capacity_pool::utils::ListCapacityPoolsResponse;
 use crate::commands::utils::CustomerMetricsConfig;
@@ -67,14 +68,14 @@ pub async fn describe_pool(
     Ok(())
 }
 
-/// The pool's current metrics config, for filling in what an `update` didn't specify.
-pub async fn fetch_pool_metrics_config(
+/// The pool's current details, for filling in what an update leaves unspecified.
+pub async fn fetch_pool(
     endpoint: String,
     auth_token: String,
     name: String,
-) -> Result<CustomerMetricsConfig, CliError> {
+) -> Result<CapacityPoolResponse, CliError> {
     match call_pool_api(Method::GET, endpoint, auth_token, name.clone(), None).await? {
-        Parsed(pool) => Ok(pool.metrics_config),
+        Parsed(pool) => Ok(pool),
         Unparseable(response_text) => Err(CliError::new(format!(
             "Couldn't read the current details of capacity pool {name}"
         ))
