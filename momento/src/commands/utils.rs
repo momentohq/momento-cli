@@ -23,26 +23,26 @@ pub enum CustomerMetricsConfig {
 fn missing_metrics_iam_role_arg() -> CliError {
     CliError::new(
         "Missing --metrics-iam-role.\n\nTo enable metrics configuration, you must specify:\n\
-         --metrics-iam-role (and optionally, --metrics-region)",
+         --metrics-iam-role (and optionally, --metrics-aws-region)",
     )
 }
 
 pub fn determine_metrics_config(
     metrics_iam_role: Option<String>,
-    metrics_region: Option<String>,
+    metrics_aws_region: Option<String>,
     disable_metrics: bool,
 ) -> Result<Option<CustomerMetricsConfig>, CliError> {
-    let metrics_config = match (&metrics_iam_role, &metrics_region, disable_metrics) {
+    let metrics_config = match (&metrics_iam_role, &metrics_aws_region, disable_metrics) {
         (None, None, false) => None, // Fall back to default
         (Some(_), _, false) => Some(CustomerMetricsConfig::CloudWatch {
             customer_iam_role: metrics_iam_role,
-            region: metrics_region,
+            region: metrics_aws_region,
         }),
         (None, Some(_), false) => return Err(missing_metrics_iam_role_arg()),
         (None, None, true) => Some(CustomerMetricsConfig::Disabled),
         _ => return Err(CliError::new(
             "Conflicting argument(s). To configure your metrics, you must specify exactly one of:\
-             \n--disable-metrics\n--metrics-iam-role (and optionally, --metrics-region)",
+             \n--disable-metrics\n--metrics-iam-role (and optionally, --metrics-aws-region)",
         )),
     };
     Ok(metrics_config)
@@ -50,25 +50,29 @@ pub fn determine_metrics_config(
 
 pub fn determine_metrics_config_update(
     metrics_iam_role: Option<String>,
-    metrics_region: Option<String>,
-    remove_metrics_region: bool,
+    metrics_aws_region: Option<String>,
+    remove_metrics_aws_region: bool,
     disable_metrics: bool,
     remove_metrics_config: bool,
 ) -> Result<Option<CustomerMetricsConfig>, CliError> {
     let has_aws_field =
-        metrics_iam_role.is_some() || metrics_region.is_some() || remove_metrics_region;
+        metrics_iam_role.is_some() || metrics_aws_region.is_some() || remove_metrics_aws_region;
     let metrics_config =
         match (has_aws_field, disable_metrics, remove_metrics_config) {
             (false, false, false) => None, // May be updating other fields (e.g. provisioning) instead
             (true, false, false)
                 if matches!(
-                    (&metrics_iam_role, &metrics_region, remove_metrics_region),
+                    (
+                        &metrics_iam_role,
+                        &metrics_aws_region,
+                        remove_metrics_aws_region
+                    ),
                     (Some(_), _, false) | (_, Some(_), false) | (_, None, true)
                 ) =>
             {
                 Some(CustomerMetricsConfig::CloudWatch {
                     customer_iam_role: metrics_iam_role,
-                    region: metrics_region,
+                    region: metrics_aws_region,
                 })
             }
             (false, true, false) => Some(CustomerMetricsConfig::Disabled),
@@ -76,7 +80,7 @@ pub fn determine_metrics_config_update(
             _ => return Err(CliError::new(
                 "Conflicting argument(s). To update your metrics configuration, you must specify:\
                  \n--disable-metrics OR --remove-metrics-config OR some combination of:\
-                 \n  --metrics-iam-role and/or --metrics-region (or --remove-metrics-region)",
+                 \n  --metrics-iam-role and/or --metrics-aws-region (or --remove-metrics-aws-region)",
             )),
         };
     Ok(metrics_config)
@@ -85,9 +89,9 @@ pub fn determine_metrics_config_update(
 pub fn determine_metrics_config_update_with_defaults(
     inputs: Option<CustomerMetricsConfig>,
     defaults: CustomerMetricsConfig,
-    remove_metrics_region: bool,
+    remove_metrics_aws_region: bool,
 ) -> Result<Option<CustomerMetricsConfig>, CliError> {
-    match inputs.map(|config| config.with_defaults(defaults, remove_metrics_region)) {
+    match inputs.map(|config| config.with_defaults(defaults, remove_metrics_aws_region)) {
         Some(CustomerMetricsConfig::CloudWatch {
             customer_iam_role: None,
             ..
@@ -100,7 +104,7 @@ impl CustomerMetricsConfig {
     pub fn with_defaults(
         self,
         defaults: CustomerMetricsConfig,
-        remove_metrics_region: bool,
+        remove_metrics_aws_region: bool,
     ) -> CustomerMetricsConfig {
         if let CustomerMetricsConfig::CloudWatch {
             customer_iam_role: new_role,
@@ -109,7 +113,7 @@ impl CustomerMetricsConfig {
         {
             CustomerMetricsConfig::CloudWatch {
                 customer_iam_role: new_role.or(defaults.customer_iam_role()),
-                region: if remove_metrics_region {
+                region: if remove_metrics_aws_region {
                     None
                 } else {
                     new_region.or(defaults.region())

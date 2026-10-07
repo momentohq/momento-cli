@@ -488,14 +488,14 @@ pub enum CapacityPoolCommand {
         )]
         metrics_iam_role: Option<String>,
         #[arg(
-            long = "metrics-region",
+            long = "metrics-aws-region",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Deliver this pool's metrics to your own CloudWatch account in this AWS region [default: the region this pool runs in]",
             value_name = "REGION",
             requires = "metrics_iam_role",
             conflicts_with_all = ["disable_metrics"]
         )]
-        metrics_region: Option<String>,
+        metrics_aws_region: Option<String>,
         #[arg(
             long = "disable-metrics",
             help = "Disable delivery of this pool's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
@@ -588,20 +588,20 @@ pub enum CapacityPoolCommand {
         )]
         metrics_iam_role: Option<String>,
         #[arg(
-            long = "metrics-region",
+            long = "metrics-aws-region",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Deliver this pool's metrics to your own CloudWatch account in this AWS region; omit to leave unchanged",
             value_name = "REGION",
-            conflicts_with_all = ["remove_metrics_region"]
+            conflicts_with_all = ["remove_metrics_aws_region"]
         )]
-        metrics_region: Option<String>,
+        metrics_aws_region: Option<String>,
         #[arg(
-            long = "remove-metrics-region",
+            long = "remove-metrics-aws-region",
             help = "Remove this pool's metrics AWS region configuration so they deliver to the region this pool runs in; omit to leave unchanged",
             default_value_t = false,
-            conflicts_with_all = ["metrics_region"]
+            conflicts_with_all = ["metrics_aws_region"]
         )]
-        remove_metrics_region: bool,
+        remove_metrics_aws_region: bool,
         #[arg(
             long = "disable-metrics",
             help = "Disable delivery of this pool's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
@@ -659,14 +659,14 @@ pub enum DatabaseCommand {
         )]
         metrics_iam_role: Option<String>,
         #[arg(
-            long = "metrics-region",
+            long = "metrics-aws-region",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Deliver this database's metrics to your own CloudWatch account in this AWS region [default: the region this database runs in]",
             value_name = "REGION",
             requires = "metrics_iam_role",
             conflicts_with_all = ["disable_metrics"]
         )]
-        metrics_region: Option<String>,
+        metrics_aws_region: Option<String>,
         #[arg(
             long = "disable-metrics",
             help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your capacity pool's default for just this database",
@@ -706,20 +706,20 @@ pub enum DatabaseCommand {
         )]
         metrics_iam_role: Option<String>,
         #[arg(
-            long = "metrics-region",
+            long = "metrics-aws-region",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Deliver this database's metrics to your own CloudWatch account in this AWS region; omit to leave unchanged",
             value_name = "REGION",
-            conflicts_with_all = ["remove_metrics_region"]
+            conflicts_with_all = ["remove_metrics_aws_region"]
         )]
-        metrics_region: Option<String>,
+        metrics_aws_region: Option<String>,
         #[arg(
-            long = "remove-metrics-region",
+            long = "remove-metrics-aws-region",
             help = "Remove this database's metrics AWS region configuration so they deliver to the region this database runs in; omit to leave unchanged",
             default_value_t = false,
-            conflicts_with_all = ["metrics_region"]
+            conflicts_with_all = ["metrics_aws_region"]
         )]
-        remove_metrics_region: bool,
+        remove_metrics_aws_region: bool,
         #[arg(
             long = "disable-metrics",
             help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your capacity pool's default for just this database",
