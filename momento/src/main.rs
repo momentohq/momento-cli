@@ -563,6 +563,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         zones,
                         metrics_iam_role,
                         metrics_region,
+                        remove_metrics_region,
                         disable_metrics,
                         remove_metrics_config,
                     } => {
@@ -595,9 +596,13 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             capacity_gib,
                             zones,
                         )?;
-                        let metrics_config = metrics_config.map(|config| {
-                            config.with_default_region(existing_pool.metrics_config.region())
-                        });
+                        let metrics_config = if remove_metrics_region {
+                            metrics_config
+                        } else {
+                            metrics_config.map(|config| {
+                                config.with_default_region(existing_pool.metrics_config.region())
+                            })
+                        };
                         commands::capacity_pool::pool_cli::update_pool(
                             api_endpoint,
                             auth_token,
@@ -671,6 +676,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         name,
                         metrics_iam_role,
                         metrics_region,
+                        remove_metrics_region,
                         disable_metrics,
                         remove_metrics_config,
                     } => {
@@ -680,19 +686,22 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             disable_metrics,
                             remove_metrics_config,
                         )?;
-                        if let Some(CustomerMetricsConfig::CloudWatch { region: None, .. }) =
-                            metrics_config
-                        {
-                            let existing_metrics_config =
+                        if !remove_metrics_region {
+                            if let Some(CustomerMetricsConfig::CloudWatch {
+                                region: None, ..
+                            }) = metrics_config
+                            {
+                                let existing_metrics_config =
                                 commands::database::database_cli::fetch_database_metrics_config(
                                     api_endpoint.clone(),
                                     auth_token.clone(),
                                     name.clone(),
                                 )
                                 .await?;
-                            metrics_config = metrics_config.map(|config| {
-                                config.with_default_region(existing_metrics_config.region())
-                            });
+                                metrics_config = metrics_config.map(|config| {
+                                    config.with_default_region(existing_metrics_config.region())
+                                });
+                            }
                         }
                         commands::database::database_cli::update_database(
                             api_endpoint,
