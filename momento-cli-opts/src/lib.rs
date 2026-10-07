@@ -8,7 +8,7 @@ mod utils;
 use chrono::NaiveDate;
 use std::time::Duration;
 use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
-pub use utils::{Bounds, CapacityPoolProvisioningMode, ROLE_PERMISSIONS_SAMPLE};
+pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
@@ -423,6 +423,11 @@ pub enum FunctionCommand {
     ListWasms {},
 }
 
+// For help text over in `momento` validation:
+pub const CLUSTER_POOL_ARGS_TEXT: &str =
+    "--instance-type\n--shard-count\n--replicas-per-shard\n--zones";
+pub const FLEX_POOL_ARGS_TEXT: &str = "--capacity-gib\n--replicas-per-shard\n--zones";
+
 #[derive(Debug, Parser)]
 pub enum CapacityPoolCommand {
     #[command(about = "Create a Momento capacity pool")]
@@ -473,6 +478,31 @@ pub enum CapacityPoolCommand {
             value_name = "AVAILABILITY_ZONES"
         )]
         zones: Vec<String>,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this pool",
+            value_name = "IAM_ROLE",
+            group = "pool-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "metrics-aws-region",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account in this AWS region [default: the region this pool runs in]",
+            value_name = "REGION",
+            requires = "metrics_iam_role",
+            conflicts_with_all = ["disable_metrics"]
+        )]
+        metrics_aws_region: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this pool's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
+            default_value_t = false,
+            group = "pool-metrics"
+        )]
+        disable_metrics: bool,
     },
     #[command(about = "Get your capacity pool's lifecycle status")]
     GetStatus {
@@ -506,12 +536,6 @@ pub enum CapacityPoolCommand {
             value_name = "POOL"
         )]
         name: String,
-        #[arg(
-            long,
-            value_enum,
-            help = "The pool's provisioning mode (cluster or flex)"
-        )]
-        mode: Option<CapacityPoolProvisioningMode>,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
@@ -554,6 +578,42 @@ pub enum CapacityPoolCommand {
             value_name = "NEW_AVAILABILITY_ZONES",
         )]
         zones: Vec<String>,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account using this IAM role. \
+                    Overrides your account-wide default for just this pool. Omit to leave unchanged",
+            value_name = "IAM_ROLE"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "metrics-aws-region",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account in this AWS region; omit to leave unchanged",
+            value_name = "REGION",
+            conflicts_with_all = ["remove_metrics_aws_region"]
+        )]
+        metrics_aws_region: Option<String>,
+        #[arg(
+            long = "remove-metrics-aws-region",
+            help = "Remove this pool's metrics AWS region configuration so they deliver to the region this pool runs in; omit to leave unchanged",
+            default_value_t = false,
+            conflicts_with_all = ["metrics_aws_region"]
+        )]
+        remove_metrics_aws_region: bool,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this pool's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
+            default_value_t = false
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this pool's metrics configuration so it follows your account-wide default",
+            default_value_t = false
+        )]
+        remove_metrics_config: bool,
     },
     #[command(about = "Delete a Momento capacity pool")]
     Delete {
@@ -589,6 +649,31 @@ pub enum DatabaseCommand {
             value_name = "POOL"
         )]
         pool_name: String,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. Overrides your capacity pool's default for just this database",
+            value_name = "IAM_ROLE",
+            group = "database-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "metrics-aws-region",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account in this AWS region [default: the region this database runs in]",
+            value_name = "REGION",
+            requires = "metrics_iam_role",
+            conflicts_with_all = ["disable_metrics"]
+        )]
+        metrics_aws_region: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your capacity pool's default for just this database",
+            default_value_t = false,
+            group = "database-metrics"
+        )]
+        disable_metrics: bool,
     },
     #[command(about = "Get the details of your Momento database")]
     Describe {
@@ -600,6 +685,53 @@ pub enum DatabaseCommand {
             value_name = "DATABASE"
         )]
         name: String,
+    },
+    #[command(about = "Update a Momento database")]
+    Update {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to update",
+            value_name = "DATABASE"
+        )]
+        name: String,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. \
+                    Overrides your capacity pool's default for just this database. Omit to leave unchanged",
+            value_name = "IAM_ROLE"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "metrics-aws-region",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account in this AWS region; omit to leave unchanged",
+            value_name = "REGION",
+            conflicts_with_all = ["remove_metrics_aws_region"]
+        )]
+        metrics_aws_region: Option<String>,
+        #[arg(
+            long = "remove-metrics-aws-region",
+            help = "Remove this database's metrics AWS region configuration so they deliver to the region this database runs in; omit to leave unchanged",
+            default_value_t = false,
+            conflicts_with_all = ["metrics_aws_region"]
+        )]
+        remove_metrics_aws_region: bool,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your capacity pool's default for just this database",
+            default_value_t = false
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this database's metrics configuration so it follows your capacity pool's default",
+            default_value_t = false
+        )]
+        remove_metrics_config: bool,
     },
     #[command(about = "Delete a Momento database")]
     Delete {

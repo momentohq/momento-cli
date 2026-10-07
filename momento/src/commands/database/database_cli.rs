@@ -1,6 +1,9 @@
-use super::utils::{call_database_api, call_database_delete_api, call_database_list_api};
+use super::utils::{call_database_api, call_database_delete_api, call_database_list_api, Database};
 use crate::commands::database::utils::{print_valkey_cli_sample, ListDatabasesResponse};
-use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::commands::utils::{
+    CustomerMetricsConfig,
+    MomentoHttpResponse::{Parsed, Unparseable},
+};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
@@ -12,24 +15,23 @@ pub async fn create_database(
     auth_token: String,
     pool_name: String,
     database_name: String,
+    metrics_config: Option<CustomerMetricsConfig>,
 ) -> Result<(), CliError> {
+    let data = serde_json::to_value(Database {
+        pool_name,
+        metrics_config,
+    })?;
     match call_database_api(
         Method::POST,
         api_endpoint,
         auth_token,
         database_name.clone(),
-        Some(serde_json::json!({
-            "pool_name": pool_name
-        })),
+        Some(data),
     )
     .await?
     {
         Parsed(database) => {
-            console_data!(
-                "Creating database!\n\nName: {}\nCapacity Pool: {}",
-                database.name,
-                database.pool_name,
-            );
+            console_data!("Creating database!\n\n{database}");
         }
         Unparseable(response_text) => {
             console_data!("Creating database!");
@@ -51,11 +53,7 @@ pub async fn describe_database(
     let database_name =
         match call_database_api(Method::GET, api_endpoint, auth_token, name, None).await? {
             Parsed(database) => {
-                console_data!(
-                    "Your database:\n\nName: {}\nCapacity Pool: {}",
-                    database.name,
-                    database.pool_name
-                );
+                console_data!("Your database:\n\n{database}");
                 database.name
             }
             Unparseable(response_text) => {
@@ -67,6 +65,57 @@ pub async fn describe_database(
             }
         };
     print_valkey_cli_sample(valkey_hostname, &database_name);
+    Ok(())
+}
+
+/// The database's current metrics config, for filling in what an `update` didn't specify.
+pub async fn fetch_database_metrics_config(
+    api_endpoint: String,
+    auth_token: String,
+    name: String,
+) -> Result<CustomerMetricsConfig, CliError> {
+    match call_database_api(Method::GET, api_endpoint, auth_token, name.clone(), None).await? {
+        Parsed(database) => Ok(database.metrics_config),
+        Unparseable(response_text) => Err(CliError::new(format!(
+            "Couldn't read the current details of database {name}"
+        ))
+        .with_details(response_text)),
+    }
+}
+
+pub async fn update_database(
+    api_endpoint: String,
+    auth_token: String,
+    database_name: String,
+    metrics_config: Option<CustomerMetricsConfig>,
+) -> Result<(), CliError> {
+    if metrics_config.is_none() {
+        return Err(CliError::new(
+            "Missing argument(s). To update your database's metrics configuration, you must specify:\
+             \n--disable-metrics OR --remove-metrics-config OR some combination of:\
+             \n  --metrics-iam-role and/or --metrics-aws-region (or --remove-metrics-aws-region)",
+        ));
+    }
+    let data = serde_json::json!({"metrics_config": metrics_config});
+    match call_database_api(
+        Method::PATCH,
+        api_endpoint,
+        auth_token,
+        database_name,
+        Some(data),
+    )
+    .await?
+    {
+        Parsed(database) => {
+            console_data!("Updating database!\n\n{database}");
+        }
+        Unparseable(response_text) => {
+            console_data!("Updating database!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
+        }
+    };
     Ok(())
 }
 
@@ -97,11 +146,7 @@ pub async fn list_databases(
             } else {
                 console_data!("Databases:");
                 databases_list.iter().for_each(|database| {
-                    console_data!(
-                        "\nName: {}\nCapacity Pool: {}",
-                        database.name,
-                        database.pool_name
-                    );
+                    console_data!("\n{database}");
                 });
                 if databases_list.len() == 1 {
                     Some(databases_list[0].name.clone())

@@ -163,6 +163,14 @@ impl fmt::Display for CapacityPoolResponse {
                 ),
             }
         )?;
+        write!(
+            f,
+            "\n{}",
+            match self.metrics_config.to_string() {
+                text if text.contains("\n") => format!("Metrics Config:\n{}", text),
+                text => format!("Metrics Config: {}", text),
+            }
+        )?;
         if let Some(diagnostics) = &self.diagnostics {
             let string = diagnostics.to_string();
             write!(
@@ -191,6 +199,7 @@ mod tests {
     use super::super::utils::test_utils::field_map;
     use super::super::utils::{CapacityBounds, ReplicationBounds};
     use super::*;
+    use crate::commands::utils::CustomerMetricsConfig;
 
     use serde_json::json;
 
@@ -410,6 +419,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::Inherit,
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: Some(40),
@@ -457,6 +467,10 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: Some("arn:aws:iam::123456789012:my_momento_metrics".to_string()),
+                region: None,
+            },
             diagnostics: Some(diagnostics),
             // create-pool sends back only the requested ranges, no current/concrete values
             allocation: FlexAllocation {
@@ -513,6 +527,10 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: Some("arn:aws:iam::123456789012:my_momento_metrics".to_string()),
+                region: None,
+            },
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -542,6 +560,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: Some(CapacityPoolDiagnostics(vec![])),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -571,6 +590,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: None,
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -613,6 +633,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -642,6 +663,7 @@ mod tests {
                         "zones": ["use1-az1", "use1-az2"]
                     }
                 },
+                "metrics_config": "disabled",
                 "diagnostics": [
                     {
                         "insufficient_capacity": {

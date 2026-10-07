@@ -16,11 +16,17 @@ use utils::{
 
 use crate::{
     commands::api_key::utils::determine_expiry,
-    commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
+    commands::capacity_pool::utils::{
+        determine_provisioning, determine_provisioning_update, missing_pool_update_args,
+    },
     commands::custom_role::utils::{determine_role, determine_role_selector},
     commands::functions::utils::{
-        determine_current_function_version, determine_metrics_config_change, determine_wasm_source,
-        InvocationOptions,
+        determine_current_function_version, determine_function_metrics_config_change,
+        determine_wasm_source, InvocationOptions,
+    },
+    commands::utils::{
+        determine_metrics_config, determine_metrics_config_update,
+        determine_metrics_config_update_with_defaults, CustomerMetricsConfig,
     },
     config::Credentials,
     utils::console::console_info,
@@ -401,7 +407,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             id_uploaded_wasm,
                             version_uploaded_wasm,
                         )?;
-                        let metrics_change = determine_metrics_config_change(
+                        let metrics_change = determine_function_metrics_config_change(
                             metrics_iam_role,
                             disable_metrics,
                             remove_metrics_config,
@@ -430,7 +436,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         let cache_name = cache_name.unwrap_or(config.cache);
                         let new_version =
                             determine_current_function_version(pin_version, use_latest_version);
-                        let metrics_change = determine_metrics_config_change(
+                        let metrics_change = determine_function_metrics_config_change(
                             metrics_iam_role,
                             disable_metrics,
                             remove_metrics_config,
@@ -517,6 +523,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         replicas_per_shard,
                         capacity_gib,
                         zones,
+                        metrics_iam_role,
+                        metrics_aws_region,
+                        disable_metrics,
                     } => {
                         let provisioning = determine_provisioning(
                             instance_type,
@@ -525,11 +534,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             capacity_gib,
                             zones,
                         )?;
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            metrics_aws_region,
+                            disable_metrics,
+                        )?;
                         commands::capacity_pool::pool_cli::create_pool(
                             api_endpoint,
                             auth_token,
                             name,
                             provisioning,
+                            metrics_config,
                         )
                         .await?
                     }
@@ -551,26 +566,59 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                     momento_cli_opts::CapacityPoolCommand::Update {
                         name,
-                        mode,
                         instance_type,
                         shard_count,
                         replicas_per_shard,
                         capacity_gib,
                         zones,
+                        metrics_iam_role,
+                        metrics_aws_region,
+                        remove_metrics_aws_region,
+                        disable_metrics,
+                        remove_metrics_config,
                     } => {
+                        let metrics_config_inputs = determine_metrics_config_update(
+                            metrics_iam_role,
+                            metrics_aws_region,
+                            remove_metrics_aws_region,
+                            disable_metrics,
+                            remove_metrics_config,
+                        )?;
+                        let has_provisioning_arg = instance_type.is_some()
+                            || shard_count.is_some()
+                            || replicas_per_shard.is_some()
+                            || capacity_gib.is_some()
+                            || !zones.is_empty();
+                        if !has_provisioning_arg && metrics_config_inputs.is_none() {
+                            return Err(missing_pool_update_args());
+                        }
+                        let existing_pool = commands::capacity_pool::pool_cli::fetch_pool(
+                            api_endpoint.clone(),
+                            auth_token.clone(),
+                            name.clone(),
+                        )
+                        .await?;
+                        let provisioning_mode = existing_pool.provisioning.mode();
                         let provisioning_update = determine_provisioning_update(
-                            mode,
+                            provisioning_mode,
                             instance_type,
                             shard_count,
                             replicas_per_shard,
                             capacity_gib,
                             zones,
                         )?;
+                        let metrics_config = determine_metrics_config_update_with_defaults(
+                            metrics_config_inputs,
+                            existing_pool.metrics_config,
+                            remove_metrics_aws_region,
+                        )?;
                         commands::capacity_pool::pool_cli::update_pool(
                             api_endpoint,
                             auth_token,
                             name,
+                            provisioning_mode,
                             provisioning_update,
+                            metrics_config,
                         )
                         .await?
                     }
@@ -601,13 +649,25 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 let auth_token = credential_provider.auth_token().to_string();
 
                 match operation {
-                    momento_cli_opts::DatabaseCommand::Create { pool_name, name } => {
+                    momento_cli_opts::DatabaseCommand::Create {
+                        pool_name,
+                        name,
+                        metrics_iam_role,
+                        metrics_aws_region,
+                        disable_metrics,
+                    } => {
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            metrics_aws_region,
+                            disable_metrics,
+                        )?;
                         commands::database::database_cli::create_database(
                             api_endpoint,
                             valkey_hostname,
                             auth_token,
                             pool_name,
                             name,
+                            metrics_config,
                         )
                         .await?
                     }
@@ -617,6 +677,51 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             valkey_hostname,
                             auth_token,
                             name,
+                        )
+                        .await?
+                    }
+                    momento_cli_opts::DatabaseCommand::Update {
+                        name,
+                        metrics_iam_role,
+                        metrics_aws_region,
+                        remove_metrics_aws_region,
+                        disable_metrics,
+                        remove_metrics_config,
+                    } => {
+                        let mut metrics_config = determine_metrics_config_update(
+                            metrics_iam_role,
+                            metrics_aws_region,
+                            remove_metrics_aws_region,
+                            disable_metrics,
+                            remove_metrics_config,
+                        )?;
+                        if let Some(CustomerMetricsConfig::CloudWatch {
+                            customer_iam_role,
+                            region,
+                        }) = &metrics_config
+                        {
+                            if customer_iam_role.is_none()
+                                || (!remove_metrics_aws_region && region.is_none())
+                            {
+                                let existing_metrics_config =
+                                commands::database::database_cli::fetch_database_metrics_config(
+                                    api_endpoint.clone(),
+                                    auth_token.clone(),
+                                    name.clone(),
+                                )
+                                .await?;
+                                metrics_config = determine_metrics_config_update_with_defaults(
+                                    metrics_config,
+                                    existing_metrics_config,
+                                    remove_metrics_aws_region,
+                                )?;
+                            }
+                        }
+                        commands::database::database_cli::update_database(
+                            api_endpoint,
+                            auth_token,
+                            name,
+                            metrics_config,
                         )
                         .await?
                     }

@@ -78,12 +78,6 @@ pub fn parse_positive_bounds(s: &str) -> Result<Bounds, String> {
     Ok(bounds)
 }
 
-#[derive(Debug, Clone, clap::ValueEnum)]
-pub enum CapacityPoolProvisioningMode {
-    Cluster,
-    Flex,
-}
-
 pub fn parse_date(s: &str) -> Result<NaiveDate, String> {
     NaiveDate::parse_from_str(s, "%Y-%m-%d")
         .map_err(|_| "Date must be in YYYY-MM-DD format".to_string())
