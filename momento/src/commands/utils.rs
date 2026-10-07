@@ -34,15 +34,37 @@ pub fn determine_metrics_config(
     metrics_iam_role: Option<String>,
     metrics_region: Option<String>,
     disable_metrics: bool,
+) -> Result<Option<CustomerMetricsConfig>, CliError> {
+    let metrics_config = match (metrics_iam_role, disable_metrics) {
+        (Some(customer_iam_role), false) => Some(CustomerMetricsConfig::CloudWatch {
+            customer_iam_role,
+            region: metrics_region,
+        }),
+        (None, true) => Some(CustomerMetricsConfig::Disabled),
+        (None, false) => None,
+        (Some(_), true) => {
+            // This should never happen; clap requires at most 1 metrics config field.
+            return Err(CliError::new(
+                "Please provide at most 1 metrics config field.",
+            ));
+        }
+    };
+    Ok(metrics_config)
+}
+
+pub fn determine_metrics_config_update(
+    metrics_iam_role: Option<String>,
+    metrics_region: Option<String>,
+    disable_metrics: bool,
     remove_metrics_config: bool,
 ) -> Result<Option<CustomerMetricsConfig>, CliError> {
-    let metrics_config = match (metrics_iam_role, remove_metrics_config, disable_metrics) {
-        (None, true, false) => Some(CustomerMetricsConfig::Inherit),
-        (None, false, true) => Some(CustomerMetricsConfig::Disabled),
+    let metrics_config = match (metrics_iam_role, disable_metrics, remove_metrics_config) {
         (Some(customer_iam_role), false, false) => Some(CustomerMetricsConfig::CloudWatch {
             customer_iam_role,
             region: metrics_region,
         }),
+        (None, true, false) => Some(CustomerMetricsConfig::Disabled),
+        (None, false, true) => Some(CustomerMetricsConfig::Inherit),
         (None, false, false) => None,
         (Some(_), true, _) | (Some(_), _, true) | (_, true, true) => {
             // This should never happen; clap requires at most 1 metrics config field.
@@ -232,8 +254,8 @@ mod tests {
     const ARN: &str = "arn:aws:iam::123456789012:role/my_momento_metrics";
 
     #[test]
-    fn test_determine_metrics_config_with_region() {
-        let config = determine_metrics_config(
+    fn test_determine_metrics_config_update_with_region() {
+        let config = determine_metrics_config_update(
             Some(ARN.to_string()),
             Some("us-east-1".to_string()),
             false,

@@ -24,7 +24,9 @@ use crate::{
         determine_current_function_version, determine_function_metrics_config_change,
         determine_wasm_source, InvocationOptions,
     },
-    commands::utils::{determine_metrics_config, CustomerMetricsConfig},
+    commands::utils::{
+        determine_metrics_config, determine_metrics_config_update, CustomerMetricsConfig,
+    },
     utils::console::console_info,
 };
 
@@ -527,7 +529,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             metrics_iam_role,
                             metrics_region,
                             disable_metrics,
-                            false,
                         )?;
                         commands::capacity_pool::pool_cli::create_pool(
                             api_endpoint,
@@ -567,7 +568,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
-                        let metrics_config = determine_metrics_config(
+                        let metrics_config = determine_metrics_config_update(
                             metrics_iam_role,
                             metrics_region,
                             disable_metrics,
@@ -651,7 +652,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             metrics_iam_role,
                             metrics_region,
                             disable_metrics,
-                            false,
                         )?;
                         commands::database::database_cli::create_database(
                             api_endpoint,
@@ -680,7 +680,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
-                        let mut metrics_config = determine_metrics_config(
+                        let mut metrics_config = determine_metrics_config_update(
                             metrics_iam_role,
                             metrics_region,
                             disable_metrics,
