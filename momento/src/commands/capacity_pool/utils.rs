@@ -344,8 +344,8 @@ pub fn build_pool_update_body(
 pub fn missing_pool_update_args() -> CliError {
     CliError::new(format!(
         "Missing argument(s).\n\n\
-         For a cluster-mode pool, update one or more of:\n{CLUSTER_POOL_ARGS_TEXT}\n\
-         For a flex-mode pool, update one or more of:\n{FLEX_POOL_ARGS_TEXT}\n\
+         For a cluster-mode pool, update one or more of:\n{CLUSTER_POOL_ARGS_TEXT}\n\n\
+         For a flex-mode pool, update one or more of:\n{FLEX_POOL_ARGS_TEXT}\n\n\
          For either pool mode, you can also configure metrics:\
          \n--metrics-iam-role (and --metrics-region or --remove-metrics-region)\n--disable-metrics\n--remove-metrics-config"
     ))
@@ -1215,8 +1215,8 @@ mod tests {
         assert_eq!("creating", pool.status);
         assert!(matches!(
             pool.metrics_config,
-            CustomerMetricsConfig::CloudWatch { customer_iam_role, region: None }
-            if customer_iam_role == "arn:aws:iam::123456789012:my_momento_metrics"
+            CustomerMetricsConfig::CloudWatch { customer_iam_role: Some(role), region: None }
+            if role == "arn:aws:iam::123456789012:my_momento_metrics"
         ));
 
         let CapacityPoolProvisioning::Cluster {

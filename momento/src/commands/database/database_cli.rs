@@ -89,6 +89,12 @@ pub async fn update_database(
     database_name: String,
     metrics_config: Option<CustomerMetricsConfig>,
 ) -> Result<(), CliError> {
+    if metrics_config.is_none() {
+        return Err(CliError::new(
+            "Missing argument(s). To update your database's metrics configuration, you must specify one of:\
+             \n--metrics-iam-role (and --metrics-region or --remove-metrics-region)\n--disable-metrics\n--remove-metrics-config"
+        ));
+    }
     let data = serde_json::json!({"metrics_config": metrics_config});
     match call_database_api(
         Method::PATCH,

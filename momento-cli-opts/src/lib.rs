@@ -597,7 +597,7 @@ pub enum CapacityPoolCommand {
         metrics_region: Option<String>,
         #[arg(
             long = "remove-metrics-region",
-            help = "Remove this pool's metrics AWS region configuration so they deliver to your account-wide default region; omit to leave unchanged",
+            help = "Remove this pool's metrics AWS region configuration so they deliver to the region this pool runs in; omit to leave unchanged",
             default_value_t = false,
             conflicts_with_all = ["metrics_region"]
         )]
@@ -715,7 +715,7 @@ pub enum DatabaseCommand {
         metrics_region: Option<String>,
         #[arg(
             long = "remove-metrics-region",
-            help = "Remove this database's metrics AWS region configuration so they deliver to your capacity pool's default region; omit to leave unchanged",
+            help = "Remove this database's metrics AWS region configuration so they deliver to the region this database runs in; omit to leave unchanged",
             default_value_t = false,
             conflicts_with_all = ["metrics_region"]
         )]

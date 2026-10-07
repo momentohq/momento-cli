@@ -461,7 +461,7 @@ mod tests {
             provisioning,
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::CloudWatch {
-                customer_iam_role: "arn:aws:iam::123456789012:my_momento_metrics".to_string(),
+                customer_iam_role: Some("arn:aws:iam::123456789012:my_momento_metrics".to_string()),
                 region: None,
             },
             diagnostics: Some(diagnostics),
@@ -521,7 +521,7 @@ mod tests {
             provisioning,
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::CloudWatch {
-                customer_iam_role: "arn:aws:iam::123456789012:my_momento_metrics".to_string(),
+                customer_iam_role: Some("arn:aws:iam::123456789012:my_momento_metrics".to_string()),
                 region: None,
             },
             diagnostics: Some(diagnostics),

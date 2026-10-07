@@ -25,7 +25,8 @@ use crate::{
         determine_wasm_source, InvocationOptions,
     },
     commands::utils::{
-        determine_metrics_config, determine_metrics_config_update, CustomerMetricsConfig,
+        determine_metrics_config, determine_metrics_config_update,
+        determine_metrics_config_update_with_defaults, CustomerMetricsConfig,
     },
     utils::console::console_info,
 };
@@ -568,9 +569,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
-                        let metrics_config = determine_metrics_config_update(
+                        let metrics_config_inputs = determine_metrics_config_update(
                             metrics_iam_role,
                             metrics_region,
+                            remove_metrics_region,
                             disable_metrics,
                             remove_metrics_config,
                         )?;
@@ -579,7 +581,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             || replicas_per_shard.is_some()
                             || capacity_gib.is_some()
                             || !zones.is_empty();
-                        if !has_provisioning_arg && metrics_config.is_none() {
+                        if !has_provisioning_arg && metrics_config_inputs.is_none() {
                             return Err(missing_pool_update_args());
                         }
                         let existing_pool = commands::capacity_pool::pool_cli::fetch_pool(
@@ -597,13 +599,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             capacity_gib,
                             zones,
                         )?;
-                        let metrics_config = if remove_metrics_region {
-                            metrics_config
-                        } else {
-                            metrics_config.map(|config| {
-                                config.with_default_region(existing_pool.metrics_config.region())
-                            })
-                        };
+                        let metrics_config = determine_metrics_config_update_with_defaults(
+                            metrics_config_inputs,
+                            existing_pool.metrics_config,
+                            remove_metrics_region,
+                        )?;
                         commands::capacity_pool::pool_cli::update_pool(
                             api_endpoint,
                             auth_token,
@@ -683,13 +683,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         let mut metrics_config = determine_metrics_config_update(
                             metrics_iam_role,
                             metrics_region,
+                            remove_metrics_region,
                             disable_metrics,
                             remove_metrics_config,
                         )?;
-                        if !remove_metrics_region {
-                            if let Some(CustomerMetricsConfig::CloudWatch {
-                                region: None, ..
-                            }) = metrics_config
+                        if let Some(CustomerMetricsConfig::CloudWatch {
+                            customer_iam_role,
+                            region,
+                        }) = &metrics_config
+                        {
+                            if customer_iam_role.is_none()
+                                || (!remove_metrics_region && region.is_none())
                             {
                                 let existing_metrics_config =
                                 commands::database::database_cli::fetch_database_metrics_config(
@@ -698,9 +702,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                     name.clone(),
                                 )
                                 .await?;
-                                metrics_config = metrics_config.map(|config| {
-                                    config.with_default_region(existing_metrics_config.region())
-                                });
+                                metrics_config = determine_metrics_config_update_with_defaults(
+                                    metrics_config,
+                                    existing_metrics_config,
+                                    remove_metrics_region,
+                                )?;
                             }
                         }
                         commands::database::database_cli::update_database(
