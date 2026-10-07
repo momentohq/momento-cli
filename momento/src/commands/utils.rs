@@ -34,11 +34,23 @@ async fn call_api(
         .request(method.clone(), &request_url)
         .header("authorization", &auth_token);
     let request_builder = match data {
-        None => request_builder,
-        Some(MomentoHttpData::Json(data)) => request_builder
-            .body(data.to_string())
-            .header("content-type", "application/json"),
-        Some(MomentoHttpData::String(data)) => request_builder.body(data),
+        None => {
+            info!("Sending {method} request to {request_url}");
+            request_builder
+        }
+        Some(MomentoHttpData::Json(data)) => {
+            info!(
+                "Sending {method} request to {request_url} with JSON payload:\n{}",
+                serde_json::to_string_pretty(&data).unwrap_or_else(|_| data.to_string())
+            );
+            request_builder
+                .body(data.to_string())
+                .header("content-type", "application/json")
+        }
+        Some(MomentoHttpData::String(data)) => {
+            info!("Sending {method} request to {request_url} with payload:\n{data}");
+            request_builder.body(data)
+        }
     };
     let request_builder = match headers {
         None => request_builder,

@@ -115,13 +115,9 @@ pub async fn invoke_function(
     let data = options.data.unwrap_or_default();
 
     info!("Invoking function. Name: {name}, Cache Namespace: {cache_name}");
-    if !data.is_empty() {
-        info!("with payload:\n{data}");
-    };
     if !headers.is_empty() {
         info!("with headers:\n{headers:#?}");
     }
-    info!("with request method: {method}");
 
     let full_path = build_invocation_path(cache_name, name, options.path)?;
     let response_text = call_function_api(
