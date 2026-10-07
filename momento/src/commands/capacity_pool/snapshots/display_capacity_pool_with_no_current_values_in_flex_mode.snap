@@ -8,7 +8,9 @@ Flex Provisioning:
 - Capacity: 32..128 GiB
 - Replicas: 1..2 per shard
 - Availability Zones: use1-az1, use1-az2
-Metrics Config: enabled (IAM role: arn:aws:iam::123456789012:my_momento_metrics)
+Metrics Config:
+- IAM Role: arn:aws:iam::123456789012:my_momento_metrics
+- AWS Region: cell default
 Diagnostics:
 - something_something
   state: active

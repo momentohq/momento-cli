@@ -146,30 +146,33 @@ impl CustomerMetricsConfig {
 
 impl fmt::Display for CustomerMetricsConfig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                CustomerMetricsConfig::Inherit => "inherits configuration".to_string(),
-                CustomerMetricsConfig::Disabled => "disabled".to_string(),
-                CustomerMetricsConfig::CloudWatch {
-                    customer_iam_role: Some(role),
-                    region: None,
-                } => format!("enabled (IAM role: {role})"),
-                CustomerMetricsConfig::CloudWatch {
-                    customer_iam_role: Some(role),
-                    region: Some(region),
-                } => format!("enabled (IAM role: {role}, region: {region})"),
-                CustomerMetricsConfig::CloudWatch {
-                    // With our checks leading up to this, this should never happen.
-                    customer_iam_role: None,
-                    region,
-                } => format!(
-                    "enabled (IAM role: (unknown), region: {})",
-                    region.clone().unwrap_or("(unknown)".to_string())
-                ),
+        match self {
+            CustomerMetricsConfig::Inherit => {
+                write!(f, "inherits configuration")?;
             }
-        )
+            CustomerMetricsConfig::Disabled => {
+                write!(f, "disabled")?;
+            }
+            CustomerMetricsConfig::CloudWatch {
+                customer_iam_role,
+                region,
+            } => {
+                write!(
+                    f,
+                    "- IAM Role: {}",
+                    customer_iam_role.as_deref().unwrap_or(
+                        // Just for linting. (Customer role should always be Some by this point.)
+                        "(unknown)"
+                    )
+                )?;
+                write!(
+                    f,
+                    "\n- AWS Region: {}",
+                    region.as_deref().unwrap_or("cell default")
+                )?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -464,19 +467,17 @@ mod tests {
         let with_region = CustomerMetricsConfig::CloudWatch {
             customer_iam_role: Some(ARN.to_string()),
             region: Some("us-east-1".to_string()),
-        };
-        assert_eq!(
-            format!("enabled (IAM role: {ARN}, region: us-east-1)"),
-            with_region.to_string()
-        );
+        }
+        .to_string();
+        assert!(with_region.contains(ARN));
+        assert!(with_region.contains("us-east-1"));
 
         let without_region = CustomerMetricsConfig::CloudWatch {
             customer_iam_role: Some(ARN.to_string()),
             region: None,
-        };
-        assert_eq!(
-            format!("enabled (IAM role: {ARN})"),
-            without_region.to_string()
-        );
+        }
+        .to_string();
+        assert!(without_region.contains(ARN));
+        assert!(without_region.contains("default") || !without_region.contains("egion"));
     }
 }

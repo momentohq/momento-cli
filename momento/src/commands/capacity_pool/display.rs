@@ -163,7 +163,14 @@ impl fmt::Display for CapacityPoolResponse {
                 ),
             }
         )?;
-        write!(f, "\nMetrics Config: {}", self.metrics_config)?;
+        write!(
+            f,
+            "\n{}",
+            match self.metrics_config.to_string() {
+                text if text.contains("\n") => format!("Metrics Config:\n{}", text),
+                text => format!("Metrics Config: {}", text),
+            }
+        )?;
         if let Some(diagnostics) = &self.diagnostics {
             let string = diagnostics.to_string();
             write!(

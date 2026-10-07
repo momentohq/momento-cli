@@ -1,0 +1,7 @@
+---
+source: momento/src/commands/database/display.rs
+expression: response.to_string()
+---
+Name: my database
+Capacity Pool: my pool
+Metrics Config: disabled
