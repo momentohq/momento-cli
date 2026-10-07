@@ -1,6 +1,6 @@
 use super::utils::{
-    CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics, CapacityPoolProvisioning,
-    CapacityPoolResponse, FlexAllocation, FlexProvisioning,
+    CapacityFamilyResponse, CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics,
+    CapacityPoolProvisioning, CapacityPoolResponse, FlexAllocation, FlexProvisioning,
 };
 
 use chrono::prelude::DateTime;
@@ -180,6 +180,30 @@ impl fmt::Display for CapacityPoolResponse {
                 diagnostics
             )?;
         }
+        if !self.extra_fields.is_empty() {
+            write!(f, "\nAdditional details:")?;
+            for (field, value) in &self.extra_fields {
+                write!(
+                    f,
+                    "\n- {field}: {}",
+                    serde_json::to_string_pretty(value).unwrap_or_else(|_| format!("{:#?}", value)),
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for CapacityFamilyResponse {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_default {
+            write!(f, "* Family: {}", self.name)?;
+            write!(f, "\n  (This is the endpoint's current default family.)")?;
+        } else {
+            write!(f, "Family: {}", self.name)?;
+        }
+        write!(f, "\nMin Capacity: {} GiB", self.min_capacity_gib)?;
+        write!(f, "\nMax Capacity: {} GiB", self.max_capacity_gib)?;
         if !self.extra_fields.is_empty() {
             write!(f, "\nAdditional details:")?;
             for (field, value) in &self.extra_fields {
@@ -687,6 +711,46 @@ mod tests {
         )
         .expect("should parse a capacity pool");
 
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
+    }
+
+    #[test]
+    fn test_display_family_with_all_fields() {
+        let response = CapacityFamilyResponse {
+            name: "foo_bar".to_string(),
+            is_default: true,
+            min_capacity_gib: 5,
+            max_capacity_gib: 9876,
+            extra_fields: serde_json::Map::new(),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
+    }
+
+    #[test]
+    fn test_display_family_with_extra_fields() {
+        let response = CapacityFamilyResponse {
+            name: "foo_bar".to_string(),
+            is_default: true,
+            min_capacity_gib: 5,
+            max_capacity_gib: 9876,
+            extra_fields: field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
+    }
+
+    #[test]
+    fn test_display_family_with_fewest_fields() {
+        let response = CapacityFamilyResponse {
+            name: "hello_world".to_string(),
+            is_default: false,
+            min_capacity_gib: 5,
+            max_capacity_gib: 9876,
+            extra_fields: serde_json::Map::new(),
+        };
         snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 }

@@ -628,6 +628,19 @@ pub enum CapacityPoolCommand {
     },
     #[command(about = "List all your Momento capacity pools")]
     List {},
+    #[command(
+        about = "List pool configurations & types that are available for your account and endpoint"
+    )]
+    Discover {
+        #[command(subcommand)]
+        operation: CapacityPoolDiscoverCommand,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum CapacityPoolDiscoverCommand {
+    #[command(about = "List the flex-mode capacity families available for your endpoint")]
+    Families {},
 }
 
 #[derive(Debug, Parser)]

@@ -1,9 +1,9 @@
 use super::utils::{
-    build_pool_update_body, call_pool_api, call_pool_delete_api, call_pool_list_api, CapacityPool,
-    CapacityPoolProvisioning, CapacityPoolProvisioningMode, CapacityPoolProvisioningUpdate,
-    CapacityPoolResponse,
+    build_pool_update_body, call_pool_api, call_pool_delete_api, call_pool_families_api,
+    call_pool_list_api, CapacityPool, CapacityPoolProvisioning, CapacityPoolProvisioningMode,
+    CapacityPoolProvisioningUpdate, CapacityPoolResponse,
 };
-use crate::commands::capacity_pool::utils::ListCapacityPoolsResponse;
+use crate::commands::capacity_pool::utils::{DiscoverFamiliesResponse, ListCapacityPoolsResponse};
 use crate::commands::utils::CustomerMetricsConfig;
 use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
 use crate::{error::CliError, utils::console::console_data};
@@ -141,6 +141,29 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
         }
         Unparseable(response_text) => {
             console_data!("Listing your capacity pools:\n\n{response_text}");
+        }
+    };
+    Ok(())
+}
+
+pub async fn discover_families(endpoint: String, auth_token: String) -> Result<(), CliError> {
+    console_data!("Discovering at {endpoint} under your account...");
+    let response = call_pool_families_api(endpoint, auth_token).await?;
+    match response {
+        Parsed(DiscoverFamiliesResponse { families }) => {
+            if families.is_empty() {
+                console_data!("No capacity families available here for flex-mode capacity pools");
+            } else {
+                console_data!(
+                    "For flex-mode capacity pools here, you can use these capacity families:"
+                );
+                for family in families.iter() {
+                    console_data!("\n{family}");
+                }
+            }
+        }
+        Unparseable(response_text) => {
+            console_data!("Flex-mode capacity family availability:\n\n{response_text}");
         }
     };
     Ok(())

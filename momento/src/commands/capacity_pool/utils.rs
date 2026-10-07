@@ -198,6 +198,22 @@ pub struct ListCapacityPoolsResponse {
     pub capacity_pools: Vec<CapacityPoolResponse>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct CapacityFamilyResponse {
+    pub name: String,
+    pub is_default: bool,
+    pub min_capacity_gib: u32,
+    pub max_capacity_gib: u32,
+    #[serde(flatten)]
+    pub extra_fields: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DiscoverFamiliesResponse {
+    pub families: Vec<CapacityFamilyResponse>,
+}
+
 /// The single, pinned `--replicas-per-shard` that's required by cluster-/explicit-mode provisioning.
 fn pinned(bounds: Bounds) -> Result<u32, CliError> {
     (bounds.min == bounds.max)
@@ -302,11 +318,8 @@ pub fn determine_provisioning_update(
     Ok(Some(update))
 }
 
-fn build_request_url(endpoint: String, pool_name: Option<String>) -> String {
-    match pool_name {
-        None => format!("{endpoint}/capacity_pool"),
-        Some(name) => format!("{endpoint}/capacity_pool/{name}"),
-    }
+fn build_request_url(endpoint: String) -> String {
+    format!("{endpoint}/capacity_pool")
 }
 
 pub fn build_pool_update_body(
@@ -358,9 +371,10 @@ pub async fn call_pool_api(
     pool_name: String,
     data: Option<serde_json::Value>,
 ) -> Result<MomentoHttpResponse<CapacityPoolResponse>, CliError> {
+    let url = build_request_url(endpoint);
     call_momento_http_api(
         method,
-        build_request_url(endpoint, Some(pool_name)),
+        format!("{url}/{pool_name}"),
         auth_token,
         None,
         data.map(MomentoHttpData::Json),
@@ -373,9 +387,10 @@ pub async fn call_pool_delete_api(
     auth_token: String,
     pool_name: String,
 ) -> Result<String, CliError> {
+    let url = build_request_url(endpoint);
     call_momento_http_api_raw(
         Method::DELETE,
-        build_request_url(endpoint, Some(pool_name)),
+        format!("{url}/{pool_name}"),
         auth_token,
         None,
         None,
@@ -387,9 +402,18 @@ pub async fn call_pool_list_api(
     endpoint: String,
     auth_token: String,
 ) -> Result<MomentoHttpResponse<ListCapacityPoolsResponse>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(Method::GET, url, auth_token, None, None).await
+}
+
+pub async fn call_pool_families_api(
+    endpoint: String,
+    auth_token: String,
+) -> Result<MomentoHttpResponse<DiscoverFamiliesResponse>, CliError> {
+    let url = build_request_url(endpoint);
     call_momento_http_api(
         Method::GET,
-        build_request_url(endpoint, None),
+        format!("{url}/families"),
         auth_token,
         None,
         None,

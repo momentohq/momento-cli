@@ -634,6 +634,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         commands::capacity_pool::pool_cli::list_pools(api_endpoint, auth_token)
                             .await?
                     }
+                    momento_cli_opts::CapacityPoolCommand::Discover { operation } => {
+                        match operation {
+                            momento_cli_opts::CapacityPoolDiscoverCommand::Families {} => {
+                                commands::capacity_pool::pool_cli::discover_families(
+                                    api_endpoint,
+                                    auth_token,
+                                )
+                                .await?
+                            }
+                        }
+                    }
                 }
             }
             PreviewCommand::Database {
