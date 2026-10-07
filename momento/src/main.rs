@@ -16,13 +16,15 @@ use utils::{
 
 use crate::{
     commands::api_key::utils::determine_expiry,
-    commands::capacity_pool::utils::{determine_provisioning, determine_provisioning_update},
+    commands::capacity_pool::utils::{
+        determine_provisioning, determine_provisioning_update, missing_pool_update_args,
+    },
     commands::custom_role::utils::{determine_role, determine_role_selector},
     commands::functions::utils::{
         determine_current_function_version, determine_function_metrics_config_change,
         determine_wasm_source, InvocationOptions,
     },
-    commands::utils::determine_metrics_config,
+    commands::utils::{determine_metrics_config, CustomerMetricsConfig},
     utils::console::console_info,
 };
 
@@ -564,6 +566,20 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
+                        let metrics_config = determine_metrics_config(
+                            metrics_iam_role,
+                            metrics_region,
+                            disable_metrics,
+                            remove_metrics_config,
+                        )?;
+                        let has_provisioning_arg = instance_type.is_some()
+                            || shard_count.is_some()
+                            || replicas_per_shard.is_some()
+                            || capacity_gib.is_some()
+                            || !zones.is_empty();
+                        if !has_provisioning_arg && metrics_config.is_none() {
+                            return Err(missing_pool_update_args());
+                        }
                         let existing_pool = commands::capacity_pool::pool_cli::fetch_pool(
                             api_endpoint.clone(),
                             auth_token.clone(),
@@ -579,13 +595,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             capacity_gib,
                             zones,
                         )?;
-                        let metrics_config = determine_metrics_config(
-                            metrics_iam_role,
-                            metrics_region,
-                            disable_metrics,
-                            remove_metrics_config,
-                        )?
-                        .map(|config| {
+                        let metrics_config = metrics_config.map(|config| {
                             config.with_default_region(existing_pool.metrics_config.region())
                         });
                         commands::capacity_pool::pool_cli::update_pool(
@@ -664,20 +674,26 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
-                        let existing_metrics_config =
-                            commands::database::database_cli::fetch_database_metrics_config(
-                                api_endpoint.clone(),
-                                auth_token.clone(),
-                                name.clone(),
-                            )
-                            .await?;
-                        let metrics_config = determine_metrics_config(
+                        let mut metrics_config = determine_metrics_config(
                             metrics_iam_role,
                             metrics_region,
                             disable_metrics,
                             remove_metrics_config,
-                        )?
-                        .map(|config| config.with_default_region(existing_metrics_config.region()));
+                        )?;
+                        if let Some(CustomerMetricsConfig::CloudWatch { region: None, .. }) =
+                            metrics_config
+                        {
+                            let existing_metrics_config =
+                                commands::database::database_cli::fetch_database_metrics_config(
+                                    api_endpoint.clone(),
+                                    auth_token.clone(),
+                                    name.clone(),
+                                )
+                                .await?;
+                            metrics_config = metrics_config.map(|config| {
+                                config.with_default_region(existing_metrics_config.region())
+                            });
+                        }
                         commands::database::database_cli::update_database(
                             api_endpoint,
                             auth_token,

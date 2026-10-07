@@ -336,16 +336,18 @@ pub fn build_pool_update_body(
                 },
             },
         },
-        (None, None) => {
-            return Err(CliError::new(format!(
-                "Missing argument(s).\n\n\
-                 For a cluster-mode pool, update one or more of:\n{CLUSTER_POOL_ARGS_TEXT}\n\
-                 For a flex-mode pool, update one or more of:\n{FLEX_POOL_ARGS_TEXT}\n\
-                 For either pool mode, you can also configure metrics:\n--metrics-iam-role (and --metrics-region)\n--disable-metrics\n--remove-metrics-config"
-            )));
-        }
+        (None, None) => return Err(missing_pool_update_args()),
     };
     Ok(serde_json::to_value(update)?)
+}
+
+pub fn missing_pool_update_args() -> CliError {
+    CliError::new(format!(
+        "Missing argument(s).\n\n\
+         For a cluster-mode pool, update one or more of:\n{CLUSTER_POOL_ARGS_TEXT}\n\
+         For a flex-mode pool, update one or more of:\n{FLEX_POOL_ARGS_TEXT}\n\
+         For either pool mode, you can also configure metrics:\n--metrics-iam-role (and --metrics-region)\n--disable-metrics\n--remove-metrics-config"
+    ))
 }
 
 pub async fn call_pool_api(
