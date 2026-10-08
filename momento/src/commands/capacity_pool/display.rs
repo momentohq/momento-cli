@@ -39,7 +39,9 @@ fn format_flex_provisioning(
     format!(
         "- Capacity: {capacity}\n\
          - Replicas: {replication}\n\
+         - Family: {}\n\
          - Availability Zones: {}",
+        provisioning.family.as_deref().unwrap_or("(unknown)"),
         provisioning.zones.join(", ")
     )
 }
@@ -263,6 +265,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -287,6 +290,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -311,6 +315,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -411,6 +416,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string(), "use1-az2".to_string()],
         });
         let diagnostics = CapacityPoolDiagnostics(vec![
@@ -472,6 +478,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string(), "use1-az2".to_string()],
         });
         let diagnostics = CapacityPoolDiagnostics(vec![
@@ -684,6 +691,7 @@ mod tests {
                             "min_replicas_per_shard": 1,
                             "max_replicas_per_shard": 2
                         },
+                        "family": "foo_bar",
                         "zones": ["use1-az1", "use1-az2"]
                     }
                 },

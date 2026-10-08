@@ -42,6 +42,8 @@ impl From<Bounds> for ReplicationBounds {
 pub struct FlexProvisioning {
     pub capacity: CapacityBounds,
     pub replication: ReplicationBounds,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
     pub zones: Vec<String>,
 }
 
@@ -246,6 +248,7 @@ pub fn determine_provisioning(
         ((None, None), Some(capacity)) => CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds::from(capacity),
             replication: ReplicationBounds::from(replicas_per_shard),
+            family: None,
             zones,
         }),
         _ => {
@@ -911,6 +914,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: None,
             zones: strings(["use1-az1"]),
         });
 
@@ -1158,6 +1162,7 @@ mod tests {
                             "min_replicas_per_shard": 1,
                             "max_replicas_per_shard": 2
                         },
+                        "family": "foo_bar",
                         "zones": ["use1-az1", "use1-az2"]
                     }
                 },
@@ -1182,6 +1187,7 @@ mod tests {
         assert_eq!(128, provisioning.capacity.max_gib);
         assert_eq!(1, provisioning.replication.min_replicas_per_shard);
         assert_eq!(2, provisioning.replication.max_replicas_per_shard);
+        assert_eq!(Some("foo_bar".to_string()), provisioning.family);
         assert_eq!(vec!["use1-az1", "use1-az2"], provisioning.zones);
         assert_eq!(Some(40), pool.allocation.current_capacity_gib);
         assert_eq!(Some(2), pool.allocation.current_replicas_per_shard);
