@@ -1,5 +1,5 @@
 use super::utils::{
-    CapacityFamilyResponse, CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics,
+    CapacityFamily, CapacityFamilyResponse, CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics,
     CapacityPoolProvisioning, CapacityPoolResponse, FlexAllocation, FlexProvisioning,
 };
 
@@ -36,12 +36,17 @@ fn format_flex_provisioning(
         allocation.current_replicas_per_shard,
         allocation.target_replicas_per_shard,
     );
+    let family_name = if let Some(CapacityFamily::Name(name)) = &provisioning.family {
+        name
+    } else {
+        // Note: This should never happen; server always returns a family name.
+        "(unknown)"
+    };
     format!(
         "- Capacity: {capacity}\n\
          - Replicas: {replication}\n\
-         - Family: {}\n\
+         - Family: {family_name}\n\
          - Availability Zones: {}",
-        provisioning.family.as_deref().unwrap_or("(unknown)"),
         provisioning.zones.join(", ")
     )
 }
@@ -200,7 +205,10 @@ impl fmt::Display for CapacityFamilyResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.is_default {
             write!(f, "* Family: {}", self.name)?;
-            write!(f, "\n  (This is the endpoint's current default family.)")?;
+            write!(
+                f,
+                "\n  (This is the cell's/endpoint's current default family.)"
+            )?;
         } else {
             write!(f, "Family: {}", self.name)?;
         }
@@ -265,7 +273,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
-            family: Some("foo_bar".to_string()),
+            family: Some(CapacityFamily::Name("foo_bar".to_string())),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -290,7 +298,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
-            family: Some("foo_bar".to_string()),
+            family: Some(CapacityFamily::Name("foo_bar".to_string())),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -315,7 +323,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
-            family: Some("foo_bar".to_string()),
+            family: Some(CapacityFamily::Name("foo_bar".to_string())),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -323,6 +331,31 @@ mod tests {
             current_replicas_per_shard: Some(2),
             target_capacity_gib: Some(128),
             target_replicas_per_shard: Some(1),
+        };
+
+        snapshot_settings()
+            .bind(|| insta::assert_snapshot!(format_flex_provisioning(&provisioning, &allocation)));
+    }
+
+    #[test]
+    fn test_format_flex_provisioning_with_family() {
+        let provisioning = FlexProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            family: Some(CapacityFamily::Name("foo_bar".to_string())),
+            zones: vec!["use1-az1".to_string()],
+        };
+        let allocation = FlexAllocation {
+            current_capacity_gib: None,
+            current_replicas_per_shard: None,
+            target_capacity_gib: None,
+            target_replicas_per_shard: None,
         };
 
         snapshot_settings()
@@ -416,7 +449,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
-            family: Some("foo_bar".to_string()),
+            family: Some(CapacityFamily::Name("foo_bar".to_string())),
             zones: vec!["use1-az1".to_string(), "use1-az2".to_string()],
         });
         let diagnostics = CapacityPoolDiagnostics(vec![
@@ -478,7 +511,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
-            family: Some("foo_bar".to_string()),
+            family: Some(CapacityFamily::Name("foo_bar".to_string())),
             zones: vec!["use1-az1".to_string(), "use1-az2".to_string()],
         });
         let diagnostics = CapacityPoolDiagnostics(vec![

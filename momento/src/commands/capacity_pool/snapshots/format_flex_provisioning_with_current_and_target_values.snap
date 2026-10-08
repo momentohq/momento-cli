@@ -4,4 +4,5 @@ expression: "format_flex_provisioning(&provisioning, &allocation)"
 ---
 - Capacity: 32..128 GiB (currently 40, target 128)
 - Replicas: 1..2 per shard (currently 2, target 1)
+- Family: foo_bar
 - Availability Zones: use1-az1

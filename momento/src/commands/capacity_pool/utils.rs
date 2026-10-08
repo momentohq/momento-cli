@@ -3,7 +3,9 @@ use crate::commands::utils::{
     MomentoHttpResponse,
 };
 use crate::error::CliError;
-use momento_cli_opts::{Bounds, CLUSTER_POOL_ARGS_TEXT, FLEX_POOL_ARGS_TEXT};
+use momento_cli_opts::{
+    Bounds, CLUSTER_POOL_ARGS_TEXT, FLEX_POOL_CREATE_ARGS_TEXT, FLEX_POOL_UPDATE_ARGS_TEXT,
+};
 
 use http::Method;
 use serde::{Deserialize, Serialize};
@@ -38,12 +40,22 @@ impl From<Bounds> for ReplicationBounds {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CapacityFamily {
+    CellDefault,
+    #[serde(rename = "name")]
+    NameUpdate(String),
+    #[serde(untagged)]
+    Name(String),
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FlexProvisioning {
     pub capacity: CapacityBounds,
     pub replication: ReplicationBounds,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub family: Option<String>,
+    pub family: Option<CapacityFamily>,
     pub zones: Vec<String>,
 }
 
@@ -94,6 +106,8 @@ pub enum CapacityPoolProvisioningUpdate {
         capacity: Option<CapacityBounds>,
         #[serde(skip_serializing_if = "Option::is_none")]
         replication: Option<ReplicationBounds>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        family: Option<CapacityFamily>,
         #[serde(skip_serializing_if = "Vec::is_empty")]
         zones: Vec<String>,
     },
@@ -201,7 +215,6 @@ pub struct ListCapacityPoolsResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
 pub struct CapacityFamilyResponse {
     pub name: String,
     pub is_default: bool,
@@ -228,15 +241,30 @@ fn pinned(bounds: Bounds) -> Result<u32, CliError> {
         })
 }
 
-pub fn determine_provisioning(
+pub fn determine_family_update(
+    family_name: Option<String>,
+    default_family: bool,
+) -> Option<CapacityFamily> {
+    if default_family {
+        Some(CapacityFamily::CellDefault)
+    } else {
+        family_name.map(CapacityFamily::NameUpdate)
+    }
+}
+
+pub fn determine_provisioning_create(
     instance_type: Option<String>,
     shard_count: Option<u32>,
     replicas_per_shard: Bounds,
     capacity_gib: Option<Bounds>,
+    family: Option<String>,
     zones: Vec<String>,
 ) -> Result<CapacityPoolProvisioning, CliError> {
-    let provisioning = match ((instance_type.clone(), shard_count), capacity_gib) {
-        ((Some(instance_type), Some(shard_count)), None) => {
+    let provisioning = match (
+        (instance_type.clone(), shard_count),
+        (capacity_gib, &family),
+    ) {
+        ((Some(instance_type), Some(shard_count)), (None, None)) => {
             let replicas_per_shard = pinned(replicas_per_shard)?;
             CapacityPoolProvisioning::Cluster {
                 instance_type,
@@ -245,25 +273,30 @@ pub fn determine_provisioning(
                 zones,
             }
         }
-        ((None, None), Some(capacity)) => CapacityPoolProvisioning::Flex(FlexProvisioning {
+        ((None, None), (Some(capacity), _)) => CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds::from(capacity),
             replication: ReplicationBounds::from(replicas_per_shard),
-            family: None,
+            family: family.map(CapacityFamily::Name),
             zones,
         }),
         _ => {
             let help_text = format!(
                 "For a cluster-mode pool, specify all of:\n{CLUSTER_POOL_ARGS_TEXT}\n\n\
-                 For a flex-mode pool, specify all of:\n{FLEX_POOL_ARGS_TEXT}"
+                 For a flex-mode pool, specify all of:\n{FLEX_POOL_CREATE_ARGS_TEXT}"
             );
             return Err(CliError::new(format!(
                 "{}\n\n{help_text}",
-                match ((instance_type, shard_count), capacity_gib) {
-                    ((Some(_), None), None) => "Missing --shard-count.",
-                    ((None, Some(_)), None) => "Missing --instance-type.",
-                    ((None, None), None) => "Missing argument(s).",
-                    ((Some(_), _), Some(_)) | ((_, Some(_)), Some(_)) => "Conflicting arguments.",
-                    ((Some(_), Some(_)), None) | ((None, None), Some(_)) => {
+                match ((instance_type, shard_count), (capacity_gib, family)) {
+                    ((Some(_), None), (None, None)) => "Missing --shard-count.",
+                    ((None, Some(_)), (None, None)) => "Missing --instance-type.",
+                    // Note: `--family` is not checked here because it's optional / has a default
+                    ((None, None), (None, Some(_))) => "Missing --capacity-gib.",
+                    ((None, None), (None, None)) => "Missing argument(s).",
+                    ((Some(_), _), (Some(_), _))
+                    | ((Some(_), _), (_, Some(_)))
+                    | ((_, Some(_)), (Some(_), _))
+                    | ((_, Some(_)), (_, Some(_))) => "Conflicting arguments.",
+                    ((Some(_), Some(_)), (None, None)) | ((None, None), (Some(_), _)) => {
                         // This should never happen; valid combination that should have been identified earlier.
                         "Sorry, something went wrong!"
                     }
@@ -280,10 +313,11 @@ pub fn determine_provisioning_update(
     shard_count: Option<u32>,
     replicas_per_shard: Option<Bounds>,
     capacity_gib: Option<Bounds>,
+    family: Option<CapacityFamily>,
     zones: Vec<String>,
 ) -> Result<Option<CapacityPoolProvisioningUpdate>, CliError> {
     let has_cluster_field = instance_type.is_some() || shard_count.is_some();
-    let has_flex_field = capacity_gib.is_some();
+    let has_flex_field = capacity_gib.is_some() || family.is_some();
     let has_ambiguous_field = replicas_per_shard.is_some() || !zones.is_empty();
     if !has_cluster_field && !has_flex_field && !has_ambiguous_field {
         return Ok(None);
@@ -302,19 +336,20 @@ pub fn determine_provisioning_update(
             CapacityPoolProvisioningUpdate::Flex {
                 capacity: capacity_gib.map(CapacityBounds::from),
                 replication: replicas_per_shard.map(ReplicationBounds::from),
+                family,
                 zones,
             }
         }
         CapacityPoolProvisioningMode::Cluster => {
             return Err(CliError::new(format!(
-                "Conflicting arguments: This is a cluster-mode pool, and --capacity-gib is only for flex-mode pools.\n\n\
+                "Conflicting arguments: This is a cluster-mode pool, but --capacity-gib and --(default-)family are only for flex-mode pools.\n\n\
                  For a cluster-mode pool, update one or more of:\n{CLUSTER_POOL_ARGS_TEXT}",
             )));
         }
         CapacityPoolProvisioningMode::Flex => {
             return Err(CliError::new(format!(
-                "Conflicting arguments: This is a flex-mode pool, and --instance-type and --shard-count are only for cluster-mode pools.\n\n\
-                 For a flex-mode pool, update one or more of:\n{FLEX_POOL_ARGS_TEXT}",
+                "Conflicting arguments: This is a flex-mode pool, but --instance-type and --shard-count are only for cluster-mode pools.\n\n\
+                 For a flex-mode pool, specify one or more of:\n{FLEX_POOL_UPDATE_ARGS_TEXT}",
             )));
         }
     };
@@ -348,6 +383,7 @@ pub fn build_pool_update_body(
                 CapacityPoolProvisioningMode::Flex => CapacityPoolProvisioningUpdate::Flex {
                     capacity: None,
                     replication: None,
+                    family: None,
                     zones: vec![],
                 },
             },
@@ -360,8 +396,8 @@ pub fn build_pool_update_body(
 pub fn missing_pool_update_args() -> CliError {
     CliError::new(format!(
         "Missing argument(s).\n\n\
-         For a cluster-mode pool, update one or more of:\n{CLUSTER_POOL_ARGS_TEXT}\n\n\
-         For a flex-mode pool, update one or more of:\n{FLEX_POOL_ARGS_TEXT}\n\n\
+         For a cluster-mode pool, specify one or more of:\n{CLUSTER_POOL_ARGS_TEXT}\n\n\
+         For a flex-mode pool, specify one or more of:\n{FLEX_POOL_UPDATE_ARGS_TEXT}\n\n\
          For either pool mode, you can also configure metrics:\
          \n--metrics-iam-role (and --metrics-aws-region or --remove-metrics-aws-region)\n--disable-metrics\n--remove-metrics-config"
     ))
@@ -478,14 +514,15 @@ mod tests {
         );
     }
 
-    // determine_provisioning (create) //
+    // determine_provisioning_create //
 
     #[test]
-    fn test_determine_provisioning_in_cluster_mode() {
-        let provisioning = determine_provisioning(
+    fn test_determine_provisioning_create_in_cluster_mode() {
+        let provisioning = determine_provisioning_create(
             Some("r7g.xlarge".to_string()),
             Some(3),
             bounds(2, 2),
+            None,
             None,
             strings(["use1-az1", "use1-az2"]),
         )
@@ -507,12 +544,13 @@ mod tests {
     }
 
     #[test]
-    fn test_determine_provisioning_in_flex_mode() {
-        let provisioning = determine_provisioning(
+    fn test_determine_provisioning_create_with_all_fields_in_flex_mode() {
+        let provisioning = determine_provisioning_create(
             None,
             None,
             bounds(1, 3),
             Some(bounds(100, 500)),
+            Some("foo_bar".to_string()),
             strings(["use1-az1"]),
         )
         .expect("flex-mode args should provision");
@@ -524,30 +562,86 @@ mod tests {
         assert_eq!(500, flex.capacity.max_gib);
         assert_eq!(1, flex.replication.min_replicas_per_shard);
         assert_eq!(3, flex.replication.max_replicas_per_shard);
+        assert_eq!(
+            Some(CapacityFamily::Name("foo_bar".to_string())),
+            flex.family
+        );
         assert_eq!(strings(["use1-az1"]), flex.zones);
     }
 
     #[test]
-    fn test_determine_provisioning_requires_all_fields_in_cluster_mode() {
-        let err = determine_provisioning(
+    fn test_determine_provisioning_create_requires_capacity_in_flex_mode() {
+        let err = determine_provisioning_create(
+            None,
+            None,
+            bounds(1, 3),
+            None,
+            Some("foo_bar".to_string()),
+            strings(["use1-az1"]),
+        )
+        .expect_err("--family without --capacity-gib should be rejected");
+        assert_reason(&err, "Missing --capacity-gib");
+    }
+
+    #[test]
+    fn test_determine_provisioning_create_with_fewest_fields_in_flex_mode() {
+        let provisioning = determine_provisioning_create(
+            None,
+            None,
+            bounds(1, 3),
+            Some(bounds(100, 500)),
+            None, // `--family` is optional / has a server default
+            strings(["use1-az1"]),
+        )
+        .expect("flex-mode args should provision, even without family");
+
+        let CapacityPoolProvisioning::Flex(flex) = provisioning else {
+            panic!("expected flex provisioning, got {provisioning:?}");
+        };
+        assert_eq!(100, flex.capacity.min_gib);
+        assert_eq!(500, flex.capacity.max_gib);
+        assert_eq!(1, flex.replication.min_replicas_per_shard);
+        assert_eq!(3, flex.replication.max_replicas_per_shard);
+        assert!(flex.family.is_none());
+        assert_eq!(strings(["use1-az1"]), flex.zones);
+    }
+
+    #[test]
+    fn test_determine_provisioning_create_requires_all_fields_in_cluster_mode() {
+        let err = determine_provisioning_create(
             Some("r7g.xlarge".to_string()),
             None,
             bounds(2, 2),
+            None,
             None,
             strings(["use1-az1"]),
         )
         .expect_err("--instance-type without --shard-count should be rejected");
         assert_reason(&err, "Missing --shard-count");
 
-        let err = determine_provisioning(None, Some(3), bounds(2, 2), None, strings(["use1-az1"]))
-            .expect_err("--shard-count without --instance-type should be rejected");
+        let err = determine_provisioning_create(
+            None,
+            Some(3),
+            bounds(2, 2),
+            None,
+            None,
+            strings(["use1-az1"]),
+        )
+        .expect_err("--shard-count without --instance-type should be rejected");
         assert_reason(&err, "Missing --instance-type");
     }
 
     #[test]
-    fn test_determine_provisioning_requires_mode() {
-        let err = determine_provisioning(None, None, bounds(2, 2), None, strings(["use1-az1"]))
-            .expect_err("no mode args at all should be rejected");
+    fn test_determine_provisioning_create_requires_mode() {
+        let err = determine_provisioning_create(
+            None,
+            None,
+            bounds(2, 2),
+            None,
+            None,
+            strings(["use1-az1"]),
+        )
+        .expect_err("no mode args at all should be rejected");
 
         assert_reason(&err, "Missing arg");
         assert!(
@@ -558,18 +652,27 @@ mod tests {
     }
 
     #[test]
-    fn test_determine_provisioning_rejects_conflicting_fields() {
-        for (instance_type, shard_count) in [
-            (Some("r7g.xlarge".to_string()), None),
-            (None, Some(3)),
-            (Some("r7g.xlarge".to_string()), Some(3)),
+    fn test_determine_provisioning_create_rejects_conflicting_fields() {
+        let some_instance = Some("r7g.xlarge".to_string());
+        let some_shards = Some(3);
+        let some_capacity = Some(bounds(100, 500));
+        let some_family = Some("foo_bar".to_string());
+        for ((instance_type, shard_count), (capacity_gib, family)) in [
+            ((some_instance.clone(), None), (some_capacity, None)),
+            (
+                (some_instance.clone(), some_shards),
+                (None, some_family.clone()),
+            ),
+            ((None, some_shards), (some_capacity, some_family.clone())),
+            ((some_instance, some_shards), (some_capacity, some_family)),
         ] {
             let case = format!("instance_type={instance_type:?} shard_count={shard_count:?}");
-            let err = determine_provisioning(
+            let err = determine_provisioning_create(
                 instance_type,
                 shard_count,
                 bounds(2, 2),
-                Some(bounds(100, 500)),
+                capacity_gib,
+                family,
                 strings(["use1-az1"]),
             )
             .expect_err(&format!("{case} with --capacity-gib should be rejected"));
@@ -584,11 +687,12 @@ mod tests {
     }
 
     #[test]
-    fn test_determine_provisioning_requires_pinned_replication_in_cluster_mode() {
-        let err = determine_provisioning(
+    fn test_determine_provisioning_create_requires_pinned_replication_in_cluster_mode() {
+        let err = determine_provisioning_create(
             Some("r7g.xlarge".to_string()),
             Some(3),
             bounds(1, 3),
+            None,
             None,
             strings(["use1-az1"]),
         )
@@ -609,6 +713,7 @@ mod tests {
             CapacityPoolProvisioningMode::Cluster,
             None,
             Some(5),
+            None,
             None,
             None,
             vec![],
@@ -638,6 +743,7 @@ mod tests {
             Some(3),
             Some(bounds(2, 2)),
             None,
+            None,
             strings(["use1-az1", "use1-az2"]),
         )
         .expect("all cluster-mode fields should be a valid update");
@@ -665,6 +771,7 @@ mod tests {
             None,
             None,
             Some(bounds(100, 500)),
+            None,
             vec![],
         )
         .expect("a single flex-mode field should be a valid update");
@@ -672,6 +779,7 @@ mod tests {
         let Some(CapacityPoolProvisioningUpdate::Flex {
             capacity,
             replication,
+            family,
             zones,
         }) = update
         else {
@@ -681,6 +789,7 @@ mod tests {
         assert_eq!(100, capacity.min_gib);
         assert_eq!(500, capacity.max_gib);
         assert!(replication.is_none(), "replication should be unchanged");
+        assert!(family.is_none(), "family should be unchanged");
         assert_eq!(Vec::<String>::new(), zones);
     }
 
@@ -692,6 +801,7 @@ mod tests {
             None,
             Some(bounds(1, 3)),
             Some(bounds(100, 500)),
+            Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
             strings(["use1-az1"]),
         )
         .expect("all flex-mode fields should be a valid update");
@@ -699,6 +809,7 @@ mod tests {
         let Some(CapacityPoolProvisioningUpdate::Flex {
             capacity,
             replication,
+            family,
             zones,
         }) = update
         else {
@@ -710,6 +821,10 @@ mod tests {
         let replication = replication.expect("replication should be updated");
         assert_eq!(1, replication.min_replicas_per_shard);
         assert_eq!(3, replication.max_replicas_per_shard);
+        assert_eq!(
+            Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+            family
+        );
         assert_eq!(strings(["use1-az1"]), zones);
     }
 
@@ -719,6 +834,7 @@ mod tests {
 
         let update = determine_provisioning_update(
             CapacityPoolProvisioningMode::Cluster,
+            None,
             None,
             None,
             None,
@@ -733,6 +849,7 @@ mod tests {
 
         let update = determine_provisioning_update(
             CapacityPoolProvisioningMode::Flex,
+            None,
             None,
             None,
             None,
@@ -754,6 +871,7 @@ mod tests {
             None,
             Some(bounds(2, 2)),
             None,
+            None,
             vec![],
         )
         .expect("a replicas-only update should be valid in cluster mode");
@@ -770,6 +888,7 @@ mod tests {
             None,
             None,
             Some(bounds(1, 3)),
+            None,
             None,
             vec![],
         )
@@ -790,6 +909,7 @@ mod tests {
             None,
             None,
             None,
+            None,
             vec![],
         )
         .expect("a cluster-mode update with no fields should return");
@@ -797,6 +917,7 @@ mod tests {
 
         let update = determine_provisioning_update(
             CapacityPoolProvisioningMode::Flex,
+            None,
             None,
             None,
             None,
@@ -809,22 +930,36 @@ mod tests {
 
     #[test]
     fn test_determine_provisioning_update_rejects_flex_fields_in_cluster_mode() {
-        let err = determine_provisioning_update(
-            CapacityPoolProvisioningMode::Cluster,
-            None,
-            None,
-            None,
-            Some(bounds(100, 500)),
-            vec![],
-        )
-        .expect_err("--capacity-gib should be rejected in cluster mode");
+        for (capacity_gib, family) in [
+            (Some(bounds(100, 500)), None),
+            (
+                None,
+                Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+            ),
+            (
+                Some(bounds(100, 500)),
+                Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+            ),
+        ] {
+            let case = format!("capacity_gib={capacity_gib:?} family={family:?}");
+            let err = determine_provisioning_update(
+                CapacityPoolProvisioningMode::Cluster,
+                None,
+                None,
+                None,
+                capacity_gib,
+                family,
+                vec![],
+            )
+            .expect_err(&format!("{case} should be rejected in cluster mode"));
 
-        assert_reason(&err, "Conflicting arg");
-        assert!(
-            err.msg.contains("--capacity-gib") && err.msg.contains("mode"),
-            "error should mention --capacity-gib doesn't match the mode, got: {}",
-            err.msg
-        );
+            assert_reason_for(&case, &err, "Conflicting arg");
+            assert!(
+                err.msg.contains("mode"),
+                "error should mention field(s) not matching mode, got: {}",
+                err.msg
+            );
+        }
     }
 
     #[test]
@@ -839,6 +974,7 @@ mod tests {
                 CapacityPoolProvisioningMode::Flex,
                 instance_type,
                 shard_count,
+                None,
                 None,
                 None,
                 vec![],
@@ -867,6 +1003,7 @@ mod tests {
                 Some(3),
                 None,
                 Some(bounds(100, 500)),
+                None,
                 vec![],
             )
             .expect_err(&format!(
@@ -890,6 +1027,7 @@ mod tests {
             None,
             Some(bounds(1, 3)),
             None,
+            None,
             vec![],
         )
         .expect_err("a replication range should be rejected in cluster mode");
@@ -904,7 +1042,7 @@ mod tests {
     // Serialization //
 
     #[test]
-    fn test_serialize_provisioning_in_flex_mode() {
+    fn test_serialize_provisioning_create_in_flex_mode() {
         let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds {
                 min_gib: 32,
@@ -914,7 +1052,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
-            family: None,
+            family: Some(CapacityFamily::Name("foo_bar".to_string())),
             zones: strings(["use1-az1"]),
         });
 
@@ -926,6 +1064,38 @@ mod tests {
                         "min_replicas_per_shard": 1,
                         "max_replicas_per_shard": 2
                     },
+                    "family": "foo_bar",
+                    "zones": ["use1-az1"]
+                }
+            }),
+            serde_json::to_value(provisioning).expect("provisioning should serialize")
+        )
+    }
+
+    #[test]
+    fn test_serialize_provisioning_update_in_flex_mode() {
+        let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            family: Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+            zones: strings(["use1-az1"]),
+        });
+
+        assert_eq!(
+            json!({
+                "managed": {
+                    "capacity": {"min_gib": 32, "max_gib": 128},
+                    "replication": {
+                        "min_replicas_per_shard": 1,
+                        "max_replicas_per_shard": 2
+                    },
+                    "family": {"name": "foo_bar"},
                     "zones": ["use1-az1"]
                 }
             }),
@@ -966,6 +1136,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             }),
+            family: Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
             zones: strings(["use1-az1"]),
         };
 
@@ -977,6 +1148,7 @@ mod tests {
                         "min_replicas_per_shard": 1,
                         "max_replicas_per_shard": 2
                     },
+                    "family": {"name": "foo_bar"},
                     "zones": ["use1-az1"]
                 }
             }),
@@ -1011,6 +1183,7 @@ mod tests {
         let update = CapacityPoolProvisioningUpdate::Flex {
             capacity: None,
             replication: None,
+            family: None,
             // Must have at least 1 availability zone, so [] is treated as No Update
             zones: vec![],
         };
@@ -1187,7 +1360,10 @@ mod tests {
         assert_eq!(128, provisioning.capacity.max_gib);
         assert_eq!(1, provisioning.replication.min_replicas_per_shard);
         assert_eq!(2, provisioning.replication.max_replicas_per_shard);
-        assert_eq!(Some("foo_bar".to_string()), provisioning.family);
+        assert_eq!(
+            Some(CapacityFamily::Name("foo_bar".to_string())),
+            provisioning.family
+        );
         assert_eq!(vec!["use1-az1", "use1-az2"], provisioning.zones);
         assert_eq!(Some(40), pool.allocation.current_capacity_gib);
         assert_eq!(Some(2), pool.allocation.current_replicas_per_shard);
