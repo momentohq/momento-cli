@@ -40,22 +40,12 @@ impl From<Bounds> for ReplicationBounds {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum CapacityFamily {
-    CellDefault,
-    #[serde(rename = "name")]
-    NameUpdate(String),
-    #[serde(untagged)]
-    Name(String),
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FlexProvisioning {
     pub capacity: CapacityBounds,
     pub replication: ReplicationBounds,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub family: Option<CapacityFamily>,
+    pub family: Option<String>,
     pub zones: Vec<String>,
 }
 
@@ -87,6 +77,13 @@ impl CapacityPoolProvisioning {
     }
 }
 
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum CapacityFamilyUpdate {
+    CellDefault,
+    Name(String),
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub enum CapacityPoolProvisioningUpdate {
     #[serde(rename = "explicit")]
@@ -107,7 +104,7 @@ pub enum CapacityPoolProvisioningUpdate {
         #[serde(skip_serializing_if = "Option::is_none")]
         replication: Option<ReplicationBounds>,
         #[serde(skip_serializing_if = "Option::is_none")]
-        family: Option<CapacityFamily>,
+        family: Option<CapacityFamilyUpdate>,
         #[serde(skip_serializing_if = "Vec::is_empty")]
         zones: Vec<String>,
     },
@@ -244,11 +241,11 @@ fn pinned(bounds: Bounds) -> Result<u32, CliError> {
 pub fn determine_family_update(
     family_name: Option<String>,
     default_family: bool,
-) -> Option<CapacityFamily> {
+) -> Option<CapacityFamilyUpdate> {
     if default_family {
-        Some(CapacityFamily::CellDefault)
+        Some(CapacityFamilyUpdate::CellDefault)
     } else {
-        family_name.map(CapacityFamily::NameUpdate)
+        family_name.map(CapacityFamilyUpdate::Name)
     }
 }
 
@@ -276,7 +273,7 @@ pub fn determine_provisioning_create(
         ((None, None), (Some(capacity), _)) => CapacityPoolProvisioning::Flex(FlexProvisioning {
             capacity: CapacityBounds::from(capacity),
             replication: ReplicationBounds::from(replicas_per_shard),
-            family: family.map(CapacityFamily::Name),
+            family,
             zones,
         }),
         _ => {
@@ -313,7 +310,7 @@ pub fn determine_provisioning_update(
     shard_count: Option<u32>,
     replicas_per_shard: Option<Bounds>,
     capacity_gib: Option<Bounds>,
-    family: Option<CapacityFamily>,
+    family: Option<CapacityFamilyUpdate>,
     zones: Vec<String>,
 ) -> Result<Option<CapacityPoolProvisioningUpdate>, CliError> {
     let has_cluster_field = instance_type.is_some() || shard_count.is_some();
@@ -562,10 +559,7 @@ mod tests {
         assert_eq!(500, flex.capacity.max_gib);
         assert_eq!(1, flex.replication.min_replicas_per_shard);
         assert_eq!(3, flex.replication.max_replicas_per_shard);
-        assert_eq!(
-            Some(CapacityFamily::Name("foo_bar".to_string())),
-            flex.family
-        );
+        assert_eq!(Some("foo_bar".to_string()), flex.family);
         assert_eq!(strings(["use1-az1"]), flex.zones);
     }
 
@@ -801,7 +795,7 @@ mod tests {
             None,
             Some(bounds(1, 3)),
             Some(bounds(100, 500)),
-            Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+            Some(CapacityFamilyUpdate::Name("foo_bar".to_string())),
             strings(["use1-az1"]),
         )
         .expect("all flex-mode fields should be a valid update");
@@ -822,7 +816,7 @@ mod tests {
         assert_eq!(1, replication.min_replicas_per_shard);
         assert_eq!(3, replication.max_replicas_per_shard);
         assert_eq!(
-            Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+            Some(CapacityFamilyUpdate::Name("foo_bar".to_string())),
             family
         );
         assert_eq!(strings(["use1-az1"]), zones);
@@ -934,11 +928,11 @@ mod tests {
             (Some(bounds(100, 500)), None),
             (
                 None,
-                Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+                Some(CapacityFamilyUpdate::Name("foo_bar".to_string())),
             ),
             (
                 Some(bounds(100, 500)),
-                Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+                Some(CapacityFamilyUpdate::Name("foo_bar".to_string())),
             ),
         ] {
             let case = format!("capacity_gib={capacity_gib:?} family={family:?}");
@@ -1052,7 +1046,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
-            family: Some(CapacityFamily::Name("foo_bar".to_string())),
+            family: Some("foo_bar".to_string()),
             zones: strings(["use1-az1"]),
         });
 
@@ -1074,18 +1068,18 @@ mod tests {
 
     #[test]
     fn test_serialize_provisioning_update_in_flex_mode() {
-        let provisioning = CapacityPoolProvisioning::Flex(FlexProvisioning {
-            capacity: CapacityBounds {
+        let provisioning = CapacityPoolProvisioningUpdate::Flex {
+            capacity: Some(CapacityBounds {
                 min_gib: 32,
                 max_gib: 128,
-            },
-            replication: ReplicationBounds {
+            }),
+            replication: Some(ReplicationBounds {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
-            },
-            family: Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+            }),
+            family: Some(CapacityFamilyUpdate::Name("foo_bar".to_string())),
             zones: strings(["use1-az1"]),
-        });
+        };
 
         assert_eq!(
             json!({
@@ -1136,7 +1130,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             }),
-            family: Some(CapacityFamily::NameUpdate("foo_bar".to_string())),
+            family: Some(CapacityFamilyUpdate::Name("foo_bar".to_string())),
             zones: strings(["use1-az1"]),
         };
 
@@ -1360,10 +1354,7 @@ mod tests {
         assert_eq!(128, provisioning.capacity.max_gib);
         assert_eq!(1, provisioning.replication.min_replicas_per_shard);
         assert_eq!(2, provisioning.replication.max_replicas_per_shard);
-        assert_eq!(
-            Some(CapacityFamily::Name("foo_bar".to_string())),
-            provisioning.family
-        );
+        assert_eq!(Some("foo_bar".to_string()), provisioning.family);
         assert_eq!(vec!["use1-az1", "use1-az2"], provisioning.zones);
         assert_eq!(Some(40), pool.allocation.current_capacity_gib);
         assert_eq!(Some(2), pool.allocation.current_replicas_per_shard);
