@@ -4,7 +4,10 @@ use super::utils::{
     Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
 };
 use crate::commands::api_key::utils::RefreshApiKeyRequest;
-use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::commands::utils::{
+    unexpected_empty_api_response,
+    MomentoHttpResponse::{Parsed, Unparseable},
+};
 use crate::utils::file::prompt_user_for_input;
 use crate::{error::CliError, utils::console::console_data};
 
@@ -28,9 +31,10 @@ pub async fn create_key(
             console_data!("API Key:\n\n{key}");
         }
         Unparseable(response_text) => {
-            console_data!("Creating API key!");
-            if !response_text.is_empty() {
-                console_data!("\n\n{response_text}");
+            if response_text.is_empty() {
+                return Err(unexpected_empty_api_response());
+            } else {
+                console_data!("Couldn't parse API key:\n\n{response_text}");
             }
         }
     };
@@ -60,9 +64,10 @@ pub async fn refresh_key(
             console_data!("Refreshed API Key:\n\n{key}");
         }
         Unparseable(response_text) => {
-            console_data!("Refreshing API key!");
-            if !response_text.is_empty() {
-                console_data!("\n\n{response_text}");
+            if response_text.is_empty() {
+                return Err(unexpected_empty_api_response());
+            } else {
+                console_data!("Couldn't parse refreshed API key:\n\n{response_text}");
             }
         }
     };
@@ -140,7 +145,11 @@ pub async fn list_keys(
                 }
             }
             Unparseable(response_text) => {
-                console_data!("Listing your API keys:\n\n{response_text}");
+                if response_text.is_empty() {
+                    return Err(unexpected_empty_api_response());
+                } else {
+                    console_data!("Couldn't parse list of API keys:\n\n{response_text}");
+                }
                 break;
             }
         };

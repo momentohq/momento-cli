@@ -3,7 +3,10 @@ use super::utils::{
     determine_role, determine_role_permissions, determine_role_update, CustomRole,
     DeleteCustomRoleResponse, DeleteStatus, ListCustomRolesResponse, RoleSelector,
 };
-use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::commands::utils::{
+    unexpected_empty_api_response,
+    MomentoHttpResponse::{Parsed, Unparseable},
+};
 use crate::utils::file::prompt_user_for_input;
 use crate::{error::CliError, utils::console::console_data};
 
@@ -25,7 +28,7 @@ pub async fn create_role(
             console_data!("Creating custom role!\n\n{role}");
         }
         Unparseable(response_text) => {
-            console_data!("Creating custom role!");
+            console_data!("Attempting to create custom role!");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
             }
@@ -64,7 +67,7 @@ pub async fn update_role(
             console_data!("{update_text}\n\n{role}");
         }
         Unparseable(response_text) => {
-            console_data!("{update_text}");
+            console_data!("Attempting to update custom role!");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
             }
@@ -97,7 +100,10 @@ pub async fn delete_role(
             )),
         },
         Unparseable(response_text) => {
-            console_data!("Attempting to delete custom role {selector_text}:\n\n{response_text}");
+            console_data!("Attempting to delete custom role {selector_text}!");
+            if !response_text.is_empty() {
+                console_data!("\n\n{response_text}");
+            }
         }
     };
     Ok(())
@@ -151,9 +157,11 @@ pub async fn list_roles(
                 }
             }
             Unparseable(response_text) => {
-                console_data!(
-                    "All {roles_text} available for your Momento API keys{page_text}:\n\n{response_text}"
-                );
+                if response_text.is_empty() {
+                    return Err(unexpected_empty_api_response());
+                } else {
+                    console_data!("Couldn't parse {roles_text}{page_text}:\n\n{response_text}");
+                }
                 break;
             }
         };
