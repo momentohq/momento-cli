@@ -667,8 +667,11 @@ pub enum CapacityPoolCommand {
 
 #[derive(Debug, Parser)]
 pub enum CapacityPoolDiscoverCommand {
-    #[command(about = "List the flex-mode capacity families available for your endpoint")]
+    #[command(about = "List the flex-mode capacity families available to you")]
     Families {},
+
+    #[command(about = "List the explicit-mode instance types available to you")]
+    InstanceTypes {},
 }
 
 #[derive(Debug, Parser)]
