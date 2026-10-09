@@ -98,3 +98,11 @@ pub fn validate_capacity_pool_name(s: &str) -> Result<String, String> {
     }
     Ok(s.to_string())
 }
+
+/// Accepts and ignores any arguments, so that a moved command parses successfully
+/// and can tell the user where it went instead of failing with a parse error.
+#[derive(Debug, clap::Args)]
+pub struct MovedCommandArgs {
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, hide = true)]
+    _ignored: Vec<String>,
+}

@@ -9,6 +9,7 @@ use chrono::NaiveDate;
 use std::time::Duration;
 use utils::{
     parse_bounds, parse_date, parse_positive_bounds, parse_to_json, validate_capacity_pool_name,
+    MovedCommandArgs,
 };
 pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
@@ -920,6 +921,15 @@ https://github.com/momentohq/functions/"
         #[command(subcommand)]
         operation: FunctionCommand,
     },
+
+    // Placeholder "commands" while customers learn of the move out of `preview`:
+    #[command(about = "*RELEASED 🎉* Use `momento cache pool` instead", hide = true)]
+    Pool(MovedCommandArgs),
+    #[command(
+        about = "*RELEASED 🎉* Use `momento cache database` instead",
+        hide = true
+    )]
+    Database(MovedCommandArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -934,6 +944,43 @@ pub enum CacheCommand {
         #[command(subcommand)]
         operation: DatabaseCommand,
     },
+
+    // Placeholder "commands" while customers learn of Serverless Cache deprecation:
+    #[command(
+        about = "**MOVED** Use `momento legacy-cache create` instead",
+        hide = true
+    )]
+    Create(MovedCommandArgs),
+    #[command(
+        about = "**MOVED** Use `momento legacy-cache delete` instead",
+        hide = true
+    )]
+    Delete(MovedCommandArgs),
+    #[command(
+        about = "**MOVED** Use `momento legacy-cache list` instead",
+        hide = true
+    )]
+    List(MovedCommandArgs),
+    #[command(
+        about = "**MOVED** Use `momento legacy-cache flush` instead",
+        hide = true
+    )]
+    Flush(MovedCommandArgs),
+    #[command(
+        about = "**MOVED** Use `momento legacy-cache set` instead",
+        hide = true
+    )]
+    Set(MovedCommandArgs),
+    #[command(
+        about = "**MOVED** Use `momento legacy-cache get` instead",
+        hide = true
+    )]
+    Get(MovedCommandArgs),
+    #[command(
+        about = "**MOVED** Use `momento legacy-cache delete-item` instead",
+        hide = true
+    )]
+    DeleteItem(MovedCommandArgs),
 }
 
 #[derive(Debug, Parser)]
