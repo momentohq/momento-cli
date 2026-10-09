@@ -3,7 +3,7 @@
 Japanese: [日本語](README.ja.md)
 Portuguese: [Português](README.pt.md)
 
-Command-line tool for managing Momento Serverless Cache.  Supports the following:
+Command-line tool for managing Momento.  Supports the following:
 
 * Create a Momento account
 * Create, list, and delete Momento caches
@@ -14,7 +14,7 @@ Command-line tool for managing Momento Serverless Cache.  Supports the following
 
 First things first - go to the [Momento Console](https://console.gomomento.com) to sign up. In the keys tab, generate an API key/token to use with the CLI.
 
-This token uniquely identifies cache interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager. See the [docs](https://docs.momentohq.com/topics/authentication/api-keys) for more information on Momento API keys.
+This token uniquely identifies your Momento interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager. See the [docs](https://docs.momentohq.com/topics/authentication/api-keys) for more information on Momento API keys.
 
 You'll also need your [endpoint URL](https://docs.momentohq.com/platform/regions).
 

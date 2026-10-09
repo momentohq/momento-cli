@@ -206,7 +206,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         .or(cache_name_flag_for_backward_compatibility)
                         .expect("The argument group guarantees 1 or the other");
                     commands::cache::cache_cli::create_cache(client, cache_name.clone()).await?;
-                    debug!("created cache {cache_name}")
+                    debug!("created legacy cache {cache_name}")
                 }
                 momento_cli_opts::LegacyCacheCommand::Delete {
                     cache_name,
@@ -218,7 +218,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         .or(cache_name_flag_for_backward_compatibility)
                         .expect("The argument group guarantees 1 or the other");
                     commands::cache::cache_cli::delete_cache(client, cache_name.clone()).await?;
-                    debug!("deleted cache {}", cache_name)
+                    debug!("deleted legacy cache {}", cache_name)
                 }
                 momento_cli_opts::LegacyCacheCommand::List {} => {
                     commands::cache::cache_cli::list_caches(client).await?

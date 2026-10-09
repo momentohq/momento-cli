@@ -12,7 +12,7 @@ provides:
 - momento
 maintainer: "Momento <eng-deveco@momentohq.com>"
 description: |
-  Command-line tool for managing Momento Serverless Cache
+  Command-line tool for managing Momento
 vendor: "Momento"
 homepage: "https://gomomento.com"
 license: "Apache-2.0"

@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
   APP_NAME: 'momento-cli'
   MAINTAINER: 'momentohq'
-  DESC: 'Official CLI for Momento Serverless Cache'
+  DESC: 'Official CLI for Momento'
 
 jobs:
   rustfmt:

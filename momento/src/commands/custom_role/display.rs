@@ -38,8 +38,8 @@ impl fmt::Display for Rule {
                 } => format!(
                     "{}\n  {}",
                     match caches {
-                        NameSelector::All => "Caches (all)".to_string(),
-                        NameSelector::Name(name) => format!("Cache: {name}"),
+                        NameSelector::All => "Serverless Caches (all)".to_string(),
+                        NameSelector::Name(name) => format!("Serverless Cache: {name}"),
                     },
                     match items {
                         ItemSelector::All => "Keys: all".to_string(),
@@ -59,8 +59,8 @@ impl fmt::Display for Rule {
                         PrefixSelector::Prefix(prefix) => format!("Topics with prefix: {prefix}"),
                     },
                     match caches {
-                        NameSelector::All => "In caches: all".to_string(),
-                        NameSelector::Name(name) => format!("In cache: {name}"),
+                        NameSelector::All => "In Serverless Caches: all".to_string(),
+                        NameSelector::Name(name) => format!("In Serverless Cache: {name}"),
                     },
                 ),
                 Rule::Store {
@@ -92,8 +92,8 @@ impl fmt::Display for Rule {
                             format!("Functions with prefix: {prefix}"),
                     },
                     match caches {
-                        NameSelector::All => "In caches: all".to_string(),
-                        NameSelector::Name(name) => format!("In cache: {name}"),
+                        NameSelector::All => "In Serverless Caches: all".to_string(),
+                        NameSelector::Name(name) => format!("In Serverless Cache: {name}"),
                     },
                 ),
                 Rule::Database {
