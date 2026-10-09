@@ -21,6 +21,20 @@ pub enum Credentials {
 }
 
 impl Credentials {
+    pub fn get_api_endpoint(&self) -> Option<String> {
+        match self {
+            Credentials::ApiKeyV2(_, endpoint) => Some(endpoint.to_owned()),
+            Credentials::DisposableToken(api_key) => {
+                match CredentialProvider::from_disposable_token(api_key) {
+                    Ok(credential_provider) => {
+                        Some(credential_provider.cache_http_endpoint().to_string())
+                    }
+                    Err(_) => None,
+                }
+            }
+        }
+    }
+
     pub fn override_and_authenticate(
         &self,
         api_key_override: Option<String>,

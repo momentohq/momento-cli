@@ -6,8 +6,11 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 
 mod utils;
 use chrono::NaiveDate;
-use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
-pub use utils::{Bounds, CapacityPoolProvisioningMode, ROLE_PERMISSIONS_SAMPLE};
+use std::time::Duration;
+use utils::{
+    parse_bounds, parse_date, parse_positive_bounds, parse_to_json, validate_capacity_pool_name,
+};
+pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
 pub enum LoginMode {
@@ -48,6 +51,19 @@ impl Momento {
 
 #[derive(Debug, Parser)]
 pub enum Subcommand {
+    #[command(about = "Interact with Momento API keys")]
+    ApiKey {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key that already grants auth-management access on your account [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[command(subcommand)]
+        operation: ApiKeyCommand,
+    },
     #[command(about = "Interact with custom roles for API keys")]
     Role {
         #[arg(
@@ -57,16 +73,6 @@ pub enum Subcommand {
             help = "An explicit Momento API key that already grants auth-management access on your account [default: your profile's API key]"
         )]
         api_key: Option<String>,
-
-        #[arg(
-            long,
-            short,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit hostname to use",
-            default_value = "https://mga.registry.prod.a.momentohq.com"
-        )]
-        endpoint: String,
 
         #[command(subcommand)]
         operation: CustomRoleCommand,
@@ -441,6 +447,14 @@ pub enum FunctionCommand {
     ListWasms {},
 }
 
+// For help text over in `momento` validation:
+pub const CLUSTER_POOL_ARGS_TEXT: &str =
+    "--instance-type\n--shard-count\n--replicas-per-shard\n--zones";
+pub const FLEX_POOL_CREATE_ARGS_TEXT: &str =
+    "--capacity-gib\n--replicas-per-shard\n--zones\n(optionally:) --family";
+pub const FLEX_POOL_UPDATE_ARGS_TEXT: &str =
+    "--capacity-gib\n--replicas-per-shard\n--zones\n(optionally:) --family or --default-family";
+
 #[derive(Debug, Parser)]
 pub enum CapacityPoolCommand {
     #[command(about = "Create a Momento capacity pool")]
@@ -448,7 +462,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short = 'n',
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to create",
             value_name = "POOL"
         )]
@@ -481,6 +495,13 @@ pub enum CapacityPoolCommand {
         )]
         capacity_gib: Option<Bounds>,
         #[arg(
+            long = "family",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Flex mode: capacity family to use \
+                    [default is cell-dependent; see `momento cache pool discover families`]"
+        )]
+        family: Option<String>,
+        #[arg(
             long,
             required = true,
             num_args = 1..,
@@ -491,13 +512,38 @@ pub enum CapacityPoolCommand {
             value_name = "AVAILABILITY_ZONES"
         )]
         zones: Vec<String>,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account using this IAM role. Overrides your account-wide default for just this pool",
+            value_name = "IAM_ROLE",
+            group = "pool-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "metrics-aws-region",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account in this AWS region [default: the region this pool runs in]",
+            value_name = "REGION",
+            requires = "metrics_iam_role",
+            conflicts_with_all = ["disable_metrics"]
+        )]
+        metrics_aws_region: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this pool's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
+            default_value_t = false,
+            group = "pool-metrics"
+        )]
+        disable_metrics: bool,
     },
     #[command(about = "Get your capacity pool's lifecycle status")]
     GetStatus {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to get the status of",
             value_name = "POOL"
         )]
@@ -508,7 +554,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to describe",
             value_name = "POOL"
         )]
@@ -519,17 +565,11 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to update",
             value_name = "POOL"
         )]
         name: String,
-        #[arg(
-            long,
-            value_enum,
-            help = "The pool's provisioning mode (cluster or flex)"
-        )]
-        mode: Option<CapacityPoolProvisioningMode>,
         #[arg(
             long,
             value_parser = NonEmptyStringValueParser::new(),
@@ -562,6 +602,22 @@ pub enum CapacityPoolCommand {
             value_name = "NEW_CAPACITY",
         )]
         capacity_gib: Option<Bounds>,
+
+        #[arg(
+            long = "family",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Flex mode: new capacity family; omit to leave unchanged",
+        )]
+        family_name: Option<String>,
+        #[arg(
+            long,
+            help = "Flex mode: pin to the cell's current default family \
+                    [See `momento cache pool discover families`]",
+            default_value_t = false,
+            conflicts_with = "family_name"
+        )]
+        default_family: bool,
+
         #[arg(
             long,
             num_args = 1..,
@@ -572,13 +628,49 @@ pub enum CapacityPoolCommand {
             value_name = "NEW_AVAILABILITY_ZONES",
         )]
         zones: Vec<String>,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account using this IAM role. \
+                    Overrides your account-wide default for just this pool. Omit to leave unchanged",
+            value_name = "IAM_ROLE"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "metrics-aws-region",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this pool's metrics to your own CloudWatch account in this AWS region; omit to leave unchanged",
+            value_name = "REGION",
+            conflicts_with_all = ["remove_metrics_aws_region"]
+        )]
+        metrics_aws_region: Option<String>,
+        #[arg(
+            long = "remove-metrics-aws-region",
+            help = "Remove this pool's metrics AWS region configuration so they deliver to the region this pool runs in; omit to leave unchanged",
+            default_value_t = false,
+            conflicts_with_all = ["metrics_aws_region"]
+        )]
+        remove_metrics_aws_region: bool,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this pool's metrics to your CloudWatch account. Overrides your account-wide default for just this pool",
+            default_value_t = false
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this pool's metrics configuration so it follows your account-wide default",
+            default_value_t = false
+        )]
+        remove_metrics_config: bool,
     },
     #[command(about = "Delete a Momento capacity pool")]
     Delete {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to delete",
             value_name = "POOL"
         )]
@@ -586,6 +678,22 @@ pub enum CapacityPoolCommand {
     },
     #[command(about = "List all your Momento capacity pools")]
     List {},
+    #[command(
+        about = "List pool configurations & types that are available for your account and cell/endpoint"
+    )]
+    Discover {
+        #[command(subcommand)]
+        operation: CapacityPoolDiscoverCommand,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum CapacityPoolDiscoverCommand {
+    #[command(about = "List the flex-mode capacity families available to you")]
+    Families {},
+
+    #[command(about = "List the explicit-mode instance types available to you")]
+    InstanceTypes {},
 }
 
 #[derive(Debug, Parser)]
@@ -607,6 +715,31 @@ pub enum DatabaseCommand {
             value_name = "POOL"
         )]
         pool_name: String,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. Overrides your capacity pool's default for just this database",
+            value_name = "IAM_ROLE",
+            group = "database-metrics"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "metrics-aws-region",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account in this AWS region [default: the region this database runs in]",
+            value_name = "REGION",
+            requires = "metrics_iam_role",
+            conflicts_with_all = ["disable_metrics"]
+        )]
+        metrics_aws_region: Option<String>,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your capacity pool's default for just this database",
+            default_value_t = false,
+            group = "database-metrics"
+        )]
+        disable_metrics: bool,
     },
     #[command(about = "Get the details of your Momento database")]
     Describe {
@@ -618,6 +751,53 @@ pub enum DatabaseCommand {
             value_name = "DATABASE"
         )]
         name: String,
+    },
+    #[command(about = "Update a Momento database")]
+    Update {
+        #[arg(
+            long,
+            short = 'n',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the database you want to update",
+            value_name = "DATABASE"
+        )]
+        name: String,
+
+        #[arg(
+            long = "metrics-iam-role",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account using this IAM role. \
+                    Overrides your capacity pool's default for just this database. Omit to leave unchanged",
+            value_name = "IAM_ROLE"
+        )]
+        metrics_iam_role: Option<String>,
+        #[arg(
+            long = "metrics-aws-region",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Deliver this database's metrics to your own CloudWatch account in this AWS region; omit to leave unchanged",
+            value_name = "REGION",
+            conflicts_with_all = ["remove_metrics_aws_region"]
+        )]
+        metrics_aws_region: Option<String>,
+        #[arg(
+            long = "remove-metrics-aws-region",
+            help = "Remove this database's metrics AWS region configuration so they deliver to the region this database runs in; omit to leave unchanged",
+            default_value_t = false,
+            conflicts_with_all = ["metrics_aws_region"]
+        )]
+        remove_metrics_aws_region: bool,
+        #[arg(
+            long = "disable-metrics",
+            help = "Disable delivery of this database's metrics to your CloudWatch account. Overrides your capacity pool's default for just this database",
+            default_value_t = false
+        )]
+        disable_metrics: bool,
+        #[arg(
+            long = "remove-metrics-config",
+            help = "Remove this database's metrics configuration so it follows your capacity pool's default",
+            default_value_t = false
+        )]
+        remove_metrics_config: bool,
     },
     #[command(about = "Delete a Momento database")]
     Delete {
@@ -740,6 +920,155 @@ pub enum CacheCommand {
     Database {
         #[command(subcommand)]
         operation: DatabaseCommand,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum AuthenticatedApiKeyCommand {
+    #[command(
+    about = "Generate a Momento API key",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["role_id", "role_name"]),
+    ),
+    group(
+    clap::ArgGroup::new("expiry")
+    .multiple(false)
+    .args(["expires_at_epoch_seconds", "expires_in", "expires_on"]),
+    ),
+    )]
+    Create {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "What the API key is for, recorded on the key"
+        )]
+        description: String,
+
+        #[arg(
+            long = "role",
+            short = 'r',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Role the key carries, by role name ('momento role list --all')",
+            value_name = "ROLE",
+        )]
+        role_name: Option<String>,
+
+        #[arg(
+            long,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Role the key carries, by role ID ('momento role list --all')",
+            value_name = "ROLE_ID",
+        )]
+        role_id: Option<String>,
+
+        #[arg(
+            long,
+            help = "Expiry as unix epoch seconds. \
+                    When this, --expires-in, and --expires-on are all unset, \
+                    the key never expires"
+        )]
+        expires_at_epoch_seconds: Option<u64>,
+
+        #[arg(
+            long,
+            value_parser = humantime::parse_duration,
+            help = "Expiry as a duration from now, e.g. 30d or 12h",
+        )]
+        expires_in: Option<Duration>,
+
+        #[arg(
+            long,
+            value_parser = parse_date,
+            help = "Expiry as a date (YYYY-MM-DD). If set, the key expires at \
+                    midnight UTC at the beginning of that date",
+        )]
+        expires_on: Option<NaiveDate>,
+
+        #[arg(
+            long,
+            help = "Opt out of creating a refresh token for an expiring key",
+            default_value_t = false
+        )]
+        exclude_refresh_token: bool,
+    },
+
+    #[command(about = "Revoke a Momento API key, disabling it immediately")]
+    Revoke {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the API key you want to revoke ('momento api-key list')",
+            value_name = "API_KEY_ID",
+        )]
+        id: String,
+    },
+
+    #[command(about = "List your API keys")]
+    List {
+        #[arg(
+            long,
+            short,
+            value_parser = value_parser!(u32).range(1..101),
+            default_value = "100",
+            help = "The maximum number of API keys to return in a single page. Must be between 1 and 100, inclusive",
+            value_name = "LIMIT_PER_PAGE",
+        )]
+        limit: Option<u32>,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum ApiKeyCommand {
+    #[command(flatten)]
+    AuthenticatedSubcommand(AuthenticatedApiKeyCommand),
+
+    #[command(about = "Parse embedded data from a Momento API key")]
+    Decode {
+        #[arg(
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "The Momento API key or token that you want to parse. \
+                    This can be a console/SDK envelope or a bare JWT"
+        )]
+        api_key: String,
+    },
+
+    #[command(about = "Refresh a Momento API key")]
+    Refresh {
+        #[arg(
+            long,
+            short = 't',
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "The refresh token returned from when the key was generated or last refreshed",
+            value_name = "REFRESH_TOKEN",
+        )]
+        refresh_token: String,
+
+        #[arg(
+            long,
+            help = "Shortened expiry as unix epoch seconds. \
+                    When this, --expires-in, and --expires-on are all unset, \
+                    calculates the same lifetime as the original key"
+        )]
+        expires_at_epoch_seconds: Option<u64>,
+
+        #[arg(
+            long,
+            value_parser = humantime::parse_duration,
+            help = "Shortened expiry as a duration from now, e.g. 30d or 12h",
+        )]
+        expires_in: Option<Duration>,
+
+        #[arg(
+            long,
+            value_parser = parse_date,
+            help = "Shortened expiry as a date (YYYY-MM-DD). If set, the key expires at \
+                    midnight UTC at the beginning of that date",
+        )]
+        expires_on: Option<NaiveDate>,
     },
 }
 
@@ -878,6 +1207,14 @@ pub enum CustomRoleCommand {
             value_name = "LIMIT_PER_PAGE",
         )]
         limit: Option<u32>,
+
+        #[arg(
+            long,
+            short,
+            help = "List all your available Momento roles, not just your own custom roles",
+            default_value_t = false
+        )]
+        all: bool,
     },
 }
 

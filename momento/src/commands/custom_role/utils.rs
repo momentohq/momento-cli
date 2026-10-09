@@ -78,6 +78,7 @@ pub enum Rule {
     Database {
         permissions: Vec<PermissionAction>,
         databases: NameSelector,
+        items: ItemSelector,
     },
     AccountManagement {
         permissions: Vec<PermissionAction>,
@@ -92,8 +93,10 @@ pub enum Rule {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Permissions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub super_user: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rules: Option<Vec<Rule>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -114,6 +117,7 @@ pub struct CustomRoleResponse {
     pub name: String,
     #[serde(rename = "role_id")]
     pub id: String,
+    pub role_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub permissions: Permissions,
@@ -194,7 +198,9 @@ pub async fn determine_role(
     endpoint: String,
     auth_token: String,
     selector: &RoleSelector,
+    all: bool,
 ) -> Result<CustomRoleResponse, CliError> {
+    let role_text = if all { "role" } else { "custom role" };
     let selector_text = match selector {
         RoleSelector::ById(id) => format!("ID {id}"),
         RoleSelector::ByName(name) => format!("name {name}"),
@@ -206,6 +212,7 @@ pub async fn determine_role(
             endpoint.clone(),
             auth_token.clone(),
             None,
+            all,
             next_token.clone(),
         )
         .await?
@@ -234,10 +241,10 @@ pub async fn determine_role(
                 next_token = token;
                 if next_token.is_none() {
                     if full_roles_list.is_empty() {
-                        return Err(CliError::new("No custom roles found"));
+                        return Err(CliError::new(format!("No {role_text}s found")));
                     } else {
                         return Err(CliError::new(format!(
-                            "No custom role has {selector_text}.\n\nListing custom roles:\n\n{}",
+                            "No {role_text} has {selector_text}.\n\nListing {role_text}s:\n\n{}",
                             full_roles_list
                                 .iter()
                                 .map(|role| role.to_string())
@@ -348,11 +355,12 @@ pub async fn call_role_list_api(
     endpoint: String,
     auth_token: String,
     limit_per_page: Option<u32>,
+    all: bool,
     next_token: Option<String>,
 ) -> Result<MomentoHttpResponse<ListCustomRolesResponse>, CliError> {
     let url = build_request_url(endpoint);
     let query_string = [
-        "type=custom".to_string(),
+        (if all { "" } else { "type=custom" }).to_string(),
         limit_per_page.map_or("".to_string(), |limit| format!("&limit={limit}")),
         next_token.map_or("".to_string(), |token| format!("&next_token={token}")),
     ]
@@ -812,6 +820,9 @@ mod tests {
                 ],
                 "databases": {
                     "name": "orders"
+                },
+                "items": {
+                    "key_prefix": "orders:2026-"
                 }
             }"#,
         );
@@ -820,6 +831,7 @@ mod tests {
             Rule::Database {
                 permissions: vec![PermissionAction::Read, PermissionAction::Write],
                 databases: NameSelector::Name("orders".to_string()),
+                items: ItemSelector::KeyPrefix("orders:2026-".to_string()),
             },
             rule
         );
@@ -965,8 +977,9 @@ mod tests {
                     { "type": "account_management",  "permissions": ["read", "list"] },
                     { "type": "auth_management",     "permissions": ["read", "write", "list"], "items": "*" },
                     { "type": "resource_management", "permissions": ["read", "write", "list"], "resources": "*" },
-                    { "type": "database", "permissions": ["read", "write"],         "databases": "*" },
-                    { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" } },
+                    { "type": "database", "permissions": ["read", "write"],         "databases": "*",                   "items": "*" },
+                    { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" },  "items": { "key_prefix": "orders:2026-" } },
+                    { "type": "database", "permissions": ["write"],                 "databases": { "name": "orders" },  "items": { "key": "orders:pending" } },
                     { "type": "cache",    "permissions": ["read", "write", "list"], "caches": "*",                      "items": "*" },
                     { "type": "cache",    "permissions": ["read"],                  "caches": { "name": "prod-cache" }, "items": { "key_prefix": "public/" } },
                     { "type": "cache",    "permissions": ["write"],                 "caches": { "name": "prod-cache" }, "items": { "key": "feature-flags" } },
@@ -1082,6 +1095,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             "role with limited permissions",
             role.description.expect("should have description")
@@ -1169,6 +1183,36 @@ mod tests {
     }
 
     #[test]
+    fn test_deserialize_role_with_super_user_permissions() {
+        let role = parse_role(
+            r#"{
+                "role_id": "r-owner",
+                "role_name": "Owner",
+                "description": "superuser role",
+                "permissions": {
+                    "super_user": true
+                },
+                "role_type": "system"
+            }"#,
+        );
+
+        assert_eq!("Owner", role.name);
+        assert_eq!("r-owner", role.id);
+        assert_eq!("system", role.role_type);
+        assert_eq!(
+            "superuser role",
+            role.description.expect("should have description")
+        );
+
+        let permissions = role.permissions;
+        assert!(permissions.rules.is_none());
+        assert!(permissions.conditions.is_none());
+        assert!(permissions
+            .super_user
+            .expect("should have super_user field"));
+    }
+
+    #[test]
     fn test_deserialize_role_with_no_description() {
         let role = parse_role(
             r#"{
@@ -1202,6 +1246,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             vec![Rule::Cache {
                 permissions: vec![PermissionAction::List],
@@ -1255,6 +1300,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             vec![Rule::Cache {
                 permissions: vec![PermissionAction::List],
@@ -1298,6 +1344,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             "role with limited permissions",
             role.description.expect("should have description")
@@ -1339,6 +1386,7 @@ mod tests {
 
         assert_eq!("Limited", role.name);
         assert_eq!("r-limited", role.id);
+        assert_eq!("custom", role.role_type);
         assert_eq!(
             "role with limited permissions",
             role.description.expect("should have description")

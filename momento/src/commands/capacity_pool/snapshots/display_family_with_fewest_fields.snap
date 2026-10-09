@@ -1,0 +1,7 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: response.to_string()
+---
+Family: hello_world
+Min Capacity: 5 GiB
+Max Capacity: 9876 GiB

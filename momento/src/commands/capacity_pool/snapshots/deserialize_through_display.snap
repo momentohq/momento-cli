@@ -7,7 +7,9 @@ Status: creating
 Flex Provisioning:
 - Capacity: 32..128 GiB (currently 40)
 - Replicas: 1..2 per shard (currently 2)
+- Family: foo_bar
 - Availability Zones: use1-az1, use1-az2
+Metrics Config: disabled
 Diagnostics:
 - insufficient_capacity
   state: resolved

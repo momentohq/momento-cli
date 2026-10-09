@@ -1,0 +1,8 @@
+---
+source: momento/src/commands/capacity_pool/display.rs
+expression: response.to_string()
+---
+* Family: foo_bar
+  (This is the cell's/endpoint's current default family.)
+Min Capacity: 5 GiB
+Max Capacity: 9876 GiB

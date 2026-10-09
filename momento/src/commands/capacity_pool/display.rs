@@ -1,6 +1,6 @@
 use super::utils::{
-    CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics, CapacityPoolProvisioning,
-    CapacityPoolResponse, FlexAllocation, FlexProvisioning,
+    CapacityFamilyResponse, CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics,
+    CapacityPoolProvisioning, CapacityPoolResponse, FlexAllocation, FlexProvisioning,
 };
 
 use chrono::prelude::DateTime;
@@ -36,9 +36,14 @@ fn format_flex_provisioning(
         allocation.current_replicas_per_shard,
         allocation.target_replicas_per_shard,
     );
+    let family_name = provisioning.family.as_deref().unwrap_or(
+        // Note: This should never happen; server always returns a family name.
+        "(unknown)",
+    );
     format!(
         "- Capacity: {capacity}\n\
          - Replicas: {replication}\n\
+         - Family: {family_name}\n\
          - Availability Zones: {}",
         provisioning.zones.join(", ")
     )
@@ -163,6 +168,14 @@ impl fmt::Display for CapacityPoolResponse {
                 ),
             }
         )?;
+        write!(
+            f,
+            "\n{}",
+            match self.metrics_config.to_string() {
+                text if text.contains("\n") => format!("Metrics Config:\n{}", text),
+                text => format!("Metrics Config: {}", text),
+            }
+        )?;
         if let Some(diagnostics) = &self.diagnostics {
             let string = diagnostics.to_string();
             write!(
@@ -186,11 +199,39 @@ impl fmt::Display for CapacityPoolResponse {
     }
 }
 
+impl fmt::Display for CapacityFamilyResponse {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_default {
+            write!(f, "* Family: {}", self.name)?;
+            write!(
+                f,
+                "\n  (This is the cell's/endpoint's current default family.)"
+            )?;
+        } else {
+            write!(f, "Family: {}", self.name)?;
+        }
+        write!(f, "\nMin Capacity: {} GiB", self.min_capacity_gib)?;
+        write!(f, "\nMax Capacity: {} GiB", self.max_capacity_gib)?;
+        if !self.extra_fields.is_empty() {
+            write!(f, "\nAdditional details:")?;
+            for (field, value) in &self.extra_fields {
+                write!(
+                    f,
+                    "\n- {field}: {}",
+                    serde_json::to_string_pretty(value).unwrap_or_else(|_| format!("{:#?}", value)),
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::utils::test_utils::field_map;
     use super::super::utils::{CapacityBounds, ReplicationBounds};
     use super::*;
+    use crate::commands::utils::CustomerMetricsConfig;
 
     use serde_json::json;
 
@@ -230,6 +271,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -254,6 +296,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -278,6 +321,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string()],
         };
         let allocation = FlexAllocation {
@@ -285,6 +329,31 @@ mod tests {
             current_replicas_per_shard: Some(2),
             target_capacity_gib: Some(128),
             target_replicas_per_shard: Some(1),
+        };
+
+        snapshot_settings()
+            .bind(|| insta::assert_snapshot!(format_flex_provisioning(&provisioning, &allocation)));
+    }
+
+    #[test]
+    fn test_format_flex_provisioning_with_family() {
+        let provisioning = FlexProvisioning {
+            capacity: CapacityBounds {
+                min_gib: 32,
+                max_gib: 128,
+            },
+            replication: ReplicationBounds {
+                min_replicas_per_shard: 1,
+                max_replicas_per_shard: 2,
+            },
+            family: Some("foo_bar".to_string()),
+            zones: vec!["use1-az1".to_string()],
+        };
+        let allocation = FlexAllocation {
+            current_capacity_gib: None,
+            current_replicas_per_shard: None,
+            target_capacity_gib: None,
+            target_replicas_per_shard: None,
         };
 
         snapshot_settings()
@@ -378,6 +447,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string(), "use1-az2".to_string()],
         });
         let diagnostics = CapacityPoolDiagnostics(vec![
@@ -410,6 +480,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::Inherit,
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: Some(40),
@@ -438,6 +509,7 @@ mod tests {
                 min_replicas_per_shard: 1,
                 max_replicas_per_shard: 2,
             },
+            family: Some("foo_bar".to_string()),
             zones: vec!["use1-az1".to_string(), "use1-az2".to_string()],
         });
         let diagnostics = CapacityPoolDiagnostics(vec![
@@ -457,6 +529,10 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: Some("arn:aws:iam::123456789012:my_momento_metrics".to_string()),
+                region: None,
+            },
             diagnostics: Some(diagnostics),
             // create-pool sends back only the requested ranges, no current/concrete values
             allocation: FlexAllocation {
@@ -513,6 +589,10 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::CloudWatch {
+                customer_iam_role: Some("arn:aws:iam::123456789012:my_momento_metrics".to_string()),
+                region: None,
+            },
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -542,6 +622,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: Some(CapacityPoolDiagnostics(vec![])),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -571,6 +652,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: None,
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -613,6 +695,7 @@ mod tests {
             name: "hello world".to_string(),
             provisioning,
             status: "creating".to_string(),
+            metrics_config: CustomerMetricsConfig::Disabled,
             diagnostics: Some(diagnostics),
             allocation: FlexAllocation {
                 current_capacity_gib: None,
@@ -639,9 +722,11 @@ mod tests {
                             "min_replicas_per_shard": 1,
                             "max_replicas_per_shard": 2
                         },
+                        "family": "foo_bar",
                         "zones": ["use1-az1", "use1-az2"]
                     }
                 },
+                "metrics_config": "disabled",
                 "diagnostics": [
                     {
                         "insufficient_capacity": {
@@ -665,6 +750,46 @@ mod tests {
         )
         .expect("should parse a capacity pool");
 
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
+    }
+
+    #[test]
+    fn test_display_family_with_all_fields() {
+        let response = CapacityFamilyResponse {
+            name: "foo_bar".to_string(),
+            is_default: true,
+            min_capacity_gib: 5,
+            max_capacity_gib: 9876,
+            extra_fields: serde_json::Map::new(),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
+    }
+
+    #[test]
+    fn test_display_family_with_extra_fields() {
+        let response = CapacityFamilyResponse {
+            name: "foo_bar".to_string(),
+            is_default: true,
+            min_capacity_gib: 5,
+            max_capacity_gib: 9876,
+            extra_fields: field_map([
+                ("abc", json!({"X": "x", "Y": "y", "Z": "z"})),
+                ("hello", json!("world")),
+                ("answer", json!(42)),
+            ]),
+        };
+        snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
+    }
+
+    #[test]
+    fn test_display_family_with_fewest_fields() {
+        let response = CapacityFamilyResponse {
+            name: "hello_world".to_string(),
+            is_default: false,
+            min_capacity_gib: 5,
+            max_capacity_gib: 9876,
+            extra_fields: serde_json::Map::new(),
+        };
         snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
     }
 }

@@ -1,6 +1,6 @@
 use super::utils::{
     AccountMember, ActiveReferences, AllSelector, ApiKey, Condition, CustomRoleResponse,
-    Invitation, ItemSelector, NameSelector, PrefixSelector, Rule,
+    Invitation, ItemSelector, NameSelector, Permissions, PrefixSelector, Rule,
 };
 
 use chrono::prelude::DateTime;
@@ -99,10 +99,19 @@ impl fmt::Display for Rule {
                 Rule::Database {
                     permissions: _,
                     databases,
-                } => match databases {
-                    NameSelector::All => "Databases (all)".to_string(),
-                    NameSelector::Name(name) => format!("Database: {name}"),
-                },
+                    items,
+                } => format!(
+                    "{}\n  {}",
+                    match databases {
+                        NameSelector::All => "Databases (all)".to_string(),
+                        NameSelector::Name(name) => format!("Database: {name}"),
+                    },
+                    match items {
+                        ItemSelector::All => "Keys: all".to_string(),
+                        ItemSelector::Key(name) => format!("Key: {name}"),
+                        ItemSelector::KeyPrefix(prefix) => format!("Keys with prefix: {prefix}"),
+                    },
+                ),
                 Rule::AccountManagement { permissions: _ } => "Account Management:".to_string(),
                 Rule::AuthManagement {
                     permissions: _,
@@ -136,31 +145,51 @@ impl fmt::Display for Condition {
     }
 }
 
+impl fmt::Display for Permissions {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.super_user == Some(true) {
+            write!(f, "Permissions: super user")?;
+        } else {
+            match &self.rules {
+                Some(rules) if !rules.is_empty() => {
+                    write!(f, "Rules:")?;
+                    for rule in rules {
+                        write!(f, "\n{rule}")?;
+                    }
+                }
+                _ => write!(f, "Rules: (none)")?,
+            }
+            match &self.conditions {
+                Some(conditions) if !conditions.is_empty() => {
+                    write!(f, "\nConditions:")?;
+                    for condition in conditions {
+                        write!(f, "\n{condition}")?;
+                    }
+                }
+                _ => write!(f, "\nConditions: (none)")?,
+            }
+        }
+        Ok(())
+    }
+}
+
 impl fmt::Display for CustomRoleResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
-        write!(f, "\nID: {}", self.id)?;
+        write!(
+            f,
+            "\nID: {}{}",
+            self.id,
+            if self.role_type == "system" {
+                " (system role)"
+            } else {
+                ""
+            }
+        )?;
         if let Some(description) = &self.description {
             write!(f, "\nDescription: {description}")?;
         }
-        match &self.permissions.rules {
-            Some(rules) if !rules.is_empty() => {
-                write!(f, "\nRules:")?;
-                for rule in rules {
-                    write!(f, "\n{rule}")?;
-                }
-            }
-            _ => write!(f, "\nRules: (none)")?,
-        }
-        match &self.permissions.conditions {
-            Some(conditions) if !conditions.is_empty() => {
-                write!(f, "\nConditions:")?;
-                for condition in conditions {
-                    write!(f, "\n{condition}")?;
-                }
-            }
-            _ => write!(f, "\nConditions: (none)")?,
-        }
+        write!(f, "\n{}", self.permissions)?;
         Ok(())
     }
 }
@@ -283,6 +312,7 @@ mod tests {
         let rule = Rule::Database {
             permissions: vec![PermissionAction::Read, PermissionAction::Write],
             databases: NameSelector::All,
+            items: ItemSelector::All,
         };
         snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
     }
@@ -292,6 +322,7 @@ mod tests {
         let rule = Rule::Database {
             permissions: vec![PermissionAction::Read, PermissionAction::Write],
             databases: NameSelector::Name("orders".to_string()),
+            items: ItemSelector::Key("orders:pending".to_string()),
         };
         snapshot_settings().bind(|| insta::assert_snapshot!(rule.to_string()));
     }
@@ -437,12 +468,31 @@ mod tests {
     }
 
     #[test]
+    fn test_display_role_with_super_user_permissions() {
+        let role = CustomRoleResponse {
+            id: "r-owner".to_string(),
+            name: "Owner".to_string(),
+            role_type: "system".to_string(),
+            description: Some("superuser role".to_string()),
+            permissions: Permissions {
+                super_user: Some(true),
+                rules: None,
+                conditions: None,
+            },
+        };
+
+        snapshot_settings().bind(|| insta::assert_snapshot!(role.to_string()));
+    }
+
+    #[test]
     fn test_display_role_with_no_description() {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: None,
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
@@ -501,8 +551,10 @@ mod tests {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: Some("".to_string()),
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
@@ -561,8 +613,10 @@ mod tests {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: Some("role with limited permissions".to_string()),
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
@@ -619,8 +673,10 @@ mod tests {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: Some("role with limited permissions".to_string()),
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![
                     Rule::ResourceManagement {
                         permissions: vec![PermissionAction::Read, PermissionAction::List],
@@ -677,8 +733,10 @@ mod tests {
         let role = CustomRoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
+            role_type: "custom".to_string(),
             description: Some("role with limited permissions".to_string()),
             permissions: Permissions {
+                super_user: None,
                 rules: Some(vec![]),
                 conditions: Some(vec![Condition::IpFilter {
                     allowed_cidr_ranges: vec!["10.1.2.3/32".to_string(), "5.4.3.2/24".to_string()],
@@ -701,8 +759,9 @@ mod tests {
                         { "type": "account_management",  "permissions": ["read", "list"] },
                         { "type": "auth_management",     "permissions": ["read", "write", "list"], "items": "*" },
                         { "type": "resource_management", "permissions": ["read", "write", "list"], "resources": "*" },
-                        { "type": "database", "permissions": ["read", "write"],         "databases": "*" },
-                        { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" } },
+                        { "type": "database", "permissions": ["read", "write"],         "databases": "*",                   "items": "*" },
+                        { "type": "database", "permissions": ["read"],                  "databases": { "name": "orders" },  "items": { "key_prefix": "orders:2026-" } },
+                        { "type": "database", "permissions": ["write"],                 "databases": { "name": "orders" },  "items": { "key": "orders:pending" } },
                         { "type": "cache",    "permissions": ["read", "write", "list"], "caches": "*",                      "items": "*" },
                         { "type": "cache",    "permissions": ["read"],                  "caches": { "name": "prod-cache" }, "items": { "key_prefix": "public/" } },
                         { "type": "cache",    "permissions": ["write"],                 "caches": { "name": "prod-cache" }, "items": { "key": "feature-flags" } },

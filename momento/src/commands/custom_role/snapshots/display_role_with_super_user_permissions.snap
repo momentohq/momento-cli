@@ -1,0 +1,8 @@
+---
+source: momento/src/commands/custom_role/display.rs
+expression: role.to_string()
+---
+Name: Owner
+ID: r-owner (system role)
+Description: superuser role
+Permissions: super user
