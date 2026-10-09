@@ -75,23 +75,29 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
     let path = get_config_file_path()?;
     let configs = match read_ini_file(&path).await {
         Ok(c) => c,
-        Err(e) => return Err(CliError::new(
-            format!("failed to read credentials, please run 'momento configure' to setup credentials. Root cause: {e:?}")
-        )),
+        Err(e) => {
+            return Err(CliError::new(format!(
+                "failed to read config. Root cause: {e:?}"
+            )))
+        }
     };
 
     let cache_result = match configs.get(profile, "cache") {
         Some(c) => c,
-        None => return Err(CliError::new(
-            format!("failed to get cache config for profile {profile}, please run 'momento configure' to configure your profile")
-        )),
+        None => {
+            return Err(CliError::new(format!(
+                "failed to get cache config for profile {profile}"
+            )))
+        }
     };
 
     let ttl_result = match configs.get(profile, "ttl") {
         Some(c) => c,
-        None => return Err(CliError::new(
-            format!("failed to get ttl config for profile {profile}, please run 'momento configure' to configure your profile")
-        )),
+        None => {
+            return Err(CliError::new(format!(
+                "failed to get ttl config for profile {profile}"
+            )))
+        }
     };
 
     Ok(Config {

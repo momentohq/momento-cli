@@ -337,12 +337,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             }
         }
         momento_cli_opts::Subcommand::Configure {
-            quick,
+            quick: _, // deprecated 2026-10-09 when `configure` stopped creating a Serverless Cache (now legacy)
             api_key_and_endpoint,
             disposable_token,
         } => {
             commands::configure::configure_cli::configure_momento(
-                quick,
                 &args.profile,
                 api_key_and_endpoint,
                 disposable_token,

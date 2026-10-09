@@ -193,7 +193,7 @@ To delete a topic, stop subscribing to it."
     },
     #[command(about = "Configure credentials")]
     Configure {
-        #[arg(long, short)]
+        #[arg(long, short, hide = true)]
         quick: bool,
         #[arg(
             long,
