@@ -111,17 +111,23 @@ fn determine_cell_prefix_for_region(region: &str) -> String {
     .to_string()
 }
 
+pub fn shorten_to_sdk_endpoint(api_endpoint: &String) -> String {
+    let prefixes = ["https://", "api.", "cache."];
+    let mut sdk_endpoint: &str = api_endpoint.as_ref();
+    for p in prefixes {
+        sdk_endpoint = sdk_endpoint.strip_prefix(p).unwrap_or(sdk_endpoint);
+    }
+    sdk_endpoint.to_string()
+}
+
 /// Formats any sample from https://docs.momentohq.com/platform/regions
 pub fn determine_endpoint(endpoint_arg: String) -> String {
     if endpoint_arg.is_empty() {
         return endpoint_arg;
     }
-    let prefixes = ["https://", "api.", "cache."];
     let mut endpoint = endpoint_arg.clone();
     if endpoint_arg.contains(".") {
-        for p in prefixes {
-            endpoint = endpoint.strip_prefix(p).unwrap_or(&endpoint).to_string();
-        }
+        endpoint = shorten_to_sdk_endpoint(&endpoint);
     } else {
         if !endpoint_arg.starts_with("cell-") {
             let prefix = determine_cell_prefix_for_region(&endpoint_arg);

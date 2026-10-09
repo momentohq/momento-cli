@@ -7,7 +7,9 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 mod utils;
 use chrono::NaiveDate;
 use std::time::Duration;
-use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
+use utils::{
+    parse_bounds, parse_date, parse_positive_bounds, parse_to_json, validate_capacity_pool_name,
+};
 pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
@@ -426,7 +428,10 @@ pub enum FunctionCommand {
 // For help text over in `momento` validation:
 pub const CLUSTER_POOL_ARGS_TEXT: &str =
     "--instance-type\n--shard-count\n--replicas-per-shard\n--zones";
-pub const FLEX_POOL_ARGS_TEXT: &str = "--capacity-gib\n--replicas-per-shard\n--zones";
+pub const FLEX_POOL_CREATE_ARGS_TEXT: &str =
+    "--capacity-gib\n--replicas-per-shard\n--zones\n(optionally:) --family";
+pub const FLEX_POOL_UPDATE_ARGS_TEXT: &str =
+    "--capacity-gib\n--replicas-per-shard\n--zones\n(optionally:) --family or --default-family";
 
 #[derive(Debug, Parser)]
 pub enum CapacityPoolCommand {
@@ -435,7 +440,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short = 'n',
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to create",
             value_name = "POOL"
         )]
@@ -467,6 +472,13 @@ pub enum CapacityPoolCommand {
             value_name = "CAPACITY"
         )]
         capacity_gib: Option<Bounds>,
+        #[arg(
+            long = "family",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Flex mode: capacity family to use \
+                    [default is cell-dependent; see `momento preview pool discover families`]"
+        )]
+        family: Option<String>,
         #[arg(
             long,
             required = true,
@@ -509,7 +521,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to get the status of",
             value_name = "POOL"
         )]
@@ -520,7 +532,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to describe",
             value_name = "POOL"
         )]
@@ -531,7 +543,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to update",
             value_name = "POOL"
         )]
@@ -568,6 +580,22 @@ pub enum CapacityPoolCommand {
             value_name = "NEW_CAPACITY",
         )]
         capacity_gib: Option<Bounds>,
+
+        #[arg(
+            long = "family",
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Flex mode: new capacity family; omit to leave unchanged",
+        )]
+        family_name: Option<String>,
+        #[arg(
+            long,
+            help = "Flex mode: pin to the cell's current default family \
+                    [See `momento preview pool discover families`]",
+            default_value_t = false,
+            conflicts_with = "family_name"
+        )]
+        default_family: bool,
+
         #[arg(
             long,
             num_args = 1..,
@@ -620,7 +648,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to delete",
             value_name = "POOL"
         )]
@@ -628,6 +656,19 @@ pub enum CapacityPoolCommand {
     },
     #[command(about = "List all your Momento capacity pools")]
     List {},
+    #[command(
+        about = "List pool configurations & types that are available for your account and cell/endpoint"
+    )]
+    Discover {
+        #[command(subcommand)]
+        operation: CapacityPoolDiscoverCommand,
+    },
+}
+
+#[derive(Debug, Parser)]
+pub enum CapacityPoolDiscoverCommand {
+    #[command(about = "List the flex-mode capacity families available for your endpoint")]
+    Families {},
 }
 
 #[derive(Debug, Parser)]

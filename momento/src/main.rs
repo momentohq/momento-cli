@@ -11,13 +11,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use utils::{
     client::{get_cache_client, get_function_client, get_topic_client},
     console::output_info,
-    user::{determine_mga_endpoint, get_creds_and_config, get_creds_for_profile},
+    user::{
+        determine_mga_endpoint, get_creds_and_config, get_creds_for_profile,
+        shorten_to_sdk_endpoint,
+    },
 };
 
 use crate::{
     commands::api_key::utils::determine_expiry,
     commands::capacity_pool::utils::{
-        determine_provisioning, determine_provisioning_update, missing_pool_update_args,
+        determine_family_update, determine_provisioning_create, determine_provisioning_update,
+        missing_pool_update_args,
     },
     commands::custom_role::utils::{determine_role, determine_role_selector},
     commands::functions::utils::{
@@ -523,15 +527,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         replicas_per_shard,
                         capacity_gib,
                         zones,
+                        family,
                         metrics_iam_role,
                         metrics_aws_region,
                         disable_metrics,
                     } => {
-                        let provisioning = determine_provisioning(
+                        let provisioning = determine_provisioning_create(
                             instance_type,
                             shard_count,
                             replicas_per_shard,
                             capacity_gib,
+                            family,
                             zones,
                         )?;
                         let metrics_config = determine_metrics_config(
@@ -571,6 +577,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         replicas_per_shard,
                         capacity_gib,
                         zones,
+                        family_name,
+                        default_family,
                         metrics_iam_role,
                         metrics_aws_region,
                         remove_metrics_aws_region,
@@ -584,12 +592,15 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             disable_metrics,
                             remove_metrics_config,
                         )?;
-                        let has_provisioning_arg = instance_type.is_some()
-                            || shard_count.is_some()
-                            || replicas_per_shard.is_some()
-                            || capacity_gib.is_some()
-                            || !zones.is_empty();
-                        if !has_provisioning_arg && metrics_config_inputs.is_none() {
+                        let family = determine_family_update(family_name, default_family);
+                        if instance_type.is_none()
+                            && shard_count.is_none()
+                            && replicas_per_shard.is_none()
+                            && capacity_gib.is_none()
+                            && zones.is_empty()
+                            && family.is_none()
+                            && metrics_config_inputs.is_none()
+                        {
                             return Err(missing_pool_update_args());
                         }
                         let existing_pool = commands::capacity_pool::pool_cli::fetch_pool(
@@ -605,6 +616,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             shard_count,
                             replicas_per_shard,
                             capacity_gib,
+                            family,
                             zones,
                         )?;
                         let metrics_config = determine_metrics_config_update_with_defaults(
@@ -633,6 +645,19 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     momento_cli_opts::CapacityPoolCommand::List {} => {
                         commands::capacity_pool::pool_cli::list_pools(api_endpoint, auth_token)
                             .await?
+                    }
+                    momento_cli_opts::CapacityPoolCommand::Discover { operation } => {
+                        let sdk_endpoint = shorten_to_sdk_endpoint(&api_endpoint); // TODO return from SDK instead, like .cache_http_endpoint()
+                        match operation {
+                            momento_cli_opts::CapacityPoolDiscoverCommand::Families {} => {
+                                commands::capacity_pool::pool_cli::discover_families(
+                                    api_endpoint,
+                                    auth_token,
+                                    sdk_endpoint,
+                                )
+                                .await?
+                            }
+                        }
                     }
                 }
             }

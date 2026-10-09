@@ -82,3 +82,19 @@ pub fn parse_date(s: &str) -> Result<NaiveDate, String> {
     NaiveDate::parse_from_str(s, "%Y-%m-%d")
         .map_err(|_| "Date must be in YYYY-MM-DD format".to_string())
 }
+
+pub fn validate_capacity_pool_name(s: &str) -> Result<String, String> {
+    if s.is_empty() {
+        return Err("pool name cannot be empty".to_string());
+    }
+    let discovery_api_names = ["families"];
+    if discovery_api_names.contains(&s) {
+        // Gives a nicer error for e.g.:
+        // `pool describe -n families` (GET /capacity_pool/families lists the available flex-mode families)
+        // `pool create -n families` (405 Method Not Allowed)
+        return Err(format!(
+            "\"{s}\" is a reserved keyword and cannot be used as a capacity pool name"
+        ));
+    }
+    Ok(s.to_string())
+}
