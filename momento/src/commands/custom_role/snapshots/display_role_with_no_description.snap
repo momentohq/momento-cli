@@ -8,23 +8,23 @@ Rules:
 - Resource Management:
   Resources: all
   Allowed actions: Read, List
-- Cache: foobar
+- Serverless Cache: foobar
   Keys: all
   Allowed actions: List
-- Cache: foobar
+- Serverless Cache: foobar
   Keys with prefix: hello
   Allowed actions: Read
-- Cache: foobar
+- Serverless Cache: foobar
   Key: helloworld
   Allowed actions: Write
 - Topics with prefix: prod-
-  In cache: foobar
+  In Serverless Cache: foobar
   Allowed actions: Read, List
 - Topics with prefix: preprod-
-  In cache: foobar
+  In Serverless Cache: foobar
   Allowed actions: Read, List, Write
 - Topic: dev
-  In caches: all
+  In Serverless Caches: all
   Allowed actions: Read, List, Write
 Conditions:
 - Allowed IPs:

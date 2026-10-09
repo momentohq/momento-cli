@@ -2,6 +2,6 @@
 source: momento/src/commands/custom_role/display.rs
 expression: rule.to_string()
 ---
-- Cache: foobar
+- Serverless Cache: foobar
   Key: helloworld
   Allowed actions: Write
