@@ -1,7 +1,7 @@
 use super::utils::{call_database_api, call_database_delete_api, call_database_list_api, Database};
 use crate::commands::database::utils::{print_valkey_cli_sample, ListDatabasesResponse};
 use crate::commands::utils::{
-    CustomerMetricsConfig,
+    unexpectedly_empty_success_from_api, CustomerMetricsConfig,
     MomentoHttpResponse::{Parsed, Unparseable},
 };
 use crate::{error::CliError, utils::console::console_data};
@@ -34,7 +34,7 @@ pub async fn create_database(
             console_data!("Creating database!\n\n{database}");
         }
         Unparseable(response_text) => {
-            console_data!("Creating database!");
+            console_data!("Attempting to create database!");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
             }
@@ -57,9 +57,10 @@ pub async fn describe_database(
                 database.name
             }
             Unparseable(response_text) => {
-                console_data!("Your database:");
-                if !response_text.is_empty() {
-                    console_data!("\n\n{response_text}");
+                if response_text.is_empty() {
+                    return Err(unexpectedly_empty_success_from_api());
+                } else {
+                    console_data!("Couldn't parse database:\n\n{response_text}");
                 }
                 "<DATABASE NAME>".to_string()
             }
@@ -93,7 +94,7 @@ pub async fn update_database(
         return Err(CliError::new(
             "Missing argument(s). To update your database's metrics configuration, you must specify:\
              \n--disable-metrics OR --remove-metrics-config OR some combination of:\
-             \n  --metrics-iam-role and/or --metrics-aws-region (or --remove-metrics-aws-region)",
+             \n  --metrics-iam-role and/or --metrics-aws-region (or --default-metrics-aws-region)",
         ));
     }
     let data = serde_json::json!({"metrics_config": metrics_config});
@@ -110,7 +111,7 @@ pub async fn update_database(
             console_data!("Updating database!\n\n{database}");
         }
         Unparseable(response_text) => {
-            console_data!("Updating database!");
+            console_data!("Attempting to update database!");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
             }
@@ -156,8 +157,13 @@ pub async fn list_databases(
             }
         }
         Unparseable(response_text) => {
-            console_data!("Listing databases:\n\n{response_text}");
-            Some("<DATABASE NAME>".to_string())
+            if response_text.is_empty() {
+                // If truly an empty list, we'd have received `databases: []`
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse list of databases:\n\n{response_text}");
+                Some("<DATABASE NAME>".to_string())
+            }
         }
     };
     if let Some(database_name) = database_name {

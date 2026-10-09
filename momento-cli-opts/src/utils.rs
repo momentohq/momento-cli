@@ -87,8 +87,8 @@ pub fn validate_capacity_pool_name(s: &str) -> Result<String, String> {
     if s.is_empty() {
         return Err("pool name cannot be empty".to_string());
     }
-    let discovery_api_names = ["families", "instance_types"];
-    if discovery_api_names.contains(&s) {
+    let api_paths = ["families", "instance_types", "metrics"];
+    if api_paths.contains(&s) {
         // Gives a nicer error for e.g.:
         // `pool describe -n families` (GET /capacity_pool/families lists the available flex-mode families)
         // `pool create -n families` (405 Method Not Allowed)
