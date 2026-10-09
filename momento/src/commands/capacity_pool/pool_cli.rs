@@ -154,6 +154,7 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
+                // If truly an empty list, we'd have received `capacity_pools: []`
                 return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse list of capacity pools:\n\n{response_text}");
@@ -178,6 +179,7 @@ pub async fn discover_families(api_endpoint: String, auth_token: String) -> Resu
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
+                // If truly an empty list, we'd have received `families: []`
                 return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse list of capacity families:\n\n{response_text}");
@@ -205,6 +207,7 @@ pub async fn discover_instance_types(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
+                // If truly an empty list, we'd have received `instance_types: []`
                 return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse list of instance types:\n\n{response_text}");

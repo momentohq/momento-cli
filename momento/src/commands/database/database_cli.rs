@@ -158,6 +158,7 @@ pub async fn list_databases(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
+                // If truly an empty list, we'd have received `databases: []`
                 return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse list of databases:\n\n{response_text}");

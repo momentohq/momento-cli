@@ -32,6 +32,7 @@ pub async fn create_key(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
+                // Must always return the API key, else the user can't use it
                 return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse API key:\n\n{response_text}");
@@ -65,6 +66,7 @@ pub async fn refresh_key(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
+                // Must always return the API key, else the user can't use it
                 return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse refreshed API key:\n\n{response_text}");
@@ -146,6 +148,7 @@ pub async fn list_keys(
             }
             Unparseable(response_text) => {
                 if response_text.is_empty() {
+                    // If truly an empty list, we'd have received `key_info: []`
                     return Err(unexpectedly_empty_success_from_api());
                 } else {
                     console_data!("Couldn't parse list of API keys:\n\n{response_text}");
