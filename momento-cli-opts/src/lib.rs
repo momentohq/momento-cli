@@ -133,8 +133,8 @@ pub enum Subcommand {
 !!   For more information, contact us at support@momentohq.com.   !!
 !!                                                                !!
 
-Serverless Cache (`momento legacy-cache`) is a legacy Momento product.
-Where possible, we recommend using Momento Cache (`momento cache`) instead.
+Serverless Cache (`momento cache`) is a legacy Momento product.
+Where possible, we recommend using Momento Cache (`momento pool` + `momento database`) instead.
 For more information, see https://docs.momentohq.com/product/cache
 or reach out at support@momentohq.com.
 "
@@ -164,7 +164,7 @@ or reach out at support@momentohq.com.
         about = "Interact with topics",
         before_help = "
 Momento Topics require a Serverless Cache (legacy), which serves as a namespace
-for your topics. If you haven't already, call `legacy-cache create`
+for your topics. If you haven't already, call `cache create`
 to make one!
 
 To create a topic, subscribe to it.
@@ -917,7 +917,7 @@ to help find opportunities for optimizations with Momento.
         about = "**PREVIEW** Interact with your Momento Functions",
         before_help = "
 Momento Functions require a Serverless Cache (legacy), which serves as a namespace
-for your Functions. If you haven't already, call `legacy-cache create`
+for your Functions. If you haven't already, call `cache create`
 to make one!
 
 For more information about Momento Functions, visit our repo:
