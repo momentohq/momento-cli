@@ -146,9 +146,13 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
     Ok(())
 }
 
-pub async fn discover_families(endpoint: String, auth_token: String) -> Result<(), CliError> {
-    console_data!("Discovering at {endpoint} under your account...");
-    let response = call_pool_families_api(endpoint, auth_token).await?;
+pub async fn discover_families(
+    api_endpoint: String,
+    auth_token: String,
+    readable_endpoint: String,
+) -> Result<(), CliError> {
+    console_data!("Discovering at {readable_endpoint} under your account...");
+    let response = call_pool_families_api(api_endpoint, auth_token).await?;
     match response {
         Parsed(DiscoverFamiliesResponse { families }) => {
             if families.is_empty() {

@@ -11,7 +11,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use utils::{
     client::{get_cache_client, get_function_client, get_topic_client},
     console::output_info,
-    user::{determine_mga_endpoint, get_creds_and_config, get_creds_for_profile},
+    user::{
+        determine_mga_endpoint, get_creds_and_config, get_creds_for_profile,
+        shorten_to_sdk_endpoint,
+    },
 };
 
 use crate::{
@@ -644,11 +647,13 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             .await?
                     }
                     momento_cli_opts::CapacityPoolCommand::Discover { operation } => {
+                        let sdk_endpoint = shorten_to_sdk_endpoint(&api_endpoint); // TODO return from SDK instead, like .cache_http_endpoint()
                         match operation {
                             momento_cli_opts::CapacityPoolDiscoverCommand::Families {} => {
                                 commands::capacity_pool::pool_cli::discover_families(
                                     api_endpoint,
                                     auth_token,
+                                    sdk_endpoint,
                                 )
                                 .await?
                             }
