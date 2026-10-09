@@ -7,7 +7,9 @@ use clap::{builder::NonEmptyStringValueParser, value_parser};
 mod utils;
 use chrono::NaiveDate;
 use std::time::Duration;
-use utils::{parse_bounds, parse_date, parse_positive_bounds, parse_to_json};
+use utils::{
+    parse_bounds, parse_date, parse_positive_bounds, parse_to_json, validate_capacity_pool_name,
+};
 pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, clap::ValueEnum)]
@@ -438,7 +440,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short = 'n',
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to create",
             value_name = "POOL"
         )]
@@ -519,7 +521,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to get the status of",
             value_name = "POOL"
         )]
@@ -530,7 +532,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to describe",
             value_name = "POOL"
         )]
@@ -541,7 +543,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to update",
             value_name = "POOL"
         )]
@@ -645,7 +647,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             short,
-            value_parser = NonEmptyStringValueParser::new(),
+            value_parser = validate_capacity_pool_name,
             help = "Name of the capacity pool you want to delete",
             value_name = "POOL"
         )]
