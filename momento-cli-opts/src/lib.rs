@@ -476,7 +476,7 @@ pub enum CapacityPoolCommand {
             long = "family",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Flex mode: capacity family to use \
-                    [default is cell-dependent; see `momento pool discover families`]"
+                    [default is cell-dependent; see `momento preview pool discover families`]"
         )]
         family: Option<String>,
         #[arg(
@@ -589,7 +589,8 @@ pub enum CapacityPoolCommand {
         family_name: Option<String>,
         #[arg(
             long,
-            help = "Flex mode: pin to the cell's current default family [See `momento pool discover families`]",
+            help = "Flex mode: pin to the cell's current default family \
+                    [See `momento preview pool discover families`]",
             default_value_t = false,
             conflicts_with = "family_name"
         )]
