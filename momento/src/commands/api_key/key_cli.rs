@@ -4,7 +4,10 @@ use super::utils::{
     Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
 };
 use crate::commands::api_key::utils::RefreshApiKeyRequest;
-use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::commands::utils::{
+    unexpectedly_empty_success_from_api,
+    MomentoHttpResponse::{Parsed, Unparseable},
+};
 use crate::utils::file::prompt_user_for_input;
 use crate::{error::CliError, utils::console::console_data};
 
@@ -28,9 +31,16 @@ pub async fn create_key(
             console_data!("API Key:\n\n{key}");
         }
         Unparseable(response_text) => {
-            console_data!("Creating API key!");
-            if !response_text.is_empty() {
-                console_data!("\n\n{response_text}");
+            if response_text.is_empty() {
+                // Must always return the API key, else the user can't use it
+                return Err(CliError::new(
+                    // Not the standard unexpectedly_empty_success_from_api();
+                    // don't want user to potentially regenerate+orphan more API keys
+                    "Something went wrong! The API claims to have succeeded but gave an empty response. \
+                     Please contact support@momentohq.com.",
+                ));
+            } else {
+                console_data!("Couldn't parse API key:\n\n{response_text}");
             }
         }
     };
@@ -60,9 +70,11 @@ pub async fn refresh_key(
             console_data!("Refreshed API Key:\n\n{key}");
         }
         Unparseable(response_text) => {
-            console_data!("Refreshing API key!");
-            if !response_text.is_empty() {
-                console_data!("\n\n{response_text}");
+            if response_text.is_empty() {
+                // Must always return the API key, else the user can't use it
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse refreshed API key:\n\n{response_text}");
             }
         }
     };
@@ -140,7 +152,12 @@ pub async fn list_keys(
                 }
             }
             Unparseable(response_text) => {
-                console_data!("Listing your API keys:\n\n{response_text}");
+                if response_text.is_empty() {
+                    // If truly an empty list, we'd have received `key_info: []`
+                    return Err(unexpectedly_empty_success_from_api());
+                } else {
+                    console_data!("Couldn't parse list of API keys:\n\n{response_text}");
+                }
                 break;
             }
         };

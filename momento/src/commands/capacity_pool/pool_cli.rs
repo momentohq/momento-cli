@@ -7,7 +7,10 @@ use crate::commands::capacity_pool::utils::{
     DiscoverFamiliesResponse, DiscoverInstanceTypesResponse, ListCapacityPoolsResponse,
 };
 use crate::commands::utils::CustomerMetricsConfig;
-use crate::commands::utils::MomentoHttpResponse::{Parsed, Unparseable};
+use crate::commands::utils::{
+    unexpectedly_empty_success_from_api,
+    MomentoHttpResponse::{Parsed, Unparseable},
+};
 use crate::{error::CliError, utils::console::console_data};
 
 use http::Method;
@@ -29,7 +32,7 @@ pub async fn create_pool(
             console_data!("Creating capacity pool!\n\n{pool}");
         }
         Unparseable(response_text) => {
-            console_data!("Creating capacity pool!");
+            console_data!("Attempting to create capacity pool!");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
             }
@@ -48,7 +51,11 @@ pub async fn get_status(
             console_data!("{}", pool.status);
         }
         Unparseable(response_text) => {
-            console_data!("{response_text}");
+            if response_text.is_empty() {
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("{response_text}");
+            }
         }
     };
     Ok(())
@@ -64,7 +71,11 @@ pub async fn describe_pool(
             console_data!("Your capacity pool:\n\n{pool}");
         }
         Unparseable(response_text) => {
-            console_data!("Your capacity pool:\n\n{response_text}");
+            if response_text.is_empty() {
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse capacity pool:\n\n{response_text}");
+            }
         }
     };
     Ok(())
@@ -104,7 +115,7 @@ pub async fn update_pool(
             console_data!("Updating capacity pool!\n\n{pool}");
         }
         Unparseable(response_text) => {
-            console_data!("Updating capacity pool!");
+            console_data!("Attempting to update capacity pool!");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
             }
@@ -142,7 +153,12 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
             }
         }
         Unparseable(response_text) => {
-            console_data!("Listing your capacity pools:\n\n{response_text}");
+            if response_text.is_empty() {
+                // If truly an empty list, we'd have received `capacity_pools: []`
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse list of capacity pools:\n\n{response_text}");
+            }
         }
     };
     Ok(())
@@ -162,9 +178,12 @@ pub async fn discover_families(api_endpoint: String, auth_token: String) -> Resu
             }
         }
         Unparseable(response_text) => {
-            console_data!(
-                "Capacity family availability for flex-mode capacity pools:\n\n{response_text}"
-            );
+            if response_text.is_empty() {
+                // If truly an empty list, we'd have received `families: []`
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse list of capacity families:\n\n{response_text}");
+            }
         }
     };
     Ok(())
@@ -187,9 +206,12 @@ pub async fn discover_instance_types(
             }
         }
         Unparseable(response_text) => {
-            console_data!(
-                "Instance type availability for explicit-mode capacity pools:\n\n{response_text}"
-            );
+            if response_text.is_empty() {
+                // If truly an empty list, we'd have received `instance_types: []`
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse list of instance types:\n\n{response_text}");
+            }
         }
     };
     Ok(())

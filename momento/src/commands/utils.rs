@@ -307,6 +307,13 @@ impl From<reqwest::Error> for CliError {
     }
 }
 
+pub fn unexpectedly_empty_success_from_api() -> CliError {
+    CliError::new(
+        "Something went wrong! The API claims to have succeeded but gave an empty response. \
+         Try using `--verbose` or contacting support@momentohq.com.",
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
