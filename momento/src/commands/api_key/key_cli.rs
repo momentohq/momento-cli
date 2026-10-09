@@ -5,7 +5,7 @@ use super::utils::{
 };
 use crate::commands::api_key::utils::RefreshApiKeyRequest;
 use crate::commands::utils::{
-    unexpected_empty_api_response,
+    unexpectedly_empty_success_from_api,
     MomentoHttpResponse::{Parsed, Unparseable},
 };
 use crate::utils::file::prompt_user_for_input;
@@ -32,7 +32,7 @@ pub async fn create_key(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
-                return Err(unexpected_empty_api_response());
+                return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse API key:\n\n{response_text}");
             }
@@ -65,7 +65,7 @@ pub async fn refresh_key(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
-                return Err(unexpected_empty_api_response());
+                return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse refreshed API key:\n\n{response_text}");
             }
@@ -146,7 +146,7 @@ pub async fn list_keys(
             }
             Unparseable(response_text) => {
                 if response_text.is_empty() {
-                    return Err(unexpected_empty_api_response());
+                    return Err(unexpectedly_empty_success_from_api());
                 } else {
                     console_data!("Couldn't parse list of API keys:\n\n{response_text}");
                 }

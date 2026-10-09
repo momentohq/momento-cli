@@ -4,7 +4,7 @@ use super::utils::{
     DeleteCustomRoleResponse, DeleteStatus, ListCustomRolesResponse, RoleSelector,
 };
 use crate::commands::utils::{
-    unexpected_empty_api_response,
+    unexpectedly_empty_success_from_api,
     MomentoHttpResponse::{Parsed, Unparseable},
 };
 use crate::utils::file::prompt_user_for_input;
@@ -158,7 +158,7 @@ pub async fn list_roles(
             }
             Unparseable(response_text) => {
                 if response_text.is_empty() {
-                    return Err(unexpected_empty_api_response());
+                    return Err(unexpectedly_empty_success_from_api());
                 } else {
                     console_data!("Couldn't parse {roles_text}{page_text}:\n\n{response_text}");
                 }

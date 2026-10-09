@@ -1,7 +1,7 @@
 use super::utils::{call_database_api, call_database_delete_api, call_database_list_api, Database};
 use crate::commands::database::utils::{print_valkey_cli_sample, ListDatabasesResponse};
 use crate::commands::utils::{
-    unexpected_empty_api_response, CustomerMetricsConfig,
+    unexpectedly_empty_success_from_api, CustomerMetricsConfig,
     MomentoHttpResponse::{Parsed, Unparseable},
 };
 use crate::{error::CliError, utils::console::console_data};
@@ -58,7 +58,7 @@ pub async fn describe_database(
             }
             Unparseable(response_text) => {
                 if response_text.is_empty() {
-                    return Err(unexpected_empty_api_response());
+                    return Err(unexpectedly_empty_success_from_api());
                 } else {
                     console_data!("Couldn't parse database:\n\n{response_text}");
                 }
@@ -158,7 +158,7 @@ pub async fn list_databases(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
-                return Err(unexpected_empty_api_response());
+                return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse list of databases:\n\n{response_text}");
                 Some("<DATABASE NAME>".to_string())

@@ -307,9 +307,10 @@ impl From<reqwest::Error> for CliError {
     }
 }
 
-pub fn unexpected_empty_api_response() -> CliError {
+pub fn unexpectedly_empty_success_from_api() -> CliError {
     CliError::new(
-        "Something went wrong! The API gave an empty response. Try using `--verbose` or contacting support@momentohq.com.",
+        "Something went wrong! The API claims to have succeeded but gave an empty response. \
+         Try using `--verbose` or contacting support@momentohq.com.",
     )
 }
 

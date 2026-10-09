@@ -8,7 +8,7 @@ use crate::commands::capacity_pool::utils::{
 };
 use crate::commands::utils::CustomerMetricsConfig;
 use crate::commands::utils::{
-    unexpected_empty_api_response,
+    unexpectedly_empty_success_from_api,
     MomentoHttpResponse::{Parsed, Unparseable},
 };
 use crate::{error::CliError, utils::console::console_data};
@@ -52,7 +52,7 @@ pub async fn get_status(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
-                return Err(unexpected_empty_api_response());
+                return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("{response_text}");
             }
@@ -72,7 +72,7 @@ pub async fn describe_pool(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
-                return Err(unexpected_empty_api_response());
+                return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse capacity pool:\n\n{response_text}");
             }
@@ -154,7 +154,7 @@ pub async fn list_pools(endpoint: String, auth_token: String) -> Result<(), CliE
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
-                return Err(unexpected_empty_api_response());
+                return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse list of capacity pools:\n\n{response_text}");
             }
@@ -178,7 +178,7 @@ pub async fn discover_families(api_endpoint: String, auth_token: String) -> Resu
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
-                return Err(unexpected_empty_api_response());
+                return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse list of capacity families:\n\n{response_text}");
             }
@@ -205,7 +205,7 @@ pub async fn discover_instance_types(
         }
         Unparseable(response_text) => {
             if response_text.is_empty() {
-                return Err(unexpected_empty_api_response());
+                return Err(unexpectedly_empty_success_from_api());
             } else {
                 console_data!("Couldn't parse list of instance types:\n\n{response_text}");
             }
