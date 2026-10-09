@@ -6,7 +6,7 @@ make build
 
 ### Manual Testing
 
-Make sure you have `~/.momento/credentials` and `~/.momento/config` files with your [API key(s)](https://console.gomomento.com/keys), [endpoint URL(s)](https://docs.momentohq.com/platform/regions), and [cache name(s)](https://console.gomomento.com/caches).
+Make sure you have `~/.momento/credentials` and `~/.momento/config` files with your [API key(s)](https://console.gomomento.com/keys), [endpoint URL(s)](https://docs.momentohq.com/platform/regions), and [Serverless Cache (legacy) name(s)](https://console.gomomento.com/caches).
 
 `~/.momento/credentials`
 
@@ -41,6 +41,7 @@ Follow the [README](./README.md#use-cli), using `./target/debug/momento` instead
 ### Automated Testing
 
 For the automated tests, a [legacy API key](https://console.gomomento.com/api-keys) is required with the following settings:
+
 - **Type of key**: Super User Key
 - **Expiration**: highly recommended (Legacy keys do not support revocation.)
 

@@ -3,5 +3,5 @@ source: momento/src/commands/custom_role/display.rs
 expression: rule.to_string()
 ---
 - Topic: announcements
-  In cache: chat-app
+  In Serverless Cache: chat-app
   Allowed actions: Read

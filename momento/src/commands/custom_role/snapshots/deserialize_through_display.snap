@@ -23,23 +23,23 @@ Rules:
 - Database: orders
   Key: orders:pending
   Allowed actions: Write
-- Caches (all)
+- Serverless Caches (all)
   Keys: all
   Allowed actions: Read, Write, List
-- Cache: prod-cache
+- Serverless Cache: prod-cache
   Keys with prefix: public/
   Allowed actions: Read
-- Cache: prod-cache
+- Serverless Cache: prod-cache
   Key: feature-flags
   Allowed actions: Write
 - Topics (all)
-  In caches: all
+  In Serverless Caches: all
   Allowed actions: Read, Write, List
 - Topic: announcements
-  In cache: chat-app
+  In Serverless Cache: chat-app
   Allowed actions: Read
 - Topics with prefix: room-
-  In cache: chat-app
+  In Serverless Cache: chat-app
   Allowed actions: Write
 - Object Stores (all)
   Keys: all
@@ -51,13 +51,13 @@ Rules:
   Key: schema-version
   Allowed actions: Write
 - Functions (all)
-  In caches: all
+  In Serverless Caches: all
   Allowed actions: Invoke
 - Function: resize-image
-  In cache: edge-app
+  In Serverless Cache: edge-app
   Allowed actions: Invoke
 - Functions with prefix: webhook-
-  In cache: edge-app
+  In Serverless Cache: edge-app
   Allowed actions: Invoke
 Conditions:
 - Allowed IPs:

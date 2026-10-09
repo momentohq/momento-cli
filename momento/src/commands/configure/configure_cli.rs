@@ -65,13 +65,13 @@ pub async fn configure_momento(
     let client = get_cache_client(credential_provider).await?;
     match create_cache(client.clone(), config.cache.clone()).await {
         Ok(_) => console_info!(
-            "{} successfully created as the default cache with default TTL of {}s",
+            "{} successfully created as the default Serverless Cache (legacy) with default TTL of {}s",
             config.cache,
             config.ttl
         ),
         Err(create_err) => {
             console_info!(
-                "{} successfully set as the default cache with default TTL of {}s",
+                "{} successfully set as the default Serverless Cache (legacy) with default TTL of {}s",
                 config.cache,
                 config.ttl
             );
@@ -197,10 +197,13 @@ async fn prompt_user_for_config(quick: bool, profile_name: &str) -> Result<Confi
     };
     let mut cache_name = prompt_cache.to_string();
     if !quick {
-        cache_name = match prompt_user_for_input("Default Cache", prompt_cache, false).await {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
+        cache_name =
+            match prompt_user_for_input("Default Serverless Cache (legacy)", prompt_cache, false)
+                .await
+            {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
     }
     let cache_name_to_use = if cache_name.is_empty() {
         DEFAULT_CACHE_NAME.to_string()

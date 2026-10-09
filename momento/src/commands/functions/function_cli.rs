@@ -114,7 +114,7 @@ pub async fn invoke_function(
     let headers = build_invocation_headers(options.headers.unwrap_or_default().as_str())?;
     let data = options.data.unwrap_or_default();
 
-    info!("Invoking function. Name: {name}, Cache Namespace: {cache_name}");
+    info!("Invoking function. Name: {name}, Serverless Cache Namespace: {cache_name}");
     if !data.is_empty() {
         info!("with payload:\n{data}");
     };
@@ -143,9 +143,9 @@ pub async fn list_functions(client: FunctionClient, cache_name: String) -> Resul
     let functions_list = response.into_vec().await.map_err(Into::<CliError>::into)?;
 
     if functions_list.is_empty() {
-        console_data!("No functions found in cache namespace: {cache_name}");
+        console_data!("No functions found in Serverless Cache namespace: {cache_name}");
     } else {
-        console_data!("Functions in cache namespace: {cache_name}");
+        console_data!("Functions in Serverless Cache namespace: {cache_name}");
         functions_list.iter().for_each(|function| {
             console_data!(
                 "\nName: {}, ID: {}, Latest Version: {}, Current Version: {}, Description: \"{}\", Last Uploaded: {}, Metrics: {}",

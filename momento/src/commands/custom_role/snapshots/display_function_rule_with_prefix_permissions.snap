@@ -3,5 +3,5 @@ source: momento/src/commands/custom_role/display.rs
 expression: rule.to_string()
 ---
 - Functions with prefix: webhook-
-  In cache: edge-app
+  In Serverless Cache: edge-app
   Allowed actions: Invoke

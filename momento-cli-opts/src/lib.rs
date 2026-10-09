@@ -9,6 +9,7 @@ use chrono::NaiveDate;
 use std::time::Duration;
 use utils::{
     parse_bounds, parse_date, parse_positive_bounds, parse_to_json, validate_capacity_pool_name,
+    MovedCommandArgs,
 };
 pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
@@ -23,7 +24,7 @@ pub enum LoginMode {
     version,
     bin_name = "momento",
     name = "momento",
-    about = "Command line tool for Momento Serverless Cache"
+    about = "Command line tool for Momento"
 )]
 pub struct Momento {
     #[arg(name = "verbose", global = true, long, help = "Log more information")]
@@ -77,7 +78,67 @@ pub enum Subcommand {
         #[command(subcommand)]
         operation: CustomRoleCommand,
     },
-    #[command(about = "Interact with caches")]
+
+    #[command(about = "Interact with your Momento Cache capacity pools")]
+    Pool {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: CapacityPoolCommand,
+    },
+
+    #[command(about = "Interact with your Momento Cache databases")]
+    Database {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: DatabaseCommand,
+    },
+
+    #[command(
+        about = "**LEGACY** Interact with Serverless Cache.",
+        before_help = "
+!!                                                                !!
+!!                         Legacy feature                         !!
+!!   For more information, contact us at support@momentohq.com.   !!
+!!                                                                !!
+
+Serverless Cache (`momento cache`) is a legacy Momento product.
+Where possible, we recommend using Momento Cache (`momento pool` + `momento database`) instead.
+For more information, see https://docs.momentohq.com/product/cache
+or reach out at support@momentohq.com.
+"
+    )]
     Cache {
         #[arg(
             long,
@@ -102,7 +163,7 @@ pub enum Subcommand {
     #[command(
         about = "Interact with topics",
         before_help = "
-These commands require a cache, which serves as a namespace
+Momento Topics require a Serverless Cache (legacy), which serves as a namespace
 for your topics. If you haven't already, call `cache create`
 to make one!
 
@@ -184,7 +245,7 @@ pub enum FunctionCommand {
             long = "cache-name",
             short,
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the cache you want to use as your function namespace [default: your profile's default cache]",
+            help = "Name of the Serverless Cache (legacy) you want to use as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -272,7 +333,7 @@ pub enum FunctionCommand {
             long = "cache-name",
             short,
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the cache used as your function namespace [default: your profile's default cache]",
+            help = "Name of the Serverless Cache (legacy) used as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -356,7 +417,7 @@ pub enum FunctionCommand {
             long = "cache-name",
             short,
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the cache used as your function namespace [default: your profile's default cache]",
+            help = "Name of the Serverless Cache (legacy) used as your function namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -400,13 +461,13 @@ pub enum FunctionCommand {
         )]
         headers: Option<String>,
     },
-    #[command(about = "List all Momento Functions in the given cache namespace")]
+    #[command(about = "List all Momento Functions in the given Serverless Cache namespace")]
     ListFunctions {
         #[arg(
             long = "cache-name",
             short,
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the cache you want to check [default: your profile's default cache]",
+            help = "Name of the Serverless Cache (legacy) you want to check [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -476,7 +537,7 @@ pub enum CapacityPoolCommand {
             long = "family",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Flex mode: capacity family to use \
-                    [default is cell-dependent; see `momento preview pool discover families`]"
+                    [default is cell-dependent; see `momento pool discover families`]"
         )]
         family: Option<String>,
         #[arg(
@@ -590,7 +651,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             help = "Flex mode: pin to the cell's current default family \
-                    [See `momento preview pool discover families`]",
+                    [See `momento pool discover families`]",
             default_value_t = false,
             conflicts_with = "family_name"
         )]
@@ -855,7 +916,7 @@ to help find opportunities for optimizations with Momento.
     #[command(
         about = "**PREVIEW** Interact with your Momento Functions",
         before_help = "
-Momento Functions require a cache, which serves as a namespace
+Momento Functions require a Serverless Cache (legacy), which serves as a namespace
 for your Functions. If you haven't already, call `cache create`
 to make one!
 
@@ -883,50 +944,18 @@ https://github.com/momentohq/functions/"
         #[command(subcommand)]
         operation: FunctionCommand,
     },
-    #[command(about = "**PREVIEW** Interact with your Momento capacity pools")]
-    Pool {
-        #[arg(
-            long,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit Momento API key to use [default: your profile's API key]"
-        )]
-        api_key: Option<String>,
 
-        #[arg(
-            long,
-            short,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
-        )]
-        endpoint: Option<String>,
-
-        #[command(subcommand)]
-        operation: CapacityPoolCommand,
-    },
-    #[command(about = "**PREVIEW** Interact with your Momento databases")]
-    Database {
-        #[arg(
-            long,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit Momento API key to use [default: your profile's API key]"
-        )]
-        api_key: Option<String>,
-
-        #[arg(
-            long,
-            short,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
-        )]
-        endpoint: Option<String>,
-
-        #[command(subcommand)]
-        operation: DatabaseCommand,
-    },
+    // Placeholder "commands" while customers learn of the move out of `preview`:
+    #[command(
+        about = "*RELEASED 🎉* Use `momento pool` without the `preview`",
+        hide = true
+    )]
+    Pool(MovedCommandArgs),
+    #[command(
+        about = "*RELEASED 🎉* Use `momento database` without the `preview`",
+        hide = true
+    )]
+    Database(MovedCommandArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -1257,7 +1286,7 @@ pub enum CloudSignupCommand {
 #[derive(Debug, Parser)]
 pub enum CacheCommand {
     #[command(
-    about = "Create a cache",
+    about = "Create a Serverless Cache (legacy)",
     group(
     clap::ArgGroup::new("cache-name")
     .required(true)
@@ -1287,7 +1316,7 @@ pub enum CacheCommand {
     },
 
     #[command(
-    about = "Delete a cache",
+    about = "Delete a Serverless Cache (legacy)",
     group(
     clap::ArgGroup::new("cache-name")
     .required(true)
@@ -1316,10 +1345,10 @@ pub enum CacheCommand {
         cache_name_flag_for_backward_compatibility: Option<String>,
     },
 
-    #[command(about = "List all caches")]
+    #[command(about = "List all your Serverless Caches (legacy)")]
     List {},
 
-    #[command(about = "Flush all contents from a cache",
+    #[command(about = "Flush all contents from a Serverless Cache (legacy)",
 group(
 clap::ArgGroup::new("cache-name")
 .required(true)
@@ -1341,7 +1370,7 @@ clap::ArgGroup::new("cache-name")
     },
 
     #[command(
-    about = "Store an item in a cache",
+    about = "Store an item in a Serverless Cache (legacy)",
     group(
     clap::ArgGroup::new("cache-key")
     .required(true)
@@ -1391,7 +1420,7 @@ clap::ArgGroup::new("cache-name")
     },
 
     #[command(
-    about = "Get an item from the cache",
+    about = "Get an item from a Serverless Cache (legacy)",
     group(
     clap::ArgGroup::new("cache-key")
     .required(true)
@@ -1425,7 +1454,7 @@ clap::ArgGroup::new("cache-name")
     },
 
     #[command(
-    about = "Delete an item from the cache",
+    about = "Delete an item from a Serverless Cache (legacy)",
     group(
     clap::ArgGroup::new("cache-key")
     .required(true)
@@ -1440,7 +1469,7 @@ clap::ArgGroup::new("cache-name")
         #[arg(
             long = "cache",
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the cache you want to use [default: your profile's default cache]",
+            help = "Name of the cache you want to delete from [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -1467,7 +1496,7 @@ pub enum TopicCommand {
         #[arg(
             long = "cache",
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the cache you want to use as your topic namespace [default: your profile's default cache]",
+            help = "Name of the Serverless Cache (legacy) you want to use as your topic namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,
@@ -1484,7 +1513,7 @@ pub enum TopicCommand {
         #[arg(
             long = "cache",
             value_parser = NonEmptyStringValueParser::new(),
-            help = "Name of the cache you want to use as your topic namespace [default: your profile's default cache]",
+            help = "Name of the Serverless Cache (legacy) you want to use as your topic namespace [default: your profile's default cache]",
             value_name = "CACHE"
         )]
         cache_name: Option<String>,

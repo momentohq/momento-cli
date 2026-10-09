@@ -206,7 +206,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         .or(cache_name_flag_for_backward_compatibility)
                         .expect("The argument group guarantees 1 or the other");
                     commands::cache::cache_cli::create_cache(client, cache_name.clone()).await?;
-                    debug!("created cache {cache_name}")
+                    debug!("created legacy cache {cache_name}")
                 }
                 momento_cli_opts::CacheCommand::Delete {
                     cache_name,
@@ -218,7 +218,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         .or(cache_name_flag_for_backward_compatibility)
                         .expect("The argument group guarantees 1 or the other");
                     commands::cache::cache_cli::delete_cache(client, cache_name.clone()).await?;
-                    debug!("deleted cache {}", cache_name)
+                    debug!("deleted legacy cache {}", cache_name)
                 }
                 momento_cli_opts::CacheCommand::List {} => {
                     commands::cache::cache_cli::list_caches(client).await?
@@ -356,6 +356,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             } => commands::account::signup_decommissioned().await?,
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
+            PreviewCommand::Pool(_) => return Err(CliError::new(
+                "Momento Cache capacity pools have been released! 🎉 Please use `momento pool` without the `preview`."
+            )),
+            PreviewCommand::Database(_) => return Err(CliError::new(
+                "Momento Cache databases have been released! 🎉 Please use `momento database` without the `preview`."
+            )),
             PreviewCommand::CloudLinter {
                 region,
                 enable_ddb_ttl_check,
@@ -508,274 +514,269 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                 }
             }
-            PreviewCommand::Pool {
-                api_key,
-                endpoint,
-                operation,
-            } => {
-                let (creds, _) = get_creds_and_config(&args.profile).await?;
-                let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
+        },
+        momento_cli_opts::Subcommand::Pool{api_key, endpoint, operation} => {
+            let (creds, _) = get_creds_and_config(&args.profile).await?;
+            let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
-                let api_endpoint = credential_provider.cache_http_endpoint().to_string();
-                let auth_token = credential_provider.auth_token().to_string();
-
-                match operation {
-                    momento_cli_opts::CapacityPoolCommand::Create {
-                        name,
-                        instance_type,
-                        shard_count,
-                        replicas_per_shard,
-                        capacity_gib,
-                        zones,
-                        family,
-                        metrics_iam_role,
-                        metrics_aws_region,
-                        disable_metrics,
-                    } => {
-                        let provisioning = determine_provisioning_create(
+            let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+            let auth_token = credential_provider.auth_token().to_string();
+                    match operation {
+                        momento_cli_opts::CapacityPoolCommand::Create {
+                            name,
                             instance_type,
                             shard_count,
                             replicas_per_shard,
                             capacity_gib,
-                            family,
                             zones,
-                        )?;
-                        let metrics_config = determine_metrics_config(
+                            family,
                             metrics_iam_role,
                             metrics_aws_region,
                             disable_metrics,
-                        )?;
-                        commands::capacity_pool::pool_cli::create_pool(
-                            api_endpoint,
-                            auth_token,
+                        } => {
+                            let provisioning = determine_provisioning_create(
+                                instance_type,
+                                shard_count,
+                                replicas_per_shard,
+                                capacity_gib,
+                                family,
+                                zones,
+                            )?;
+                            let metrics_config = determine_metrics_config(
+                                metrics_iam_role,
+                                metrics_aws_region,
+                                disable_metrics,
+                            )?;
+                            commands::capacity_pool::pool_cli::create_pool(
+                                api_endpoint,
+                                auth_token,
+                                name,
+                                provisioning,
+                                metrics_config,
+                            )
+                            .await?
+                        }
+                        momento_cli_opts::CapacityPoolCommand::GetStatus { name } => {
+                            commands::capacity_pool::pool_cli::get_status(
+                                api_endpoint,
+                                auth_token,
+                                name,
+                            )
+                            .await?
+                        }
+                        momento_cli_opts::CapacityPoolCommand::Describe { name } => {
+                            commands::capacity_pool::pool_cli::describe_pool(
+                                api_endpoint,
+                                auth_token,
+                                name,
+                            )
+                            .await?
+                        }
+                        momento_cli_opts::CapacityPoolCommand::Update {
                             name,
-                            provisioning,
-                            metrics_config,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::CapacityPoolCommand::GetStatus { name } => {
-                        commands::capacity_pool::pool_cli::get_status(
-                            api_endpoint,
-                            auth_token,
-                            name,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::CapacityPoolCommand::Describe { name } => {
-                        commands::capacity_pool::pool_cli::describe_pool(
-                            api_endpoint,
-                            auth_token,
-                            name,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::CapacityPoolCommand::Update {
-                        name,
-                        instance_type,
-                        shard_count,
-                        replicas_per_shard,
-                        capacity_gib,
-                        zones,
-                        family_name,
-                        default_family,
-                        metrics_iam_role,
-                        metrics_aws_region,
-                        default_metrics_aws_region,
-                        disable_metrics,
-                        remove_metrics_config,
-                    } => {
-                        let metrics_config_inputs = determine_metrics_config_update(
+                            instance_type,
+                            shard_count,
+                            replicas_per_shard,
+                            capacity_gib,
+                            zones,
+                            family_name,
+                            default_family,
                             metrics_iam_role,
                             metrics_aws_region,
                             default_metrics_aws_region,
                             disable_metrics,
                             remove_metrics_config,
-                        )?;
-                        let family = determine_family_update(family_name, default_family);
-                        if instance_type.is_none()
-                            && shard_count.is_none()
-                            && replicas_per_shard.is_none()
-                            && capacity_gib.is_none()
-                            && zones.is_empty()
-                            && family.is_none()
-                            && metrics_config_inputs.is_none()
-                        {
-                            return Err(missing_pool_update_args());
-                        }
-                        let existing_pool = commands::capacity_pool::pool_cli::fetch_pool(
-                            api_endpoint.clone(),
-                            auth_token.clone(),
-                            name.clone(),
-                        )
-                        .await?;
-                        let provisioning_mode = existing_pool.provisioning.mode();
-                        let provisioning_update = determine_provisioning_update(
-                            provisioning_mode,
-                            instance_type,
-                            shard_count,
-                            replicas_per_shard,
-                            capacity_gib,
-                            family,
-                            zones,
-                        )?;
-                        let metrics_config = determine_metrics_config_update_with_defaults(
-                            metrics_config_inputs,
-                            existing_pool.metrics_config,
-                            default_metrics_aws_region,
-                        )?;
-                        commands::capacity_pool::pool_cli::update_pool(
-                            api_endpoint,
-                            auth_token,
-                            name,
-                            provisioning_mode,
-                            provisioning_update,
-                            metrics_config,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::CapacityPoolCommand::Delete { name } => {
-                        commands::capacity_pool::pool_cli::delete_pool(
-                            api_endpoint,
-                            auth_token,
-                            name,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::CapacityPoolCommand::List {} => {
-                        commands::capacity_pool::pool_cli::list_pools(api_endpoint, auth_token)
+                        } => {
+                            let metrics_config_inputs = determine_metrics_config_update(
+                                metrics_iam_role,
+                                metrics_aws_region,
+                                default_metrics_aws_region,
+                                disable_metrics,
+                                remove_metrics_config,
+                            )?;
+                            let family = determine_family_update(family_name, default_family);
+                            if instance_type.is_none()
+                                && shard_count.is_none()
+                                && replicas_per_shard.is_none()
+                                && capacity_gib.is_none()
+                                && zones.is_empty()
+                                && family.is_none()
+                                && metrics_config_inputs.is_none()
+                            {
+                                return Err(missing_pool_update_args());
+                            }
+                            let existing_pool = commands::capacity_pool::pool_cli::fetch_pool(
+                                api_endpoint.clone(),
+                                auth_token.clone(),
+                                name.clone(),
+                            )
+                            .await?;
+                            let provisioning_mode = existing_pool.provisioning.mode();
+                            let provisioning_update = determine_provisioning_update(
+                                provisioning_mode,
+                                instance_type,
+                                shard_count,
+                                replicas_per_shard,
+                                capacity_gib,
+                                family,
+                                zones,
+                            )?;
+                            let metrics_config = determine_metrics_config_update_with_defaults(
+                                metrics_config_inputs,
+                                existing_pool.metrics_config,
+                                default_metrics_aws_region,
+                            )?;
+                            commands::capacity_pool::pool_cli::update_pool(
+                                api_endpoint,
+                                auth_token,
+                                name,
+                                provisioning_mode,
+                                provisioning_update,
+                                metrics_config,
+                            )
                             .await?
-                    }
-                    momento_cli_opts::CapacityPoolCommand::Discover { operation } => {
-                        let sdk_endpoint = shorten_to_sdk_endpoint(&api_endpoint); // TODO return from SDK instead, like .cache_http_endpoint()
-                        console_info!("Discovering at {sdk_endpoint} under your account...");
-                        match operation {
-                            momento_cli_opts::CapacityPoolDiscoverCommand::Families {} => {
-                                commands::capacity_pool::pool_cli::discover_families(
-                                    api_endpoint,
-                                    auth_token,
-                                )
+                        }
+                        momento_cli_opts::CapacityPoolCommand::Delete { name } => {
+                            commands::capacity_pool::pool_cli::delete_pool(
+                                api_endpoint,
+                                auth_token,
+                                name,
+                            )
+                            .await?
+                        }
+                        momento_cli_opts::CapacityPoolCommand::List {} => {
+                            commands::capacity_pool::pool_cli::list_pools(api_endpoint, auth_token)
                                 .await?
-                            }
-                            momento_cli_opts::CapacityPoolDiscoverCommand::InstanceTypes {} => {
-                                commands::capacity_pool::pool_cli::discover_instance_types(
-                                    api_endpoint,
-                                    auth_token,
-                                )
-                                .await?
+                        }
+                        momento_cli_opts::CapacityPoolCommand::Discover { operation } => {
+                            let sdk_endpoint = shorten_to_sdk_endpoint(&api_endpoint); // TODO return from SDK instead, like .cache_http_endpoint()
+                            console_info!("Discovering at {sdk_endpoint} under your account...");
+                            match operation {
+                                momento_cli_opts::CapacityPoolDiscoverCommand::Families {} => {
+                                    commands::capacity_pool::pool_cli::discover_families(
+                                        api_endpoint,
+                                        auth_token,
+                                    )
+                                    .await?
+                                }
+                                momento_cli_opts::CapacityPoolDiscoverCommand::InstanceTypes {} => {
+                                    commands::capacity_pool::pool_cli::discover_instance_types(
+                                        api_endpoint,
+                                        auth_token,
+                                    )
+                                    .await?
+                                }
                             }
                         }
                     }
-                }
-            }
-            PreviewCommand::Database {
-                api_key,
-                endpoint,
-                operation,
-            } => {
-                let (creds, _) = get_creds_and_config(&args.profile).await?;
-                let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
+                },
+        momento_cli_opts::Subcommand::Database {
+            api_key,
+            endpoint,
+            operation,
+        } => {
+            let (creds, _) = get_creds_and_config(&args.profile).await?;
+            let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
-                let api_endpoint = credential_provider.cache_http_endpoint().to_string();
-                let valkey_hostname = credential_provider.valkey_hostname().to_string();
-                let auth_token = credential_provider.auth_token().to_string();
+            let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+            let valkey_hostname = credential_provider.valkey_hostname().to_string();
+            let auth_token = credential_provider.auth_token().to_string();
 
-                match operation {
-                    momento_cli_opts::DatabaseCommand::Create {
-                        pool_name,
-                        name,
-                        metrics_iam_role,
-                        metrics_aws_region,
-                        disable_metrics,
-                    } => {
-                        let metrics_config = determine_metrics_config(
-                            metrics_iam_role,
-                            metrics_aws_region,
-                            disable_metrics,
-                        )?;
-                        commands::database::database_cli::create_database(
-                            api_endpoint,
-                            valkey_hostname,
-                            auth_token,
+                    match operation {
+                        momento_cli_opts::DatabaseCommand::Create {
                             pool_name,
                             name,
-                            metrics_config,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::DatabaseCommand::Describe { name } => {
-                        commands::database::database_cli::describe_database(
-                            api_endpoint,
-                            valkey_hostname,
-                            auth_token,
+                            metrics_iam_role,
+                            metrics_aws_region,
+                            disable_metrics,
+                        } => {
+                            let metrics_config = determine_metrics_config(
+                                metrics_iam_role,
+                                metrics_aws_region,
+                                disable_metrics,
+                            )?;
+                            commands::database::database_cli::create_database(
+                                api_endpoint,
+                                valkey_hostname,
+                                auth_token,
+                                pool_name,
+                                name,
+                                metrics_config,
+                            )
+                            .await?
+                        }
+                        momento_cli_opts::DatabaseCommand::Describe { name } => {
+                            commands::database::database_cli::describe_database(
+                                api_endpoint,
+                                valkey_hostname,
+                                auth_token,
+                                name,
+                            )
+                            .await?
+                        }
+                        momento_cli_opts::DatabaseCommand::Update {
                             name,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::DatabaseCommand::Update {
-                        name,
-                        metrics_iam_role,
-                        metrics_aws_region,
-                        default_metrics_aws_region,
-                        disable_metrics,
-                        remove_metrics_config,
-                    } => {
-                        let mut metrics_config = determine_metrics_config_update(
                             metrics_iam_role,
                             metrics_aws_region,
                             default_metrics_aws_region,
                             disable_metrics,
                             remove_metrics_config,
-                        )?;
-                        if let Some(CustomerMetricsConfig::CloudWatch {
-                            customer_iam_role,
-                            region,
-                        }) = &metrics_config
-                        {
-                            if customer_iam_role.is_none()
-                                || (!default_metrics_aws_region && region.is_none())
+                        } => {
+                            let mut metrics_config = determine_metrics_config_update(
+                                metrics_iam_role,
+                                metrics_aws_region,
+                                default_metrics_aws_region,
+                                disable_metrics,
+                                remove_metrics_config,
+                            )?;
+                            if let Some(CustomerMetricsConfig::CloudWatch {
+                                customer_iam_role,
+                                region,
+                            }) = &metrics_config
                             {
-                                let existing_metrics_config =
+                                if customer_iam_role.is_none()
+                                    || (!default_metrics_aws_region && region.is_none())
+                                {
+                                    let existing_metrics_config =
                                 commands::database::database_cli::fetch_database_metrics_config(
                                     api_endpoint.clone(),
                                     auth_token.clone(),
                                     name.clone(),
                                 )
                                 .await?;
-                                metrics_config = determine_metrics_config_update_with_defaults(
-                                    metrics_config,
-                                    existing_metrics_config,
-                                    default_metrics_aws_region,
-                                )?;
+                                    metrics_config = determine_metrics_config_update_with_defaults(
+                                        metrics_config,
+                                        existing_metrics_config,
+                                        default_metrics_aws_region,
+                                    )?;
+                                }
                             }
+                            commands::database::database_cli::update_database(
+                                api_endpoint,
+                                auth_token,
+                                name,
+                                metrics_config,
+                            )
+                            .await?
                         }
-                        commands::database::database_cli::update_database(
-                            api_endpoint,
-                            auth_token,
-                            name,
-                            metrics_config,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::DatabaseCommand::Delete { name } => {
-                        commands::database::database_cli::delete_database(
-                            api_endpoint,
-                            auth_token,
-                            name,
-                        )
-                        .await?
-                    }
-                    momento_cli_opts::DatabaseCommand::List {} => {
-                        commands::database::database_cli::list_databases(
-                            api_endpoint,
-                            valkey_hostname,
-                            auth_token,
-                        )
-                        .await?
+                        momento_cli_opts::DatabaseCommand::Delete { name } => {
+                            commands::database::database_cli::delete_database(
+                                api_endpoint,
+                                auth_token,
+                                name,
+                            )
+                            .await?
+                        }
+                        momento_cli_opts::DatabaseCommand::List {} => {
+                            commands::database::database_cli::list_databases(
+                                api_endpoint,
+                                valkey_hostname,
+                                auth_token,
+                            )
+                            .await?
+                        }
                     }
                 }
-            }
-        },
     }
     Ok(())
 }
