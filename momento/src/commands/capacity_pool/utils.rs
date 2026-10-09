@@ -226,6 +226,11 @@ pub struct DiscoverFamiliesResponse {
     pub families: Vec<CapacityFamilyResponse>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DiscoverInstanceTypesResponse {
+    pub instance_types: Vec<String>,
+}
+
 /// The single, pinned `--replicas-per-shard` that's required by cluster-/explicit-mode provisioning.
 fn pinned(bounds: Bounds) -> Result<u32, CliError> {
     (bounds.min == bounds.max)
@@ -450,6 +455,21 @@ pub async fn call_pool_families_api(
     call_momento_http_api(
         Method::GET,
         format!("{url}/families"),
+        auth_token,
+        None,
+        None,
+    )
+    .await
+}
+
+pub async fn call_pool_instance_types_api(
+    endpoint: String,
+    auth_token: String,
+) -> Result<MomentoHttpResponse<DiscoverInstanceTypesResponse>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(
+        Method::GET,
+        format!("{url}/instance_types"),
         auth_token,
         None,
         None,

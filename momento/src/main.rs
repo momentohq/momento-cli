@@ -648,12 +648,19 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     }
                     momento_cli_opts::CapacityPoolCommand::Discover { operation } => {
                         let sdk_endpoint = shorten_to_sdk_endpoint(&api_endpoint); // TODO return from SDK instead, like .cache_http_endpoint()
+                        console_info!("Discovering at {sdk_endpoint} under your account...");
                         match operation {
                             momento_cli_opts::CapacityPoolDiscoverCommand::Families {} => {
                                 commands::capacity_pool::pool_cli::discover_families(
                                     api_endpoint,
                                     auth_token,
-                                    sdk_endpoint,
+                                )
+                                .await?
+                            }
+                            momento_cli_opts::CapacityPoolDiscoverCommand::InstanceTypes {} => {
+                                commands::capacity_pool::pool_cli::discover_instance_types(
+                                    api_endpoint,
+                                    auth_token,
                                 )
                                 .await?
                             }
