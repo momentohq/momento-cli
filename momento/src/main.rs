@@ -356,12 +356,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             } => commands::account::signup_decommissioned().await?,
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
-            PreviewCommand::Pool(_) => return Err(CliError::new(format!(
+            PreviewCommand::Pool(_) => return Err(CliError::new(
                 "Momento Cache capacity pools have been released! 🎉 Please use `momento cache pool` now."
-            ))),
-            PreviewCommand::Database(_) => return Err(CliError::new(format!(
+            )),
+            PreviewCommand::Database(_) => return Err(CliError::new(
                 "Momento Cache databases have been released! 🎉 Please use `momento cache database` now."
-            ))),
+            )),
             PreviewCommand::CloudLinter {
                 region,
                 enable_ddb_ttl_check,
