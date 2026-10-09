@@ -6,7 +6,7 @@ use env_logger::Env;
 use error::CliError;
 use log::{debug, error, warn, LevelFilter};
 use momento::MomentoError;
-use momento_cli_opts::{CacheCommand, PreviewCommand};
+use momento_cli_opts::PreviewCommand;
 use std::time::{SystemTime, UNIX_EPOCH};
 use utils::{
     client::{get_cache_client, get_function_client, get_topic_client},
@@ -186,7 +186,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 }
             }
         }
-        momento_cli_opts::Subcommand::LegacyCache {
+        momento_cli_opts::Subcommand::Cache {
             api_key,
             endpoint,
             operation,
@@ -196,7 +196,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             let client = get_cache_client(credential_provider).await?;
 
             match operation {
-                momento_cli_opts::LegacyCacheCommand::Create {
+                momento_cli_opts::CacheCommand::Create {
                     cache_name_flag,
                     cache_name,
                     cache_name_flag_for_backward_compatibility,
@@ -208,7 +208,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     commands::cache::cache_cli::create_cache(client, cache_name.clone()).await?;
                     debug!("created legacy cache {cache_name}")
                 }
-                momento_cli_opts::LegacyCacheCommand::Delete {
+                momento_cli_opts::CacheCommand::Delete {
                     cache_name,
                     cache_name_flag,
                     cache_name_flag_for_backward_compatibility,
@@ -220,10 +220,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     commands::cache::cache_cli::delete_cache(client, cache_name.clone()).await?;
                     debug!("deleted legacy cache {}", cache_name)
                 }
-                momento_cli_opts::LegacyCacheCommand::List {} => {
+                momento_cli_opts::CacheCommand::List {} => {
                     commands::cache::cache_cli::list_caches(client).await?
                 }
-                momento_cli_opts::LegacyCacheCommand::Flush {
+                momento_cli_opts::CacheCommand::Flush {
                     cache_name,
                     cache_name_flag,
                 } => {
@@ -232,7 +232,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         .expect("The argument group guarantees 1 or the other");
                     commands::cache::cache_cli::flush_cache(client, cache_name).await?
                 }
-                momento_cli_opts::LegacyCacheCommand::Set {
+                momento_cli_opts::CacheCommand::Set {
                     cache_name,
                     cache_name_flag_for_backward_compatibility,
                     key,
@@ -259,7 +259,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     )
                     .await?
                 }
-                momento_cli_opts::LegacyCacheCommand::Get {
+                momento_cli_opts::CacheCommand::Get {
                     cache_name,
                     cache_name_flag_for_backward_compatibility,
                     key,
@@ -277,7 +277,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     )
                     .await?;
                 }
-                momento_cli_opts::LegacyCacheCommand::DeleteItem {
+                momento_cli_opts::CacheCommand::DeleteItem {
                     cache_name,
                     cache_name_flag_for_backward_compatibility,
                     key,
@@ -357,10 +357,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
         },
         momento_cli_opts::Subcommand::Preview { operation } => match operation {
             PreviewCommand::Pool(_) => return Err(CliError::new(
-                "Momento Cache capacity pools have been released! 🎉 Please use `momento cache pool` now."
+                "Momento Cache capacity pools have been released! 🎉 Please use `momento pool` without the `preview`."
             )),
             PreviewCommand::Database(_) => return Err(CliError::new(
-                "Momento Cache databases have been released! 🎉 Please use `momento cache database` now."
+                "Momento Cache databases have been released! 🎉 Please use `momento database` without the `preview`."
             )),
             PreviewCommand::CloudLinter {
                 region,
@@ -515,42 +515,12 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 }
             }
         },
-        momento_cli_opts::Subcommand::Cache {
-            api_key,
-            endpoint,
-            operation,
-        } => {
-            let moved_operation = match operation {
-                CacheCommand::Pool { .. } | CacheCommand::Database { .. } => None,
-                CacheCommand::Create(_) => Some("create"),
-                CacheCommand::Delete(_) => Some("delete"),
-                CacheCommand::List(_) => Some("list"),
-                CacheCommand::Flush(_) => Some("flush"),
-                CacheCommand::Set(_) => Some("set"),
-                CacheCommand::Get(_) => Some("get"),
-                CacheCommand::DeleteItem(_) => Some("delete-item"),
-            };
-            if let Some(op) = moved_operation {
-                return Err(CliError::new(format!(
-                    "Serverless Cache is a legacy product. Please use `momento legacy-cache {op}` instead, \
-                     or consider switching to Momento Cache: `momento cache pool` / `momento cache database`."
-                )))
-            }
-
+        momento_cli_opts::Subcommand::Pool{api_key, endpoint, operation} => {
             let (creds, _) = get_creds_and_config(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
             let api_endpoint = credential_provider.cache_http_endpoint().to_string();
             let auth_token = credential_provider.auth_token().to_string();
-            match operation {
-                CacheCommand::Create(_)
-                | CacheCommand::Delete(_)
-                | CacheCommand::List(_)
-                | CacheCommand::Flush(_)
-                | CacheCommand::Set(_)
-                | CacheCommand::Get(_)
-                | CacheCommand::DeleteItem(_) => unreachable!("Moved commands are handled above, before credential setup"),
-                CacheCommand::Pool { operation } => {
                     match operation {
                         momento_cli_opts::CapacityPoolCommand::Create {
                             name,
@@ -699,9 +669,18 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             }
                         }
                     }
-                }
-                CacheCommand::Database { operation } => {
-                    let valkey_hostname = credential_provider.valkey_hostname().to_string();
+                },
+        momento_cli_opts::Subcommand::Database {
+            api_key,
+            endpoint,
+            operation,
+        } => {
+            let (creds, _) = get_creds_and_config(&args.profile).await?;
+            let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
+
+            let api_endpoint = credential_provider.cache_http_endpoint().to_string();
+            let valkey_hostname = credential_provider.valkey_hostname().to_string();
+            let auth_token = credential_provider.auth_token().to_string();
 
                     match operation {
                         momento_cli_opts::DatabaseCommand::Create {
@@ -798,8 +777,6 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         }
                     }
                 }
-            }
-        }
     }
     Ok(())
 }

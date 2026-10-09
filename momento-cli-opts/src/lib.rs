@@ -78,7 +78,67 @@ pub enum Subcommand {
         #[command(subcommand)]
         operation: CustomRoleCommand,
     },
-    #[command(about = "Interact with Momento Cache")]
+
+    #[command(about = "Interact with your Momento Cache capacity pools")]
+    Pool {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: CapacityPoolCommand,
+    },
+
+    #[command(about = "Interact with your Momento Cache databases")]
+    Database {
+        #[arg(
+            long,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit Momento API key to use [default: your profile's API key]"
+        )]
+        api_key: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            global = true,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
+        )]
+        endpoint: Option<String>,
+
+        #[command(subcommand)]
+        operation: DatabaseCommand,
+    },
+
+    #[command(
+        about = "**LEGACY** Interact with Serverless Cache.",
+        before_help = "
+!!                                                                !!
+!!                         Legacy feature                         !!
+!!   For more information, contact us at support@momentohq.com.   !!
+!!                                                                !!
+
+Serverless Cache (`momento legacy-cache`) is a legacy Momento product.
+Where possible, we recommend using Momento Cache (`momento cache`) instead.
+For more information, see https://docs.momentohq.com/product/cache
+or reach out at support@momentohq.com.
+"
+    )]
     Cache {
         #[arg(
             long,
@@ -99,41 +159,6 @@ pub enum Subcommand {
 
         #[command(subcommand)]
         operation: CacheCommand,
-    },
-    #[command(
-        about = "**LEGACY** Interact with Serverless Cache.",
-        before_help = "
-!!                                                                !!
-!!                         Legacy feature                         !!
-!!   For more information, contact us at support@momentohq.com.   !!
-!!                                                                !!
-
-Serverless Cache (`momento legacy-cache`) is a legacy Momento product.
-Where possible, we recommend using Momento Cache (`momento cache`) instead.
-For more information, see https://docs.momentohq.com/product/cache
-or reach out at support@momentohq.com.
-"
-    )]
-    LegacyCache {
-        #[arg(
-            long,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit Momento API key to use [default: your profile's API key]"
-        )]
-        api_key: Option<String>,
-
-        #[arg(
-            long,
-            short,
-            global = true,
-            value_parser = NonEmptyStringValueParser::new(),
-            help = "An explicit hostname to use. Example: cell-us-east-1-1.prod.a.momentohq.com"
-        )]
-        endpoint: Option<String>,
-
-        #[command(subcommand)]
-        operation: LegacyCacheCommand,
     },
     #[command(
         about = "Interact with topics",
@@ -512,7 +537,7 @@ pub enum CapacityPoolCommand {
             long = "family",
             value_parser = NonEmptyStringValueParser::new(),
             help = "Flex mode: capacity family to use \
-                    [default is cell-dependent; see `momento cache pool discover families`]"
+                    [default is cell-dependent; see `momento pool discover families`]"
         )]
         family: Option<String>,
         #[arg(
@@ -626,7 +651,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             help = "Flex mode: pin to the cell's current default family \
-                    [See `momento cache pool discover families`]",
+                    [See `momento pool discover families`]",
             default_value_t = false,
             conflicts_with = "family_name"
         )]
@@ -921,64 +946,16 @@ https://github.com/momentohq/functions/"
     },
 
     // Placeholder "commands" while customers learn of the move out of `preview`:
-    #[command(about = "*RELEASED 🎉* Use `momento cache pool` instead", hide = true)]
+    #[command(
+        about = "*RELEASED 🎉* Use `momento pool` without the `preview`",
+        hide = true
+    )]
     Pool(MovedCommandArgs),
     #[command(
-        about = "*RELEASED 🎉* Use `momento cache database` instead",
+        about = "*RELEASED 🎉* Use `momento database` without the `preview`",
         hide = true
     )]
     Database(MovedCommandArgs),
-}
-
-#[derive(Debug, Parser)]
-pub enum CacheCommand {
-    #[command(about = "Interact with your Momento capacity pools")]
-    Pool {
-        #[command(subcommand)]
-        operation: CapacityPoolCommand,
-    },
-    #[command(about = "Interact with your Momento databases")]
-    Database {
-        #[command(subcommand)]
-        operation: DatabaseCommand,
-    },
-
-    // Placeholder "commands" while customers learn of Serverless Cache deprecation:
-    #[command(
-        about = "**MOVED** Use `momento legacy-cache create` instead",
-        hide = true
-    )]
-    Create(MovedCommandArgs),
-    #[command(
-        about = "**MOVED** Use `momento legacy-cache delete` instead",
-        hide = true
-    )]
-    Delete(MovedCommandArgs),
-    #[command(
-        about = "**MOVED** Use `momento legacy-cache list` instead",
-        hide = true
-    )]
-    List(MovedCommandArgs),
-    #[command(
-        about = "**MOVED** Use `momento legacy-cache flush` instead",
-        hide = true
-    )]
-    Flush(MovedCommandArgs),
-    #[command(
-        about = "**MOVED** Use `momento legacy-cache set` instead",
-        hide = true
-    )]
-    Set(MovedCommandArgs),
-    #[command(
-        about = "**MOVED** Use `momento legacy-cache get` instead",
-        hide = true
-    )]
-    Get(MovedCommandArgs),
-    #[command(
-        about = "**MOVED** Use `momento legacy-cache delete-item` instead",
-        hide = true
-    )]
-    DeleteItem(MovedCommandArgs),
 }
 
 #[derive(Debug, Parser)]
@@ -1307,7 +1284,7 @@ pub enum CloudSignupCommand {
 }
 
 #[derive(Debug, Parser)]
-pub enum LegacyCacheCommand {
+pub enum CacheCommand {
     #[command(
     about = "Create a Serverless Cache (legacy)",
     group(
