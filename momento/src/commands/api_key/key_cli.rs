@@ -33,7 +33,12 @@ pub async fn create_key(
         Unparseable(response_text) => {
             if response_text.is_empty() {
                 // Must always return the API key, else the user can't use it
-                return Err(unexpectedly_empty_success_from_api());
+                return Err(CliError::new(
+                    // Not the standard unexpectedly_empty_success_from_api();
+                    // don't want user to potentially regenerate+orphan more API keys
+                    "Something went wrong! The API claims to have succeeded but gave an empty response. \
+                     Please contact support@momentohq.com.",
+                ));
             } else {
                 console_data!("Couldn't parse API key:\n\n{response_text}");
             }
