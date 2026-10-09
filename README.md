@@ -6,13 +6,24 @@ Portuguese: [Português](README.pt.md)
 Command-line tool for managing Momento.  Supports the following:
 
 * Create a Momento account
-* Create, list, and delete Momento caches
-* Get and set values in a Momento cache
+* Momento Cache:
+  * Create, list, and delete capacity pools
+  * Create, list, and delete Valkey databases
+* Momento API keys:
+  * Create, decode, refresh, and revoke API keys
+  * Create, list, and delete custom roles
+* Momento Serverless Cache (legacy):
+  * Create, list, and delete caches
+  * Set or get values from a cache
+* Momento Topics:
+  * Publish to and subscribe to topics
+* Momento Functions:
+  * Create, list, invoke, and delete functions
 * [Inspect your cloud footprint for common inefficiencies](https://docs.momentohq.com/cloud-linter)
 
 ## Prerequisites
 
-First things first - go to the [Momento Console](https://console.gomomento.com) to sign up. In the keys tab, generate an API key/token to use with the CLI.
+First things first - go to the [Momento Console](https://console.gomomento.com) to sign up. In the keys tab, generate your first API key/token to use with the CLI.
 
 This token uniquely identifies your Momento interactions. The token should be treated like a sensitive password and all essential care must be taken to ensure its secrecy. We recommend that you store this token in a secret vault like AWS Secrets Manager. See the [docs](https://docs.momentohq.com/topics/authentication/api-keys) for more information on Momento API keys.
 
