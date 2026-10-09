@@ -233,7 +233,7 @@ impl fmt::Display for ActiveReferences {
                     .iter()
                     .map(|member| member.to_string())
                     .collect::<Vec<_>>()
-                    .join("\n- ")
+                    .join("\n")
             ));
         }
         if !self.invitations.is_empty() {
@@ -243,7 +243,7 @@ impl fmt::Display for ActiveReferences {
                     .iter()
                     .map(|invite| invite.to_string())
                     .collect::<Vec<_>>()
-                    .join("\n- ")
+                    .join("\n")
             ));
         }
         if !self.api_keys.is_empty() {
@@ -271,6 +271,53 @@ mod tests {
         let mut settings = insta::Settings::clone_current();
         settings.set_prepend_module_to_snapshot(false);
         settings
+    }
+
+    #[test]
+    fn test_display_active_references() {
+        let active_references = ActiveReferences {
+            account_members: vec![
+                AccountMember {
+                    user_name: "jane@example.com".to_string(),
+                },
+                AccountMember {
+                    user_name: "raj@example.com".to_string(),
+                },
+            ],
+            invitations: vec![
+                Invitation {
+                    account_member: AccountMember {
+                        user_name: "sam@example.com".to_string(),
+                    },
+                },
+                Invitation {
+                    account_member: AccountMember {
+                        user_name: "jose@example.com".to_string(),
+                    },
+                },
+                Invitation {
+                    account_member: AccountMember {
+                        user_name: "manny@example.com".to_string(),
+                    },
+                },
+            ],
+            api_keys: vec![
+                ApiKey {
+                    key_id: "foo-bar".to_string(),
+                    account_id: "a-abcdefg".to_string(),
+                    description: "For deploying to CI/CD environments".to_string(),
+                    issued_at_epoch_seconds: 1719360000,
+                },
+                ApiKey {
+                    key_id: "hello-world".to_string(),
+                    account_id: "a-012345".to_string(),
+                    description: "Another API key".to_string(),
+                    issued_at_epoch_seconds: 1719360000,
+                },
+            ],
+        };
+
+        snapshot_settings().bind(|| insta::assert_snapshot!(active_references.to_string()));
     }
 
     #[test]
