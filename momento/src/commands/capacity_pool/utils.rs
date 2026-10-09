@@ -401,7 +401,7 @@ pub fn missing_pool_update_args() -> CliError {
          For a cluster-mode pool, specify one or more of:\n{CLUSTER_POOL_ARGS_TEXT}\n\n\
          For a flex-mode pool, specify one or more of:\n{FLEX_POOL_UPDATE_ARGS_TEXT}\n\n\
          For either pool mode, you can also configure metrics:\
-         \n--metrics-iam-role (and --metrics-aws-region or --remove-metrics-aws-region)\n--disable-metrics\n--remove-metrics-config"
+         \n--metrics-iam-role (and --metrics-aws-region or --default-metrics-aws-region)\n--disable-metrics\n--remove-metrics-config"
     ))
 }
 

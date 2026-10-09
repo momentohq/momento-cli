@@ -94,7 +94,7 @@ pub async fn update_database(
         return Err(CliError::new(
             "Missing argument(s). To update your database's metrics configuration, you must specify:\
              \n--disable-metrics OR --remove-metrics-config OR some combination of:\
-             \n  --metrics-iam-role and/or --metrics-aws-region (or --remove-metrics-aws-region)",
+             \n  --metrics-iam-role and/or --metrics-aws-region (or --default-metrics-aws-region)",
         ));
     }
     let data = serde_json::json!({"metrics_config": metrics_config});
