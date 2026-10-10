@@ -1316,7 +1316,7 @@ pub enum CacheCommand {
     },
 
     #[command(
-    about = "Set your default Serverless Cache (legacy) for Momento Topics and Momento Functions",
+    about = "Set your default Serverless Cache (legacy)",
     group(
     clap::ArgGroup::new("cache-name")
     .required(true)
