@@ -8,8 +8,8 @@ mod utils;
 use chrono::NaiveDate;
 use std::time::Duration;
 use utils::{
-    parse_bounds, parse_date, parse_positive_bounds, parse_to_json, validate_capacity_pool_name,
-    MovedCommandArgs,
+    parse_bounds, parse_date, parse_positive, parse_positive_bounds, parse_to_json,
+    validate_capacity_pool_name, MovedCommandArgs,
 };
 pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
@@ -1341,6 +1341,7 @@ pub enum CacheCommand {
         #[arg(
             long = "ttl",
             required = true,
+            value_parser = parse_positive,
             help = "Default max time that items will be stored in your caches (in seconds)"
         )]
         ttl_seconds: u64,
