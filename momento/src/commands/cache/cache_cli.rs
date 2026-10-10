@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, warn};
 use momento::cache::{CacheClient, GetResponse, SetRequest};
 use std::process::exit;
 use std::time::Duration;
@@ -25,7 +25,12 @@ pub async fn set_default_cache(
     new_cache_name: String,
     new_ttl_seconds: u64,
 ) -> Result<(), CliError> {
-    if let Ok(config) = get_config_for_profile(profile_name).await {
+    let summary_text = format!(
+        "- Default Serverless Cache: {new_cache_name}\n\
+         - Default TTL: {new_ttl_seconds} seconds"
+    );
+
+    let changing_cache_name = if let Ok(config) = get_config_for_profile(profile_name).await {
         if config.cache != new_cache_name {
             let confirmation = prompt_user_for_input(
                 format!(
@@ -42,19 +47,16 @@ pub async fn set_default_cache(
                 console_data!("Keeping your existing default.");
                 return Ok(());
             }
+            true
+        } else if config.ttl == new_ttl_seconds {
+            console_data!("Your profile \"{profile_name}\" already has:\n{summary_text}");
+            return Ok(());
+        } else {
+            false
         }
-    }
-
-    let found = match interact_with_momento("listing caches...", client.list_caches()).await {
-        Ok(list_result) => list_result
-            .caches
-            .into_iter()
-            .any(|cache| cache.name == new_cache_name),
-        Err(_) => false,
+    } else {
+        true
     };
-    if !found {
-        create_cache(client, new_cache_name.clone()).await?;
-    }
 
     write_default_config(
         profile_name,
@@ -65,11 +67,37 @@ pub async fn set_default_cache(
     )
     .await?;
 
-    console_data!(
-        "Your profile \"{profile_name}\" now has:\n\
-         - Default Serverless Cache: {new_cache_name}\n\
-         - Default TTL: {new_ttl_seconds} seconds"
-    );
+    if changing_cache_name {
+        let (found, list_error_msg) =
+            match interact_with_momento("listing caches...", client.list_caches()).await {
+                Ok(list_result) => (
+                    list_result
+                        .caches
+                        .into_iter()
+                        .any(|cache| cache.name == new_cache_name),
+                    "(none)".to_string(),
+                ),
+                Err(error) => (false, error.msg),
+            };
+        if found {
+            console_data!("Found your cache!");
+        } else {
+            match create_cache(client, new_cache_name.clone()).await {
+                Ok(()) => console_data!("Created your cache!"),
+                Err(create_error) => {
+                    warn!(
+                        "Could not confirm whether cache {new_cache_name} exists. \
+                         Error when listing caches: {}\n\
+                         Error when attempting to create cache: {}",
+                        list_error_msg, create_error.msg,
+                    );
+                    console_data!("Could not confirm whether your cache exists, however:");
+                }
+            }
+        }
+    };
+
+    console_data!("Your profile \"{profile_name}\" now has:\n{summary_text}");
     Ok(())
 }
 
