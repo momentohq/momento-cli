@@ -86,21 +86,9 @@ the appropriate installation steps above.
 # Configure your account with the API key and endpoint from above
 momento configure
 
-# Create a cache
-momento cache create default-cache
-```
+# Create your default cache
+momento cache set-default default-cache --ttl 600
 
-Add the following to your `~/.momento/config`:
-
-```ini
-[default]
-cache=default-cache
-ttl=600
-```
-
-Now you can use the cache:
-
-```sh
 # Set and Get values from your default cache, with default ttl
 momento cache set key value
 momento cache get key

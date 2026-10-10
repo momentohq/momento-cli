@@ -1316,6 +1316,37 @@ pub enum CacheCommand {
     },
 
     #[command(
+    about = "Set your default Serverless Cache (legacy) for Momento Topics and Momento Functions",
+    group(
+    clap::ArgGroup::new("cache-name")
+    .required(true)
+    .args(["cache_name", "cache_name_flag"]),
+    ),
+    )]
+    SetDefault {
+        #[arg(
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name to set as your default cache",
+            value_name = "CACHE"
+        )]
+        cache_name: Option<String>,
+
+        #[arg(
+            long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
+        cache_name_flag: Option<String>,
+
+        #[arg(
+            long = "ttl",
+            required = true,
+            help = "Default max time that items will be stored in your caches (in seconds)"
+        )]
+        ttl_seconds: u64,
+    },
+
+    #[command(
     about = "Delete a Serverless Cache (legacy)",
     group(
     clap::ArgGroup::new("cache-name")

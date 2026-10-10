@@ -1,5 +1,4 @@
 use log::warn;
-use std::path::Path;
 use tokio::fs;
 
 use crate::utils::ini_config::update_credentials_profile;
@@ -9,8 +8,8 @@ use crate::{
     utils::{
         console::console_info,
         file::{
-            create_file, get_credentials_file_path, get_momento_config_dir, open_file,
-            prompt_user_for_input, read_file_contents, write_to_file,
+            ensure_file_exists_and_get_contents, get_credentials_file_path, get_momento_config_dir,
+            prompt_user_for_input, trim_file_contents, write_to_file,
         },
         ini_config::{create_new_credentials_profile, does_profile_name_exist},
         user::{determine_endpoint, get_creds_for_profile},
@@ -35,11 +34,7 @@ pub async fn configure_momento(
     let creds_file_contents = ensure_file_exists_and_get_contents(&credentials_file_path).await?;
     let new_creds_file_contents =
         add_or_update_credentials_profile(profile_name, credentials.clone(), creds_file_contents)?;
-    write_to_file(
-        &credentials_file_path,
-        lines_to_file_content(new_creds_file_contents),
-    )
-    .await?;
+    write_to_file(&credentials_file_path, new_creds_file_contents).await?;
 
     console_info!("");
 
@@ -124,80 +119,6 @@ async fn prompt_user_for_disposable_token() -> Result<Credentials, CliError> {
     let token = prompt_user_for_input("Disposable Auth Token", "", true).await?;
 
     Ok(Credentials::DisposableToken(token))
-}
-
-#[cfg(target_os = "linux")]
-async fn set_file_read_write(path: &str) -> Result<(), CliError> {
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = match fs::metadata(path).await {
-        Ok(p) => p,
-        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
-    }
-    .permissions();
-    perms.set_mode(0o600);
-    match fs::set_permissions(path, perms).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
-    }
-}
-
-#[cfg(target_os = "macos")]
-async fn set_file_read_write(path: &str) -> Result<(), CliError> {
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = match fs::metadata(path).await {
-        Ok(p) => p,
-        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
-    }
-    .permissions();
-    perms.set_mode(0o600);
-    match fs::set_permissions(path, perms).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
-    }
-}
-
-#[cfg(target_os = "windows")]
-async fn set_file_read_write(path: &str) -> Result<(), CliError> {
-    let mut perms = match fs::metadata(path).await {
-        Ok(p) => p,
-        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
-    }
-    .permissions();
-    perms.set_readonly(false);
-    match fs::set_permissions(path, perms).await {
-        Ok(_) => Ok(()),
-        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
-    }
-}
-
-async fn ensure_file_exists_and_get_contents(path: &str) -> Result<Vec<String>, CliError> {
-    if !Path::new(path).exists() {
-        match create_file(path).await {
-            Ok(_) => {}
-            Err(e) => return Err(e),
-        }
-    }
-    // explicitly allowing read/write access to the file
-    set_file_read_write(path).await?;
-
-    let file = open_file(path).await?;
-    read_file_contents(file).await
-}
-
-fn lines_to_file_content(lines: Vec<String>) -> String {
-    // ensure a single trailing newline
-    format!("{}\n", lines.join("\n").trim_end())
-}
-
-fn trim_file_contents(lines: Vec<String>) -> Vec<String> {
-    // This is dumb and inefficient but we can optimize it later if necessary
-    let content = lines.join("\n");
-    let trimmed = content.trim();
-    if trimmed.is_empty() {
-        vec![]
-    } else {
-        trimmed.split('\n').map(|line| line.to_string()).collect()
-    }
 }
 
 fn add_or_update_credentials_profile(

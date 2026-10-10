@@ -3,15 +3,62 @@ use momento::cache::{CacheClient, GetResponse, SetRequest};
 use std::process::exit;
 use std::time::Duration;
 
+use super::utils::write_default_config;
 use crate::{
+    config::Config,
     error::CliError,
-    utils::{client::interact_with_momento, console::console_data},
+    utils::{client::interact_with_momento, console::console_data, file::prompt_user_for_input},
 };
 
 pub async fn create_cache(client: CacheClient, cache_name: String) -> Result<(), CliError> {
     interact_with_momento("creating cache...", client.create_cache(&cache_name))
         .await
         .map(|_| ())
+}
+
+pub async fn set_default_cache(
+    client: CacheClient,
+    profile_name: &str,
+    existing_config: Option<Config>,
+    new_cache_name: String,
+    new_ttl_seconds: u64,
+) -> Result<(), CliError> {
+    if let Some(config) = existing_config {
+        if config.cache != new_cache_name {
+            let confirmation = prompt_user_for_input(
+                format!(
+                    "Your profile \"{profile_name}\" already has default Serverless Cache \"{}\". \
+                     Are you sure you want to replace it?",
+                    config.cache
+                )
+                .as_str(),
+                "n",
+                false,
+            )
+            .await?;
+            if confirmation.to_lowercase() != "y" && confirmation.to_lowercase() != "yes" {
+                console_data!("Keeping your existing default.");
+                return Ok(());
+            }
+        }
+    }
+
+    create_cache(client, new_cache_name.clone()).await?;
+    write_default_config(
+        profile_name,
+        Config {
+            cache: new_cache_name.clone(),
+            ttl: new_ttl_seconds,
+        },
+    )
+    .await?;
+
+    console_data!(
+        "Your profile \"{profile_name}\" now has:\n\
+         - Default Serverless Cache: {new_cache_name}\n\
+         - Default TTL: {new_ttl_seconds} seconds"
+    );
+    Ok(())
 }
 
 pub async fn delete_cache(client: CacheClient, cache_name: String) -> Result<(), CliError> {

@@ -208,6 +208,18 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     commands::cache::cache_cli::create_cache(client, cache_name.clone()).await?;
                     debug!("created legacy cache {cache_name}")
                 }
+                momento_cli_opts::CacheCommand::SetDefault {
+                    cache_name_flag,
+                    cache_name,
+                    ttl_seconds,
+                } => {
+                    let cache_name = cache_name
+                        .or(cache_name_flag)
+                        .expect("The argument group guarantees 1 or the other");
+                    let existing_config = get_config_for_profile(&args.profile).await.ok();
+                    commands::cache::cache_cli::set_default_cache(client, &args.profile, existing_config, cache_name.clone(), ttl_seconds).await?;
+                    debug!("set default legacy cache {cache_name} with TTL {ttl_seconds}")
+                }
                 momento_cli_opts::CacheCommand::Delete {
                     cache_name,
                     cache_name_flag,
