@@ -45,7 +45,17 @@ pub async fn set_default_cache(
         }
     }
 
-    create_cache(client, new_cache_name.clone()).await?;
+    let found = match interact_with_momento("listing caches...", client.list_caches()).await {
+        Ok(list_result) => list_result
+            .caches
+            .into_iter()
+            .any(|cache| cache.name == new_cache_name),
+        Err(_) => false,
+    };
+    if !found {
+        create_cache(client, new_cache_name.clone()).await?;
+    }
+
     write_default_config(
         profile_name,
         Config {
