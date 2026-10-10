@@ -32,13 +32,6 @@ fn get_session_token(credentials: &Ini) -> Option<String> {
     None
 }
 
-pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config), CliError> {
-    let creds = get_creds_for_profile(profile).await?;
-    let config = get_config_for_profile(profile).await?;
-
-    Ok((creds, config))
-}
-
 pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliError> {
     let credentials_file = read_credentials().await?;
 

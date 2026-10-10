@@ -12,7 +12,7 @@ use utils::{
     client::{get_cache_client, get_function_client, get_topic_client},
     console::output_info,
     user::{
-        determine_mga_endpoint, get_creds_and_config, get_creds_for_profile,
+        determine_mga_endpoint, get_config_for_profile, get_creds_for_profile,
         shorten_to_sdk_endpoint,
     },
 };
@@ -51,7 +51,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
     match args.command {
         momento_cli_opts::Subcommand::ApiKey { api_key, operation } => match operation {
             momento_cli_opts::ApiKeyCommand::AuthenticatedSubcommand(operation) => {
-                let (creds, _) = get_creds_and_config(&args.profile).await?;
+                let creds = get_creds_for_profile(&args.profile).await?;
                 let credential_provider = creds.override_and_authenticate(api_key, None)?;
 
                 let mga_endpoint =
@@ -130,7 +130,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             }
         },
         momento_cli_opts::Subcommand::Role { api_key, operation } => {
-            let (creds, _) = get_creds_and_config(&args.profile).await?;
+            let creds = get_creds_for_profile(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, None)?;
 
             let mga_endpoint =
@@ -191,7 +191,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             endpoint,
             operation,
         } => {
-            let (creds, config) = get_creds_and_config(&args.profile).await?;
+            let creds = get_creds_for_profile(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
             let client = get_cache_client(credential_provider).await?;
 
@@ -241,9 +241,14 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     value_flag,
                     ttl_seconds,
                 } => {
-                    let cache_name = cache_name
-                        .or(cache_name_flag_for_backward_compatibility)
-                        .unwrap_or(config.cache);
+                    let (cache_name, config) = match cache_name
+                        .or(cache_name_flag_for_backward_compatibility) {
+                            Some(name) => (name, None),
+                            None => {
+                                let config = get_config_for_profile(&args.profile).await?;
+                                (config.cache.clone(), Some(config))
+                            }
+                        };
                     let key = key
                         .or(key_flag)
                         .expect("The argument group guarantees 1 or the other");
@@ -255,7 +260,11 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         cache_name,
                         key,
                         value,
-                        ttl_seconds.unwrap_or(config.ttl),
+                        match (ttl_seconds, config) {
+                            (Some(ttl), _) => ttl,
+                            (None, Some(config)) => config.ttl,
+                            (None, None) => get_config_for_profile(&args.profile).await?.ttl,
+                        },
                     )
                     .await?
                 }
@@ -265,14 +274,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     key,
                     key_flag,
                 } => {
+                    let cache_name = match cache_name
+                        .or(cache_name_flag_for_backward_compatibility) {
+                            Some(name) => name,
+                            None => get_config_for_profile(&args.profile).await?.cache
+                        };
                     let key = key
                         .or(key_flag)
                         .expect("The argument group guarantees 1 or the other");
                     commands::cache::cache_cli::get(
                         client,
-                        cache_name
-                            .or(cache_name_flag_for_backward_compatibility)
-                            .unwrap_or(config.cache),
+                        cache_name,
                         key,
                     )
                     .await?;
@@ -283,14 +295,17 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     key,
                     key_flag,
                 } => {
+                    let cache_name = match cache_name
+                        .or(cache_name_flag_for_backward_compatibility) {
+                            Some(name) => name,
+                            None => get_config_for_profile(&args.profile).await?.cache
+                        };
                     let key = key
                         .or(key_flag)
                         .expect("The argument group guarantees 1 or the other");
                     commands::cache::cache_cli::delete_key(
                         client,
-                        cache_name
-                            .or(cache_name_flag_for_backward_compatibility)
-                            .unwrap_or(config.cache),
+                        cache_name,
                         key,
                     )
                     .await?;
@@ -302,7 +317,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             endpoint,
             operation,
         } => {
-            let (creds, config) = get_creds_and_config(&args.profile).await?;
+            let creds = get_creds_for_profile(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
             let client = get_topic_client(credential_provider).await?;
@@ -312,14 +327,20 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                     topic,
                     value,
                 } => {
-                    let cache_name = cache_name.unwrap_or(config.cache);
+                    let cache_name = match cache_name {
+                            Some(name) => name,
+                            None => get_config_for_profile(&args.profile).await?.cache
+                        };
                     client
                         .publish(cache_name, topic, value)
                         .await
                         .map_err(Into::<CliError>::into)?;
                 }
                 momento_cli_opts::TopicCommand::Subscribe { cache_name, topic } => {
-                    let cache_name = cache_name.unwrap_or(config.cache);
+                    let cache_name = match cache_name {
+                            Some(name) => name,
+                            None => get_config_for_profile(&args.profile).await?.cache
+                        };
                     let subscription = client.subscribe(cache_name, topic).await.map_err(|e| {
                         CliError::new(format!(
                             "the subscription ended without receiving any values: {e:?}"
@@ -390,7 +411,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                 endpoint,
                 operation,
             } => {
-                let (creds, config) = get_creds_and_config(&args.profile).await?;
+                let creds = get_creds_for_profile(&args.profile).await?;
                 let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
                 let api_endpoint = credential_provider.cache_http_endpoint().to_string();
@@ -410,7 +431,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
-                        let cache_name = cache_name.unwrap_or(config.cache);
+                        let cache_name = match cache_name {
+                            Some(name) => name,
+                            None => get_config_for_profile(&args.profile).await?.cache
+                        };
                         let wasm_source = determine_wasm_source(
                             wasm_file,
                             id_uploaded_wasm,
@@ -442,7 +466,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         disable_metrics,
                         remove_metrics_config,
                     } => {
-                        let cache_name = cache_name.unwrap_or(config.cache);
+                        let cache_name = match cache_name {
+                            Some(name) => name,
+                            None => get_config_for_profile(&args.profile).await?.cache
+                        };
                         let new_version =
                             determine_current_function_version(pin_version, use_latest_version);
                         let metrics_change = determine_function_metrics_config_change(
@@ -481,7 +508,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         headers,
                         path,
                     } => {
-                        let cache_name = cache_name.unwrap_or(config.cache);
+                        let cache_name = match cache_name {
+                            Some(name) => name,
+                            None => get_config_for_profile(&args.profile).await?.cache
+                        };
                         commands::functions::function_cli::invoke_function(
                             api_endpoint,
                             auth_token,
@@ -497,7 +527,10 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         .await?
                     }
                     momento_cli_opts::FunctionCommand::ListFunctions { cache_name } => {
-                        let cache_name = cache_name.unwrap_or(config.cache);
+                        let cache_name = match cache_name {
+                            Some(name) => name,
+                            None => get_config_for_profile(&args.profile).await?.cache
+                        };
                         commands::functions::function_cli::list_functions(client, cache_name)
                             .await?
                     }
@@ -515,7 +548,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             }
         },
         momento_cli_opts::Subcommand::Pool{api_key, endpoint, operation} => {
-            let (creds, _) = get_creds_and_config(&args.profile).await?;
+            let creds = get_creds_for_profile(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
             let api_endpoint = credential_provider.cache_http_endpoint().to_string();
@@ -674,7 +707,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
             endpoint,
             operation,
         } => {
-            let (creds, _) = get_creds_and_config(&args.profile).await?;
+            let creds = get_creds_for_profile(&args.profile).await?;
             let credential_provider = creds.override_and_authenticate(api_key, endpoint)?;
 
             let api_endpoint = credential_provider.cache_http_endpoint().to_string();
