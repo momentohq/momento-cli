@@ -49,6 +49,21 @@ mod tests {
         .success();
     }
 
+    async fn momento_cache_set_default_cache_with_profile(profile_name: &str, cache_name: &str) {
+        let mut cmd = Command::cargo_bin("momento").unwrap();
+        cmd.args([
+            "cache",
+            "set-default",
+            cache_name,
+            "--ttl",
+            "600",
+            "--profile",
+            profile_name,
+        ])
+        .assert()
+        .success();
+    }
+
     async fn momento_cache_set_with_profile(profile_name: &str) {
         let mut cmd = Command::cargo_bin("momento").unwrap();
         cmd.args([
@@ -139,6 +154,7 @@ mod tests {
 
         momento_configure_profiles(&test_auth_token, &test_run_id).await;
         momento_cache_create_with_profile(&test_run_id, &test_run_id).await;
+        momento_cache_set_default_cache_with_profile(&test_run_id, &test_run_id).await;
         momento_cache_set_with_profile(&test_run_id).await;
         momento_cache_get_with_profile(&test_run_id).await;
         momento_cache_delete_key_with_profile(&test_run_id).await;
