@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use crate::config::ENV_VAR_NAME_MOMENTO_CONFIG_DIR;
 use configparser::ini::Ini;
 use home::home_dir;
@@ -31,7 +33,7 @@ pub fn get_momento_config_dir() -> Result<String, CliError> {
     Ok(format!("{}/.momento", home.display()))
 }
 
-pub async fn open_file(path: &str) -> Result<File, CliError> {
+async fn open_file(path: &str) -> Result<File, CliError> {
     let res = File::open(path).await;
     match res {
         Ok(f) => {
@@ -44,6 +46,64 @@ pub async fn open_file(path: &str) -> Result<File, CliError> {
     }
 }
 
+#[cfg(target_os = "linux")]
+async fn set_file_read_write(path: &str) -> Result<(), CliError> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
+        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
+    }
+    .permissions();
+    perms.set_mode(0o600);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
+    }
+}
+
+#[cfg(target_os = "macos")]
+async fn set_file_read_write(path: &str) -> Result<(), CliError> {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
+        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
+    }
+    .permissions();
+    perms.set_mode(0o600);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn set_file_read_write(path: &str) -> Result<(), CliError> {
+    let mut perms = match fs::metadata(path).await {
+        Ok(p) => p,
+        Err(e) => return Err(CliError::new(format!("failed to get file permissions {e}"))),
+    }
+    .permissions();
+    perms.set_readonly(false);
+    match fs::set_permissions(path, perms).await {
+        Ok(_) => Ok(()),
+        Err(e) => Err(CliError::new(format!("failed to set file permissions {e}"))),
+    }
+}
+
+pub async fn ensure_file_exists_and_get_contents(path: &str) -> Result<Vec<String>, CliError> {
+    if !Path::new(path).exists() {
+        match create_file(path).await {
+            Ok(_) => {}
+            Err(e) => return Err(e),
+        }
+    }
+    // explicitly allowing read/write access to the file
+    set_file_read_write(path).await?;
+
+    let file = open_file(path).await?;
+    read_file_contents(file).await
+}
+
 pub async fn read_ini_file(path: &str) -> Result<Ini, CliError> {
     let mut config = Ini::new_cs();
     match config.load(path) {
@@ -52,7 +112,7 @@ pub async fn read_ini_file(path: &str) -> Result<Ini, CliError> {
     }
 }
 
-pub async fn read_file_contents(file: File) -> Result<Vec<String>, CliError> {
+async fn read_file_contents(file: File) -> Result<Vec<String>, CliError> {
     let reader = BufReader::new(file);
     let mut contents = reader.lines();
     // Put each line read from file to a vector
@@ -67,7 +127,18 @@ pub async fn read_file_contents(file: File) -> Result<Vec<String>, CliError> {
     Ok(file_contents)
 }
 
-pub async fn create_file(path: &str) -> Result<(), CliError> {
+pub fn trim_file_contents(lines: Vec<String>) -> Vec<String> {
+    // TODO inefficient, can optimize later if necessary
+    let content = lines.join("\n");
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        vec![]
+    } else {
+        trimmed.split('\n').map(|line| line.to_string()).collect()
+    }
+}
+
+async fn create_file(path: &str) -> Result<(), CliError> {
     let res = File::create(path).await;
     match res {
         Ok(_) => {
@@ -80,7 +151,7 @@ pub async fn create_file(path: &str) -> Result<(), CliError> {
     }
 }
 
-pub async fn write_to_file(path: &str, file_contents: String) -> Result<(), CliError> {
+pub async fn write_to_file(path: &str, lines: Vec<String>) -> Result<(), CliError> {
     let mut file = match fs::File::create(path).await {
         Ok(f) => f,
         Err(e) => {
@@ -89,6 +160,11 @@ pub async fn write_to_file(path: &str, file_contents: String) -> Result<(), CliE
             )))
         }
     };
+
+    let file_contents = format!(
+        "{}\n", // ensure a single trailing newline
+        lines.join("\n").trim_end()
+    );
 
     // Write to file
 

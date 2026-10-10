@@ -32,13 +32,6 @@ fn get_session_token(credentials: &Ini) -> Option<String> {
     None
 }
 
-pub async fn get_creds_and_config(profile: &str) -> Result<(Credentials, Config), CliError> {
-    let creds = get_creds_for_profile(profile).await?;
-    let config = get_config_for_profile(profile).await?;
-
-    Ok((creds, config))
-}
-
 pub async fn get_creds_for_profile(profile: &str) -> Result<Credentials, CliError> {
     let credentials_file = read_credentials().await?;
 
@@ -75,23 +68,28 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
     let path = get_config_file_path()?;
     let configs = match read_ini_file(&path).await {
         Ok(c) => c,
-        Err(e) => return Err(CliError::new(
-            format!("failed to read credentials, please run 'momento configure' to setup credentials. Root cause: {e:?}")
-        )),
+        Err(e) => {
+            return Err(CliError::new("failed to read config")
+                .with_details(format!("Failed to read config. Root cause: {e:?}")))
+        }
     };
 
     let cache_result = match configs.get(profile, "cache") {
         Some(c) => c,
-        None => return Err(CliError::new(
-            format!("failed to get cache config for profile {profile}, please run 'momento configure' to configure your profile")
-        )),
+        None => {
+            return Err(CliError::new(format!(
+                "failed to get default Serverless Cache for profile \"{profile}\""
+            )))
+        }
     };
 
     let ttl_result = match configs.get(profile, "ttl") {
         Some(c) => c,
-        None => return Err(CliError::new(
-            format!("failed to get ttl config for profile {profile}, please run 'momento configure' to configure your profile")
-        )),
+        None => {
+            return Err(CliError::new(format!(
+                "failed to get default TTL for profile \"{profile}\""
+            )))
+        }
     };
 
     Ok(Config {
@@ -100,6 +98,49 @@ pub async fn get_config_for_profile(profile: &str) -> Result<Config, CliError> {
             .parse::<u64>()
             .map_err(|e| CliError::new(format!("could not parse a u64: {e:?}")))?,
     })
+}
+
+pub async fn determine_cache_name(
+    profile_name: &str,
+    arg_name: &str,
+    cache_name: Option<String>,
+    cache_name_flag_for_backward_compatibility: Option<String>,
+) -> Result<String, CliError> {
+    let cache_name = match cache_name.or(cache_name_flag_for_backward_compatibility) {
+        Some(name) => name,
+        None => {
+            get_config_for_profile(profile_name)
+                .await
+                .map_err(|error| {
+                    CliError::new(format!(
+                        "{}. Run `momento cache set-default` first or specify `{arg_name}`",
+                        error.msg
+                    ))
+                    .with_optional_details(error.details())
+                })?
+                .cache
+        }
+    };
+    Ok(cache_name)
+}
+
+pub async fn determine_ttl(profile_name: &str, ttl_seconds: Option<u64>) -> Result<u64, CliError> {
+    let ttl = match ttl_seconds {
+        Some(ttl) => ttl,
+        None => {
+            get_config_for_profile(profile_name)
+                .await
+                .map_err(|error| {
+                    CliError::new(format!(
+                        "{}. Run `momento cache set-default` first or specify `--ttl`",
+                        error.msg
+                    ))
+                    .with_optional_details(error.details())
+                })?
+                .ttl
+        }
+    };
+    Ok(ttl)
 }
 
 fn determine_cell_prefix_for_region(region: &str) -> String {

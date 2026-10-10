@@ -17,7 +17,7 @@ brew install momento-cli
 momento account signup aws --email <TYPE_YOUR_EMAIL_HERE> --region <TYPE_DESIRED_REGION>
 
 # 上記のメールアドレスに送付されたトークンとデフォルトのキャッシュ名とTTLであなたのアカウントコンフィグ
-momento configure --quick
+momento configure
 
 # キャッシュ作成
 momento cache create example-cache

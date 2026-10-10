@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use crate::error::CliError;
 
 pub const ENV_VAR_NAME_MOMENTO_CONFIG_DIR: &str = "MOMENTO_CONFIG_DIR";
-pub const DEFAULT_CACHE_NAME: &str = "default-cache";
 
 #[derive(Deserialize, Serialize, Clone, Default)]
 pub struct Config {
