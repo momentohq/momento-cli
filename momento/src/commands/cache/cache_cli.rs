@@ -7,7 +7,10 @@ use super::utils::write_default_config;
 use crate::{
     config::Config,
     error::CliError,
-    utils::{client::interact_with_momento, console::console_data, file::prompt_user_for_input},
+    utils::{
+        client::interact_with_momento, console::console_data, file::prompt_user_for_input,
+        user::get_config_for_profile,
+    },
 };
 
 pub async fn create_cache(client: CacheClient, cache_name: String) -> Result<(), CliError> {
@@ -19,11 +22,10 @@ pub async fn create_cache(client: CacheClient, cache_name: String) -> Result<(),
 pub async fn set_default_cache(
     client: CacheClient,
     profile_name: &str,
-    existing_config: Option<Config>,
     new_cache_name: String,
     new_ttl_seconds: u64,
 ) -> Result<(), CliError> {
-    if let Some(config) = existing_config {
+    if let Ok(config) = get_config_for_profile(profile_name).await {
         if config.cache != new_cache_name {
             let confirmation = prompt_user_for_input(
                 format!(
