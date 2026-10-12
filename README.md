@@ -82,11 +82,12 @@ https://docs.brew.sh/Shell-Completion
 These instructions assume you have the `momento` executable on your path, after following
 the appropriate installation steps above.
 
-```
-# Configure your account with the API key and endpoint from above,
-# plus default cache name (`default-cache`) and TTL (600 seconds)
-# This will also create the cache `default-cache` in your account
-momento configure --quick
+```sh
+# Configure your account with the API key and endpoint from above
+momento configure
+
+# Create your default cache
+momento cache set-default default-cache --ttl 600
 
 # Set and Get values from your default cache, with default ttl
 momento cache set key value
@@ -109,7 +110,7 @@ momento cache get key --cache example-cache
 momento configure
 ```
 
-This will prompt you for your Momento API key (v2), endpoint, default cache name, default TTL, and save them to be reused as a part of your `default` profile.
+This will prompt you for your Momento API key (v2) and endpoint, and save them to be reused as a part of your `default` profile.
 
 ```
 momento configure --profile new-profile

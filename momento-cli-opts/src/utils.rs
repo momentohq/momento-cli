@@ -78,6 +78,17 @@ pub fn parse_positive_bounds(s: &str) -> Result<Bounds, String> {
     Ok(bounds)
 }
 
+pub fn parse_positive(s: &str) -> Result<u64, String> {
+    let number = s.trim().parse::<u64>().map_err(|err| match err.kind() {
+        IntErrorKind::PosOverflow => format!("'{s}' is too large"),
+        &_ => format!("'{s}' is not a whole number"),
+    })?;
+    if number == 0 {
+        return Err("must be >0".to_string());
+    }
+    Ok(number)
+}
+
 pub fn parse_date(s: &str) -> Result<NaiveDate, String> {
     NaiveDate::parse_from_str(s, "%Y-%m-%d")
         .map_err(|_| "Date must be in YYYY-MM-DD format".to_string())

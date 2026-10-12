@@ -8,8 +8,8 @@ mod utils;
 use chrono::NaiveDate;
 use std::time::Duration;
 use utils::{
-    parse_bounds, parse_date, parse_positive_bounds, parse_to_json, validate_capacity_pool_name,
-    MovedCommandArgs,
+    parse_bounds, parse_date, parse_positive, parse_positive_bounds, parse_to_json,
+    validate_capacity_pool_name, MovedCommandArgs,
 };
 pub use utils::{Bounds, ROLE_PERMISSIONS_SAMPLE};
 
@@ -193,7 +193,7 @@ To delete a topic, stop subscribing to it."
     },
     #[command(about = "Configure credentials")]
     Configure {
-        #[arg(long, short)]
+        #[arg(long, short, hide = true)]
         quick: bool,
         #[arg(
             long,
@@ -1313,6 +1313,38 @@ pub enum CacheCommand {
             value_name = "CACHE"
         )]
         cache_name_flag_for_backward_compatibility: Option<String>,
+    },
+
+    #[command(
+    about = "Set your default Serverless Cache (legacy)",
+    group(
+    clap::ArgGroup::new("cache-name")
+    .required(true)
+    .args(["cache_name", "cache_name_flag"]),
+    ),
+    )]
+    SetDefault {
+        #[arg(
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name to set as your default cache",
+            value_name = "CACHE"
+        )]
+        cache_name: Option<String>,
+
+        #[arg(
+            long = "cache",
+            value_parser = NonEmptyStringValueParser::new(),
+            value_name = "CACHE"
+        )]
+        cache_name_flag: Option<String>,
+
+        #[arg(
+            long = "ttl",
+            required = true,
+            value_parser = parse_positive,
+            help = "Default max time that items will be stored in your caches (in seconds)"
+        )]
+        ttl_seconds: u64,
     },
 
     #[command(
