@@ -80,7 +80,7 @@ pub async fn describe_key(
             if let Ok(Parsed(role)) =
                 call_role_describe_api(endpoint, auth_token, key.role_id).await
             {
-                console_data!("\n\nYour API key's role:\n\n{role}")
+                console_data!("\nYour API key's role:\n\n{role}")
             }
         }
         Unparseable(response_text) => {
