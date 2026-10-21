@@ -232,7 +232,7 @@ pub async fn determine_role(
                 warn!("Trying to list {role_text}; retrieved role with {selector_text} but couldn't parse it:\n{response_text}");
             }
             Err(error) => {
-                if error.msg.contains("404") {
+                if error.http_status() == Some(reqwest::StatusCode::NOT_FOUND) {
                     return not_found;
                 } else {
                     warn!("Trying to list {role_text}; couldn't get role with {selector_text} directly:\n{}", error.msg);
