@@ -42,9 +42,14 @@ pub async fn describe_role(
     auth_token: String,
     selector: RoleSelector,
 ) -> Result<(), CliError> {
-    let id = determine_role(endpoint.clone(), auth_token.clone(), &selector, true)
-        .await?
-        .id;
+    let id = match &selector {
+        RoleSelector::ById(id) => id.clone(),
+        RoleSelector::ByName(_) => {
+            determine_role(endpoint.clone(), auth_token.clone(), &selector, true)
+                .await?
+                .id
+        }
+    };
     let response = call_role_describe_api(endpoint, auth_token, id.clone()).await?;
     let selector_text = match selector {
         RoleSelector::ById(id) => format!("with ID {id}"),
@@ -113,11 +118,16 @@ pub async fn delete_role(
     auth_token: String,
     selector: RoleSelector,
 ) -> Result<(), CliError> {
-    let id = determine_role(endpoint.clone(), auth_token.clone(), &selector, false)
-        .await?
-        .id;
+    let id = match &selector {
+        RoleSelector::ById(id) => id.clone(),
+        RoleSelector::ByName(_) => {
+            determine_role(endpoint.clone(), auth_token.clone(), &selector, false)
+                .await?
+                .id
+        }
+    };
     let response = call_role_delete_api(endpoint, auth_token, id.clone()).await?;
-    let selector_text = match selector {
+    let selector_text = match &selector {
         RoleSelector::ById(id) => format!("with ID {id}"),
         RoleSelector::ByName(name) => format!("{name} (ID {id})"),
     };
