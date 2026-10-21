@@ -1,4 +1,4 @@
-use super::decode::{decode, TokenKind::GlobalApiKey};
+use super::decode::{decode, DecodedApiKey, TokenKind::GlobalApiKey};
 use super::utils::{
     call_key_create_api, call_key_describe_api, call_key_list_api, call_key_refresh_api,
     call_key_revoke_api, ApiKey, Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
@@ -51,10 +51,14 @@ pub async fn create_key(
 pub fn decode_key(api_key: String) -> Result<(), CliError> {
     let decoded = decode(api_key.trim())?;
     console_data!("{decoded}");
-    if matches!(decoded.kind, GlobalApiKey) {
-        let key_id = decoded.identity_value;
+    if let DecodedApiKey {
+        kind: GlobalApiKey,
+        identity_value: Some(key_id),
+        ..
+    } = decoded
+    {
         console_data!(
-            "\nThis is a fully offline decoding of the info that's embedded within the API key itself. \
+            "\nThis is a fully offline decoding of the info that's embedded within the key/token itself. \
              To get other details, try `momento api-key describe --id {key_id}`",
         );
     }
@@ -117,7 +121,9 @@ pub async fn refresh_key(
 
 pub async fn revoke_key(endpoint: String, auth_token: String, id: String) -> Result<(), CliError> {
     if let Ok(active_api_key) = decode(auth_token.trim()) {
-        if matches!(active_api_key.kind, GlobalApiKey) && id == active_api_key.identity_value {
+        if matches!(active_api_key.kind, GlobalApiKey)
+            && Some(id.clone()) == active_api_key.identity_value
+        {
             let confirmation = prompt_user_for_input(
                 "\nWARNING: You're trying to revoke the API key you're currently using.\n\
                     You will need to generate a new API key in the Momento Console afterwards.\n\
