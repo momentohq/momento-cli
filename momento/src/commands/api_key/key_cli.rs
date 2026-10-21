@@ -1,4 +1,7 @@
-use super::decode::{decode, DecodedApiKey, TokenKind::GlobalApiKey};
+use super::decode::{
+    decode, DecodedApiKey,
+    TokenKind::{GlobalApiKey, GlobalApiKeyRefreshToken},
+};
 use super::utils::{
     call_key_create_api, call_key_describe_api, call_key_list_api, call_key_refresh_api,
     call_key_revoke_api, ApiKey, Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
@@ -52,7 +55,7 @@ pub fn decode_key(api_key: String) -> Result<(), CliError> {
     let decoded = decode(api_key.trim())?;
     console_data!("{decoded}");
     if let DecodedApiKey {
-        kind: GlobalApiKey,
+        kind: GlobalApiKey | GlobalApiKeyRefreshToken,
         identity_value: Some(key_id),
         ..
     } = decoded
