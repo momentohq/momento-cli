@@ -1,6 +1,6 @@
 use super::utils::{
-    AccountMember, ActiveReferences, AllSelector, ApiKey, Condition, CustomRoleResponse,
-    Invitation, ItemSelector, NameSelector, Permissions, PrefixSelector, Rule,
+    AccountMember, ActiveReferences, AllSelector, ApiKey, Condition, Invitation, ItemSelector,
+    NameSelector, Permissions, PrefixSelector, RoleResponse, Rule,
 };
 
 use chrono::prelude::DateTime;
@@ -173,14 +173,14 @@ impl fmt::Display for Permissions {
     }
 }
 
-impl fmt::Display for CustomRoleResponse {
+impl fmt::Display for RoleResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
         write!(
             f,
             "\nID: {}{}",
             self.id,
-            if self.role_type == "system" {
+            if self.is_system_role() {
                 " (system role)"
             } else {
                 ""
@@ -469,7 +469,7 @@ mod tests {
 
     #[test]
     fn test_display_role_with_super_user_permissions() {
-        let role = CustomRoleResponse {
+        let role = RoleResponse {
             id: "r-owner".to_string(),
             name: "Owner".to_string(),
             role_type: "system".to_string(),
@@ -486,7 +486,7 @@ mod tests {
 
     #[test]
     fn test_display_role_with_no_description() {
-        let role = CustomRoleResponse {
+        let role = RoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
             role_type: "custom".to_string(),
@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn test_display_role_with_empty_description() {
-        let role = CustomRoleResponse {
+        let role = RoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
             role_type: "custom".to_string(),
@@ -610,7 +610,7 @@ mod tests {
 
     #[test]
     fn test_display_role_with_no_conditions() {
-        let role = CustomRoleResponse {
+        let role = RoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
             role_type: "custom".to_string(),
@@ -670,7 +670,7 @@ mod tests {
 
     #[test]
     fn test_display_role_with_empty_conditions() {
-        let role = CustomRoleResponse {
+        let role = RoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
             role_type: "custom".to_string(),
@@ -730,7 +730,7 @@ mod tests {
 
     #[test]
     fn test_display_role_with_empty_rules() {
-        let role = CustomRoleResponse {
+        let role = RoleResponse {
             id: "r-limited".to_string(),
             name: "Limited".to_string(),
             role_type: "custom".to_string(),
@@ -749,7 +749,7 @@ mod tests {
 
     #[test]
     fn test_deserialize_through_display() {
-        let role: CustomRoleResponse = serde_json::from_str(
+        let role: RoleResponse = serde_json::from_str(
             r#"{
                 "role_id": "r-limited",
                 "role_name": "Limited",

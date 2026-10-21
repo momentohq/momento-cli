@@ -1030,6 +1030,18 @@ pub enum AuthenticatedApiKeyCommand {
         exclude_refresh_token: bool,
     },
 
+    #[command(about = "Get the details of a Momento API key")]
+    Describe {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the API key you want to describe",
+            value_name = "API_KEY_ID",
+        )]
+        id: String,
+    },
+
     #[command(about = "Revoke a Momento API key, disabling it immediately")]
     Revoke {
         #[arg(
@@ -1061,7 +1073,7 @@ pub enum ApiKeyCommand {
     #[command(flatten)]
     AuthenticatedSubcommand(AuthenticatedApiKeyCommand),
 
-    #[command(about = "Parse embedded data from a Momento API key")]
+    #[command(about = "Parse embedded data from a Momento API key or disposable token")]
     Decode {
         #[arg(
             value_parser = NonEmptyStringValueParser::new(),
@@ -1134,6 +1146,34 @@ pub enum CustomRoleCommand {
             value_name = "PERMISSIONS",
         )]
         permission_set: String,
+    },
+
+    #[command(
+    about = "Get the details of a role that's available for your Momento API keys",
+    group(
+    clap::ArgGroup::new("role-selector")
+    .required(true)
+    .args(["id", "name"]),
+    ),
+    )]
+    Describe {
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "Name of the role you want to describe",
+            value_name = "ROLE",
+        )]
+        name: Option<String>,
+
+        #[arg(
+            long,
+            short,
+            value_parser = NonEmptyStringValueParser::new(),
+            help = "ID of the role you want to describe",
+            value_name = "ROLE_ID",
+        )]
+        id: Option<String>,
     },
 
     #[command(

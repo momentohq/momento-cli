@@ -128,6 +128,22 @@ pub async fn call_key_create_api(
     .await
 }
 
+pub async fn call_key_describe_api(
+    endpoint: String,
+    auth_token: String,
+    key_id: String,
+) -> Result<MomentoHttpResponse<ApiKeyInfo>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(
+        Method::GET,
+        format!("{url}/{key_id}"),
+        auth_token,
+        None,
+        None,
+    )
+    .await
+}
+
 pub async fn call_key_refresh_api(
     endpoint: String,
     refresh_token: String,

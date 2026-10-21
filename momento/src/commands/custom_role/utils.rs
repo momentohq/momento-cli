@@ -112,7 +112,7 @@ pub struct CustomRole {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomRoleResponse {
+pub struct RoleResponse {
     #[serde(rename = "role_name")]
     pub name: String,
     #[serde(rename = "role_id")]
@@ -123,9 +123,15 @@ pub struct CustomRoleResponse {
     pub permissions: Permissions,
 }
 
+impl RoleResponse {
+    pub fn is_system_role(&self) -> bool {
+        self.role_type == "system"
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListCustomRolesResponse {
-    pub roles: Vec<CustomRoleResponse>,
+    pub roles: Vec<RoleResponse>,
     pub next_token: Option<String>,
 }
 
@@ -199,7 +205,7 @@ pub async fn determine_role(
     auth_token: String,
     selector: &RoleSelector,
     all: bool,
-) -> Result<CustomRoleResponse, CliError> {
+) -> Result<RoleResponse, CliError> {
     let role_text = if all { "role" } else { "custom role" };
     let selector_text = match selector {
         RoleSelector::ById(id) => format!("ID {id}"),
@@ -282,7 +288,7 @@ pub fn determine_role_permissions(permission_set: String) -> Result<Permissions,
 }
 
 pub fn determine_role_update(
-    existing_role: CustomRoleResponse,
+    existing_role: RoleResponse,
     new_name: Option<String>,
     new_description: Option<String>,
     new_permission_set: Option<String>,
@@ -306,7 +312,7 @@ pub async fn call_role_create_api(
     endpoint: String,
     auth_token: String,
     data: CustomRole,
-) -> Result<MomentoHttpResponse<CustomRoleResponse>, CliError> {
+) -> Result<MomentoHttpResponse<RoleResponse>, CliError> {
     let url = build_request_url(endpoint);
     call_momento_http_api(
         Method::POST,
@@ -318,12 +324,28 @@ pub async fn call_role_create_api(
     .await
 }
 
+pub async fn call_role_describe_api(
+    endpoint: String,
+    auth_token: String,
+    role_id: String,
+) -> Result<MomentoHttpResponse<RoleResponse>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(
+        Method::GET,
+        format!("{url}/{role_id}"),
+        auth_token,
+        None,
+        None,
+    )
+    .await
+}
+
 pub async fn call_role_update_api(
     endpoint: String,
     auth_token: String,
     role_id: String,
     data: CustomRole,
-) -> Result<MomentoHttpResponse<CustomRoleResponse>, CliError> {
+) -> Result<MomentoHttpResponse<RoleResponse>, CliError> {
     let url = build_request_url(endpoint);
     call_momento_http_api(
         Method::PUT,
@@ -379,7 +401,7 @@ pub async fn call_role_list_api(
 pub mod test_utils {
     use super::*;
 
-    pub fn parse_role(json: &str) -> CustomRoleResponse {
+    pub fn parse_role(json: &str) -> RoleResponse {
         serde_json::from_str(json).expect("should parse custom role")
     }
 }
@@ -1198,7 +1220,7 @@ mod tests {
 
         assert_eq!("Owner", role.name);
         assert_eq!("r-owner", role.id);
-        assert_eq!("system", role.role_type);
+        assert!(role.is_system_role());
         assert_eq!(
             "superuser role",
             role.description.expect("should have description")

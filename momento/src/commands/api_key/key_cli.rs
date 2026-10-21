@@ -1,9 +1,10 @@
 use super::decode::{decode, TokenKind::GlobalApiKey};
 use super::utils::{
-    call_key_create_api, call_key_list_api, call_key_refresh_api, call_key_revoke_api, ApiKey,
-    Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
+    call_key_create_api, call_key_describe_api, call_key_list_api, call_key_refresh_api,
+    call_key_revoke_api, ApiKey, Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
 };
 use crate::commands::api_key::utils::RefreshApiKeyRequest;
+use crate::commands::custom_role::utils::call_role_describe_api;
 use crate::commands::utils::{
     unexpectedly_empty_success_from_api,
     MomentoHttpResponse::{Parsed, Unparseable},
@@ -50,6 +51,39 @@ pub async fn create_key(
 pub fn decode_key(api_key: String) -> Result<(), CliError> {
     let decoded = decode(api_key.trim())?;
     console_data!("{decoded}");
+    if matches!(decoded.kind, GlobalApiKey) {
+        let key_id = decoded.identity_value;
+        console_data!(
+            "\nThis is a fully offline decoding of the info that's embedded within the API key itself. \
+             To get other details, try `momento api-key describe --id {key_id}`",
+        );
+    }
+    Ok(())
+}
+
+pub async fn describe_key(
+    endpoint: String,
+    auth_token: String,
+    id: String,
+) -> Result<(), CliError> {
+    let response = call_key_describe_api(endpoint.clone(), auth_token.clone(), id).await?;
+    match response {
+        Parsed(key) => {
+            console_data!("Your API key:\n\n{key}");
+            if let Ok(Parsed(role)) =
+                call_role_describe_api(endpoint, auth_token, key.role_id).await
+            {
+                console_data!("\n\nYour API key's role:\n\n{role}")
+            }
+        }
+        Unparseable(response_text) => {
+            if response_text.is_empty() {
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse API key:\n\n{response_text}");
+            }
+        }
+    };
     Ok(())
 }
 
