@@ -168,7 +168,7 @@ pub fn determine_endpoint(endpoint_arg: String) -> String {
     }
     let mut endpoint = endpoint_arg.clone();
     if endpoint_arg.contains(".") {
-        endpoint = shorten_to_sdk_endpoint(&endpoint);
+        endpoint = shorten_to_sdk_endpoint(&endpoint).to_string();
     } else {
         if !endpoint_arg.starts_with("cell-") {
             let prefix = determine_cell_prefix_for_region(&endpoint_arg);
@@ -186,11 +186,16 @@ pub fn determine_endpoint(endpoint_arg: String) -> String {
 
 pub fn determine_mga_endpoint(api_endpoint: Option<&str>) -> String {
     format!(
-        "https://mga.registry.{}.a.momentohq.com",
-        if api_endpoint.is_some_and(|endpoint| endpoint.ends_with(".preprod.a.momentohq.com")) {
-            "preprod"
-        } else {
-            "prod"
+        "https://mga.{}",
+        match api_endpoint {
+            Some(endpoint) if endpoint.ends_with(".preprod.a.momentohq.com") => {
+                if endpoint.contains("cell") {
+                    "registry.preprod.a.momentohq.com".to_string()
+                } else {
+                    shorten_to_sdk_endpoint(&endpoint.to_string())
+                }
+            }
+            _ => "registry.prod.a.momentohq.com".to_string(),
         }
     )
 }
