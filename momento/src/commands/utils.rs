@@ -245,7 +245,8 @@ async fn call_api(
             };
             format!("{status}: {error_message}")
         })
-        .with_details(error_text))
+        .with_details(error_text)
+        .with_http_status(status))
     }
 }
 

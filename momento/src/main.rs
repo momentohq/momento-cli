@@ -93,6 +93,9 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         )
                         .await?
                     }
+                    momento_cli_opts::AuthenticatedApiKeyCommand::Describe { id } => {
+                        commands::api_key::key_cli::describe_key(mga_endpoint, auth_token, id).await?
+                    }
                     momento_cli_opts::AuthenticatedApiKeyCommand::Revoke { id } => {
                         commands::api_key::key_cli::revoke_key(mga_endpoint, auth_token, id).await?
                     }
@@ -149,6 +152,18 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                         name,
                         description,
                         permission_set,
+                    )
+                    .await?
+                }
+                momento_cli_opts::CustomRoleCommand::Describe {
+                    id,
+                    name,
+                } => {
+                    let selector = determine_role_selector(id, name)?;
+                    commands::custom_role::role_cli::describe_role(
+                        mga_endpoint,
+                        auth_token,
+                        selector,
                     )
                     .await?
                 }

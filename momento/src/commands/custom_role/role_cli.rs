@@ -1,7 +1,7 @@
 use super::utils::{
-    call_role_create_api, call_role_delete_api, call_role_list_api, call_role_update_api,
-    determine_role, determine_role_permissions, determine_role_update, CustomRole,
-    DeleteCustomRoleResponse, DeleteStatus, ListCustomRolesResponse, RoleSelector,
+    call_role_create_api, call_role_delete_api, call_role_describe_api, call_role_list_api,
+    call_role_update_api, determine_role, determine_role_permissions, determine_role_update,
+    CustomRole, DeleteCustomRoleResponse, DeleteStatus, ListCustomRolesResponse, RoleSelector,
 };
 use crate::commands::utils::{
     unexpectedly_empty_success_from_api,
@@ -31,6 +31,43 @@ pub async fn create_role(
             console_data!("Attempting to create custom role!");
             if !response_text.is_empty() {
                 console_data!("\n\n{response_text}");
+            }
+        }
+    };
+    Ok(())
+}
+
+pub async fn describe_role(
+    endpoint: String,
+    auth_token: String,
+    selector: RoleSelector,
+) -> Result<(), CliError> {
+    let id = match &selector {
+        RoleSelector::ById(id) => id.clone(),
+        RoleSelector::ByName(_) => {
+            determine_role(endpoint.clone(), auth_token.clone(), &selector, true)
+                .await?
+                .id
+        }
+    };
+    let response = call_role_describe_api(endpoint, auth_token, id.clone()).await?;
+    let selector_text = match selector {
+        RoleSelector::ById(id) => format!("with ID {id}"),
+        RoleSelector::ByName(name) => format!("{name} (ID {id})"),
+    };
+    match response {
+        Parsed(role) => {
+            if role.is_system_role() {
+                console_data!("Momento system role:\n\n{role}");
+            } else {
+                console_data!("Your custom role:\n\n{role}");
+            }
+        }
+        Unparseable(response_text) => {
+            if response_text.is_empty() {
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse role {selector_text}:\n\n{response_text}");
             }
         }
     };
@@ -81,11 +118,16 @@ pub async fn delete_role(
     auth_token: String,
     selector: RoleSelector,
 ) -> Result<(), CliError> {
-    let id = determine_role(endpoint.clone(), auth_token.clone(), &selector, false)
-        .await?
-        .id;
+    let id = match &selector {
+        RoleSelector::ById(id) => id.clone(),
+        RoleSelector::ByName(_) => {
+            determine_role(endpoint.clone(), auth_token.clone(), &selector, false)
+                .await?
+                .id
+        }
+    };
     let response = call_role_delete_api(endpoint, auth_token, id.clone()).await?;
-    let selector_text = match selector {
+    let selector_text = match &selector {
         RoleSelector::ById(id) => format!("with ID {id}"),
         RoleSelector::ByName(name) => format!("{name} (ID {id})"),
     };

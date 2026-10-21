@@ -7,6 +7,8 @@ pub struct CliError {
     pub(crate) msg: String,
     /// Error details for debugging
     detailed_msg: Option<String>,
+    /// HTTP status, if this error came from an API response
+    http_status: Option<reqwest::StatusCode>,
 }
 
 impl fmt::Debug for CliError {
@@ -37,6 +39,7 @@ impl CliError {
         Self {
             msg: msg.into(),
             detailed_msg: None,
+            http_status: None,
         }
     }
 
@@ -52,5 +55,14 @@ impl CliError {
 
     pub fn details(&self) -> Option<String> {
         self.detailed_msg.clone()
+    }
+
+    pub fn with_http_status(mut self, status: reqwest::StatusCode) -> Self {
+        self.http_status = Some(status);
+        self
+    }
+
+    pub fn http_status(&self) -> Option<reqwest::StatusCode> {
+        self.http_status
     }
 }

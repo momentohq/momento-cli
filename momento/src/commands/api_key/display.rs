@@ -67,7 +67,12 @@ impl fmt::Display for TokenKind {
 impl fmt::Display for DecodedApiKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Kind: {}", self.kind)?;
-        write!(f, "\n{}: {}", self.identity_label, self.identity_value)?;
+        write!(
+            f,
+            "\n{}: {}",
+            self.identity_label,
+            self.identity_value.as_deref().unwrap_or("(missing)")
+        )?;
         if let Some(endpoint) = &self.endpoint {
             write!(f, "\nEndpoint: {endpoint}")?;
         }

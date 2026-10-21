@@ -1,9 +1,13 @@
-use super::decode::{decode, TokenKind::GlobalApiKey};
+use super::decode::{
+    decode, DecodedApiKey,
+    TokenKind::{GlobalApiKey, GlobalApiKeyRefreshToken},
+};
 use super::utils::{
-    call_key_create_api, call_key_list_api, call_key_refresh_api, call_key_revoke_api, ApiKey,
-    Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
+    call_key_create_api, call_key_describe_api, call_key_list_api, call_key_refresh_api,
+    call_key_revoke_api, ApiKey, Expiry, ListApiKeysResponse, RevokeApiKeyResponse,
 };
 use crate::commands::api_key::utils::RefreshApiKeyRequest;
+use crate::commands::custom_role::utils::call_role_describe_api;
 use crate::commands::utils::{
     unexpectedly_empty_success_from_api,
     MomentoHttpResponse::{Parsed, Unparseable},
@@ -50,6 +54,43 @@ pub async fn create_key(
 pub fn decode_key(api_key: String) -> Result<(), CliError> {
     let decoded = decode(api_key.trim())?;
     console_data!("{decoded}");
+    if let DecodedApiKey {
+        kind: GlobalApiKey | GlobalApiKeyRefreshToken,
+        identity_value: Some(key_id),
+        ..
+    } = decoded
+    {
+        console_data!(
+            "\nThis is a fully offline decoding of the info that's embedded within the key/token itself. \
+             To get other details, try `momento api-key describe --id {key_id}`",
+        );
+    }
+    Ok(())
+}
+
+pub async fn describe_key(
+    endpoint: String,
+    auth_token: String,
+    id: String,
+) -> Result<(), CliError> {
+    let response = call_key_describe_api(endpoint.clone(), auth_token.clone(), id).await?;
+    match response {
+        Parsed(key) => {
+            console_data!("Your API key:\n\n{key}");
+            if let Ok(Parsed(role)) =
+                call_role_describe_api(endpoint, auth_token, key.role_id).await
+            {
+                console_data!("\nYour API key's role:\n\n{role}")
+            }
+        }
+        Unparseable(response_text) => {
+            if response_text.is_empty() {
+                return Err(unexpectedly_empty_success_from_api());
+            } else {
+                console_data!("Couldn't parse API key:\n\n{response_text}");
+            }
+        }
+    };
     Ok(())
 }
 
@@ -83,7 +124,9 @@ pub async fn refresh_key(
 
 pub async fn revoke_key(endpoint: String, auth_token: String, id: String) -> Result<(), CliError> {
     if let Ok(active_api_key) = decode(auth_token.trim()) {
-        if matches!(active_api_key.kind, GlobalApiKey) && id == active_api_key.identity_value {
+        if matches!(active_api_key.kind, GlobalApiKey)
+            && Some(id.clone()) == active_api_key.identity_value
+        {
             let confirmation = prompt_user_for_input(
                 "\nWARNING: You're trying to revoke the API key you're currently using.\n\
                     You will need to generate a new API key in the Momento Console afterwards.\n\

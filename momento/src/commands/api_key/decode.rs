@@ -17,12 +17,8 @@ const BASE64: GeneralPurpose = GeneralPurpose::new(
         .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
 );
 
-fn get_claim_string(claims: &Value, name: &str) -> String {
-    claims
-        .get(name)
-        .and_then(Value::as_str)
-        .unwrap_or("(missing)")
-        .to_string()
+fn get_claim_string(claims: &Value, name: &str) -> Option<String> {
+    claims.get(name).and_then(Value::as_str).map(String::from)
 }
 
 /// Decodes one dot-separated part of a JWT (0 = header, 1 = payload) to JSON.
@@ -55,7 +51,7 @@ pub enum TokenKind {
 struct Classified {
     kind: TokenKind,
     identity_label: &'static str,
-    identity_value: String,
+    identity_value: Option<String>,
     permission_encoding: Option<EmbeddedPermissionEncoding>,
 }
 
@@ -133,7 +129,7 @@ fn classify(claims: &Value, auth_token: &str) -> Result<Classified, CliError> {
                     Ok(Classified {
                         kind: TokenKind::CustomerSigned,
                         identity_label: "Signing Key ID",
-                        identity_value: key_id,
+                        identity_value: Some(key_id),
                         permission_encoding: None,
                     })
                 }
@@ -155,7 +151,7 @@ pub struct DecodedApiKey {
     pub kind: TokenKind,
     /// Who it identifies — the meaning depends on `kind`, so the label does too.
     pub identity_label: &'static str,
-    pub identity_value: String,
+    pub identity_value: Option<String>,
     /// The cell endpoint, when the token arrived in an envelope carrying one.
     pub endpoint: Option<String>,
     pub expires: Option<Value>,
@@ -179,7 +175,7 @@ pub fn decode(key: &str) -> Result<DecodedApiKey, CliError> {
         Classified {
             kind: TokenKind::Unknown,
             identity_label: "Reason",
-            identity_value: error.msg,
+            identity_value: Some(error.msg),
             permission_encoding: None,
         }
     });
@@ -309,50 +305,51 @@ mod tests {
                 json!({}),
                 json!({ "t": "disposable", "ver": 1, "sub": "c" }),
                 TokenKind::DisposableV1,
-                "c",
+                Some("c"),
             ),
             (
                 json!({}),
                 json!({ "t": "disposable", "ver": 2, "a": "acct" }),
                 TokenKind::DisposableV2,
-                "acct",
+                Some("acct"),
             ),
             (
                 json!({}),
                 json!({ "t": "g", "jti": "k" }),
                 TokenKind::GlobalApiKey,
-                "k",
+                Some("k"),
             ),
+            (json!({}), json!({"t": "g"}), TokenKind::GlobalApiKey, None),
             (
                 json!({}),
                 json!({ "t": "gr", "akid": "k" }),
                 TokenKind::GlobalApiKeyRefreshToken,
-                "k",
+                Some("k"),
             ),
             (
                 json!({}),
                 json!({ "ver": 1, "sub": "c" }),
                 TokenKind::ApiTokenV1,
-                "c",
+                Some("c"),
             ),
             (
                 json!({}),
                 json!({ "cp": "x", "sub": "c" }),
                 TokenKind::Legacy,
-                "c",
+                Some("c"),
             ),
             (
                 json!({ "kid": "sk" }),
                 json!({ "sub": "c" }),
                 TokenKind::CustomerSigned,
-                "sk",
+                Some("sk"),
             ),
         ];
         for (header, claims, expected_kind, expected_identity) in cases {
             let token = jwt(header, claims.clone());
             let classified = classify(&claims, &token).expect("should classify");
             assert_eq!(expected_kind, classified.kind);
-            assert_eq!(expected_identity, classified.identity_value);
+            assert_eq!(expected_identity, classified.identity_value.as_deref());
         }
     }
 

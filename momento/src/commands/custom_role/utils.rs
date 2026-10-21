@@ -2,6 +2,7 @@ use crate::commands::utils::{call_momento_http_api, MomentoHttpData, MomentoHttp
 use crate::error::CliError;
 
 use http::Method;
+use log::warn;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
@@ -112,7 +113,7 @@ pub struct CustomRole {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CustomRoleResponse {
+pub struct RoleResponse {
     #[serde(rename = "role_name")]
     pub name: String,
     #[serde(rename = "role_id")]
@@ -123,9 +124,15 @@ pub struct CustomRoleResponse {
     pub permissions: Permissions,
 }
 
+impl RoleResponse {
+    pub fn is_system_role(&self) -> bool {
+        self.role_type == "system"
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListCustomRolesResponse {
-    pub roles: Vec<CustomRoleResponse>,
+    pub roles: Vec<RoleResponse>,
     pub next_token: Option<String>,
 }
 
@@ -199,12 +206,40 @@ pub async fn determine_role(
     auth_token: String,
     selector: &RoleSelector,
     all: bool,
-) -> Result<CustomRoleResponse, CliError> {
-    let role_text = if all { "role" } else { "custom role" };
+) -> Result<RoleResponse, CliError> {
+    let (role_text, list_command) = if all {
+        ("role", "momento role list --all")
+    } else {
+        ("custom role", "momento role list")
+    };
     let selector_text = match selector {
         RoleSelector::ById(id) => format!("ID {id}"),
         RoleSelector::ByName(name) => format!("name {name}"),
     };
+    let not_found = Err(CliError::new(format!(
+        "No {role_text} has {selector_text}. Try `{list_command}`"
+    )));
+    if let RoleSelector::ById(id) = selector {
+        match call_role_describe_api(endpoint.clone(), auth_token.clone(), id.to_string()).await {
+            Ok(MomentoHttpResponse::Parsed(role)) => {
+                if role.is_system_role() && !all {
+                    return not_found;
+                } else {
+                    return Ok(role);
+                }
+            }
+            Ok(MomentoHttpResponse::Unparseable(response_text)) => {
+                warn!("Trying to list {role_text}; retrieved role with {selector_text} but couldn't parse it:\n{response_text}");
+            }
+            Err(error) => {
+                if error.http_status() == Some(reqwest::StatusCode::NOT_FOUND) {
+                    return not_found;
+                } else {
+                    warn!("Trying to list {role_text}; couldn't get role with {selector_text} directly:\n{}", error.msg);
+                }
+            }
+        }
+    }
     let mut full_roles_list = vec![];
     let mut next_token = None;
     loop {
@@ -243,20 +278,13 @@ pub async fn determine_role(
                     if full_roles_list.is_empty() {
                         return Err(CliError::new(format!("No {role_text}s found")));
                     } else {
-                        return Err(CliError::new(format!(
-                            "No {role_text} has {selector_text}.\n\nListing {role_text}s:\n\n{}",
-                            full_roles_list
-                                .iter()
-                                .map(|role| role.to_string())
-                                .collect::<Vec<String>>()
-                                .join("\n\n")
-                        )));
+                        return not_found;
                     }
                 }
             }
-            MomentoHttpResponse::Unparseable(response_text) => {
+            MomentoHttpResponse::Unparseable(_) => {
                 return Err(CliError::new(format!(
-                    "Can't determine which custom role has {selector_text}.\n\n{response_text}"
+                    "Can't determine which {role_text} has {selector_text}. Try `{list_command}`"
                 )));
             }
         }
@@ -282,7 +310,7 @@ pub fn determine_role_permissions(permission_set: String) -> Result<Permissions,
 }
 
 pub fn determine_role_update(
-    existing_role: CustomRoleResponse,
+    existing_role: RoleResponse,
     new_name: Option<String>,
     new_description: Option<String>,
     new_permission_set: Option<String>,
@@ -306,7 +334,7 @@ pub async fn call_role_create_api(
     endpoint: String,
     auth_token: String,
     data: CustomRole,
-) -> Result<MomentoHttpResponse<CustomRoleResponse>, CliError> {
+) -> Result<MomentoHttpResponse<RoleResponse>, CliError> {
     let url = build_request_url(endpoint);
     call_momento_http_api(
         Method::POST,
@@ -318,12 +346,28 @@ pub async fn call_role_create_api(
     .await
 }
 
+pub async fn call_role_describe_api(
+    endpoint: String,
+    auth_token: String,
+    role_id: String,
+) -> Result<MomentoHttpResponse<RoleResponse>, CliError> {
+    let url = build_request_url(endpoint);
+    call_momento_http_api(
+        Method::GET,
+        format!("{url}/{role_id}"),
+        auth_token,
+        None,
+        None,
+    )
+    .await
+}
+
 pub async fn call_role_update_api(
     endpoint: String,
     auth_token: String,
     role_id: String,
     data: CustomRole,
-) -> Result<MomentoHttpResponse<CustomRoleResponse>, CliError> {
+) -> Result<MomentoHttpResponse<RoleResponse>, CliError> {
     let url = build_request_url(endpoint);
     call_momento_http_api(
         Method::PUT,
@@ -379,7 +423,7 @@ pub async fn call_role_list_api(
 pub mod test_utils {
     use super::*;
 
-    pub fn parse_role(json: &str) -> CustomRoleResponse {
+    pub fn parse_role(json: &str) -> RoleResponse {
         serde_json::from_str(json).expect("should parse custom role")
     }
 }
@@ -1198,7 +1242,7 @@ mod tests {
 
         assert_eq!("Owner", role.name);
         assert_eq!("r-owner", role.id);
-        assert_eq!("system", role.role_type);
+        assert!(role.is_system_role());
         assert_eq!(
             "superuser role",
             role.description.expect("should have description")
