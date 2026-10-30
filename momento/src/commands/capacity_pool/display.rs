@@ -57,7 +57,7 @@ fn format_reserved_memory_line(reserved_memory_percent: Option<ReservedMemoryPer
         Some(ReservedMemoryPercent::Percent(percent)) => {
             format!("- Reserved Memory: {percent}%\n")
         }
-        Some(ReservedMemoryPercent::Default) => "- Reserved Memory: cell default\n".to_string(),
+        Some(ReservedMemoryPercent::Default) => "- Reserved Memory: instance default\n".to_string(),
     }
 }
 
