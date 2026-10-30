@@ -110,10 +110,13 @@ pub async fn delete_cache(client: CacheClient, cache_name: String) -> Result<(),
 pub async fn list_caches(client: CacheClient) -> Result<(), CliError> {
     let list_result = interact_with_momento("listing caches...", client.list_caches()).await?;
 
-    list_result
-        .caches
-        .into_iter()
-        .for_each(|cache| console_data!("{}", cache.name));
+    list_result.caches.into_iter().for_each(|cache| {
+        if cache.cache_id.is_empty() {
+            console_data!("Name: {}", cache.name)
+        } else {
+            console_data!("Name: {}, ID: {}", cache.name, cache.cache_id)
+        }
+    });
 
     Ok(())
 }
