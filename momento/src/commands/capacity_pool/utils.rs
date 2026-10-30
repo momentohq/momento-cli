@@ -279,6 +279,13 @@ pub fn determine_reserved_memory_update(
     }
 }
 
+fn create_args_help() -> String {
+    format!(
+        "For a cluster-mode pool, specify all of:\n{CLUSTER_POOL_CREATE_ARGS_TEXT}\n\n\
+         For a flex-mode pool, specify all of:\n{FLEX_POOL_CREATE_ARGS_TEXT}"
+    )
+}
+
 pub fn determine_provisioning_create(
     instance_type: Option<String>,
     shard_count: Option<u32>,
@@ -288,8 +295,6 @@ pub fn determine_provisioning_create(
     zones: Vec<String>,
     reserved_memory_percent: Option<u32>,
 ) -> Result<CapacityPoolProvisioning, CliError> {
-    let flex_with_reserved_memory =
-        reserved_memory_percent.is_some() && (capacity_gib.is_some() || family.is_some());
     let provisioning = match (
         (instance_type.clone(), shard_count),
         (capacity_gib, &family),
@@ -305,7 +310,13 @@ pub fn determine_provisioning_create(
                     .map(ReservedMemoryPercent::Percent),
             }
         }
-        ((None, None), (Some(capacity), _)) if !flex_with_reserved_memory => {
+        ((None, None), (Some(capacity), _)) => {
+            if reserved_memory_percent.is_some() {
+                return Err(CliError::new(format!(
+                    "Conflicting arguments: --reserved-memory-percent is only for cluster-mode pools.\n\n{}",
+                    create_args_help()
+                )));
+            }
             CapacityPoolProvisioning::Flex(FlexProvisioning {
                 capacity: CapacityBounds::from(capacity),
                 replication: ReplicationBounds::from(replicas_per_shard),
@@ -314,14 +325,9 @@ pub fn determine_provisioning_create(
             })
         }
         _ => {
-            let help_text = format!(
-                "For a cluster-mode pool, specify all of:\n{CLUSTER_POOL_CREATE_ARGS_TEXT}\n\n\
-                 For a flex-mode pool, specify all of:\n{FLEX_POOL_CREATE_ARGS_TEXT}"
-            );
             return Err(CliError::new(format!(
-                "{}\n\n{help_text}",
+                "{}\n\n{}",
                 match ((instance_type, shard_count), (capacity_gib, family)) {
-                    _ if flex_with_reserved_memory => "Conflicting arguments.",
                     ((Some(_), None), (None, None)) => "Missing --shard-count.",
                     ((None, Some(_)), (None, None)) => "Missing --instance-type.",
                     // Note: `--family` is not checked here because it's optional / has a default
@@ -335,7 +341,8 @@ pub fn determine_provisioning_create(
                         // This should never happen; valid combination that should have been identified earlier.
                         "Sorry, something went wrong!"
                     }
-                }
+                },
+                create_args_help()
             )));
         }
     };
@@ -631,7 +638,6 @@ mod tests {
         for (capacity_gib, family) in [
             (Some(bounds(100, 500)), None),
             (Some(bounds(100, 500)), Some("foo_bar".to_string())),
-            (None, Some("foo_bar".to_string())),
         ] {
             let case = format!("capacity_gib={capacity_gib:?} family={family:?}");
             let err = determine_provisioning_create(

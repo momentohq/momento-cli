@@ -523,8 +523,7 @@ pub enum CapacityPoolCommand {
         #[arg(
             long,
             value_parser = value_parser!(u32).range(20..=99),
-            help = "Cluster mode: percent of each node's memory held back from data (20-99) \
-                    [default is cell-dependent]",
+            help = "Cluster mode: percent of each node's memory held back from data (20-99)",
             value_name = "PERCENT"
         )]
         reserved_memory_percent: Option<u32>,
@@ -643,7 +642,7 @@ pub enum CapacityPoolCommand {
         reserved_memory_percent: Option<u32>,
         #[arg(
             long,
-            help = "Cluster mode: return to the cell's default reserved memory for the instance type",
+            help = "Cluster mode: return to the default reserved memory for the instance type",
             default_value_t = false,
             conflicts_with = "reserved_memory_percent"
         )]
