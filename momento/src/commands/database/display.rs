@@ -5,7 +5,13 @@ use std::fmt;
 impl fmt::Display for DatabaseResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
+        if !self.database_id.is_empty() {
+            write!(f, "\nID: {}", self.database_id)?;
+        }
         write!(f, "\nCapacity Pool: {}", self.pool_name)?;
+        if !self.pool_id.is_empty() {
+            write!(f, " ({})", self.pool_id)?;
+        }
         write!(
             f,
             "\n{}",
@@ -33,7 +39,9 @@ mod tests {
     fn test_display_database_with_all_fields() {
         let response = DatabaseResponse {
             name: "my database".to_string(),
+            database_id: "db-5e6f7a8b".to_string(),
             pool_name: "my pool".to_string(),
+            pool_id: "cp-1a2b3c4d".to_string(),
             metrics_config: CustomerMetricsConfig::CloudWatch {
                 customer_iam_role: Some("arn:aws:iam::123456789012:my_momento_metrics".to_string()),
                 region: Some("us-east-1".to_string()),
@@ -47,7 +55,9 @@ mod tests {
     fn test_display_database_with_metrics_without_region() {
         let response = DatabaseResponse {
             name: "my database".to_string(),
+            database_id: String::new(),
             pool_name: "my pool".to_string(),
+            pool_id: String::new(),
             metrics_config: CustomerMetricsConfig::CloudWatch {
                 customer_iam_role: Some("arn:aws:iam::123456789012:my_momento_metrics".to_string()),
                 region: None,
@@ -61,7 +71,9 @@ mod tests {
     fn test_display_database_with_metrics_disabled() {
         let response = DatabaseResponse {
             name: "my database".to_string(),
+            database_id: String::new(),
             pool_name: "my pool".to_string(),
+            pool_id: String::new(),
             metrics_config: CustomerMetricsConfig::Disabled,
         };
         snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));
@@ -71,7 +83,9 @@ mod tests {
     fn test_display_database_with_metrics_inherited() {
         let response = DatabaseResponse {
             name: "my database".to_string(),
+            database_id: String::new(),
             pool_name: "my pool".to_string(),
+            pool_id: String::new(),
             metrics_config: CustomerMetricsConfig::Inherit,
         };
         snapshot_settings().bind(|| insta::assert_snapshot!(response.to_string()));

@@ -172,6 +172,8 @@ pub struct FlexAllocation {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CapacityPoolResponse {
     pub name: String,
+    #[serde(default)]
+    pub pool_id: String,
     pub status: String,
     pub provisioning: CapacityPoolProvisioning,
     pub metrics_config: CustomerMetricsConfig,

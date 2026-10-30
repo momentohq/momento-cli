@@ -144,6 +144,9 @@ impl fmt::Display for CapacityPoolDiagnostics {
 impl fmt::Display for CapacityPoolResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Name: {}", self.name)?;
+        if !self.pool_id.is_empty() {
+            write!(f, "\nID: {}", self.pool_id)?;
+        }
         write!(f, "\nStatus: {}", self.status)?;
         write!(
             f,
@@ -478,6 +481,7 @@ mod tests {
         ]);
         let response = CapacityPoolResponse {
             name: "hello world".to_string(),
+            pool_id: "cp-1a2b3c4d".to_string(),
             provisioning,
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::Inherit,
@@ -527,6 +531,7 @@ mod tests {
         ]);
         let response = CapacityPoolResponse {
             name: "hello world".to_string(),
+            pool_id: "cp-1a2b3c4d".to_string(),
             provisioning,
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::CloudWatch {
@@ -587,6 +592,7 @@ mod tests {
         ]);
         let response = CapacityPoolResponse {
             name: "hello world".to_string(),
+            pool_id: "cp-1a2b3c4d".to_string(),
             provisioning,
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::CloudWatch {
@@ -620,6 +626,7 @@ mod tests {
         };
         let response = CapacityPoolResponse {
             name: "hello world".to_string(),
+            pool_id: "cp-1a2b3c4d".to_string(),
             provisioning,
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::Disabled,
@@ -650,6 +657,7 @@ mod tests {
         };
         let response = CapacityPoolResponse {
             name: "hello world".to_string(),
+            pool_id: "cp-1a2b3c4d".to_string(),
             provisioning,
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::Disabled,
@@ -693,6 +701,7 @@ mod tests {
         ]);
         let response = CapacityPoolResponse {
             name: "hello world".to_string(),
+            pool_id: "cp-1a2b3c4d".to_string(),
             provisioning,
             status: "creating".to_string(),
             metrics_config: CustomerMetricsConfig::Disabled,
@@ -714,6 +723,7 @@ mod tests {
         let response: CapacityPoolResponse = serde_json::from_str(
             r#"{
                 "name": "hello world",
+                "pool_id": "cp-1a2b3c4d",
                 "status": "creating",
                 "provisioning": {
                     "managed": {

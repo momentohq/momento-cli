@@ -3,6 +3,7 @@ source: momento/src/commands/capacity_pool/display.rs
 expression: response.to_string()
 ---
 Name: hello world
+ID: cp-1a2b3c4d
 Status: creating
 Flex Provisioning:
 - Capacity: 32..128 GiB

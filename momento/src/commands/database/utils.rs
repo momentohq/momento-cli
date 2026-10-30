@@ -18,7 +18,11 @@ pub struct Database {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DatabaseResponse {
     pub name: String,
+    #[serde(default)]
+    pub database_id: String,
     pub pool_name: String,
+    #[serde(default)]
+    pub pool_id: String,
     pub metrics_config: CustomerMetricsConfig,
 }
 
@@ -89,4 +93,41 @@ pub fn print_valkey_cli_sample(valkey_hostname: String, database_name: &str) {
            -h {valkey_hostname} \\\n  \
            --user {database_name}"
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_database_with_ids() {
+        let response: DatabaseResponse = serde_json::from_str(
+            r#"{
+                "name": "my database",
+                "database_id": "db-5e6f7a8b",
+                "pool_name": "my pool",
+                "pool_id": "cp-1a2b3c4d",
+                "metrics_config": "disabled"
+            }"#,
+        )
+        .expect("database should deserialize");
+
+        assert_eq!(response.database_id, "db-5e6f7a8b");
+        assert_eq!(response.pool_id, "cp-1a2b3c4d");
+    }
+
+    #[test]
+    fn test_deserialize_database_without_ids() {
+        let response: DatabaseResponse = serde_json::from_str(
+            r#"{
+                "name": "my database",
+                "pool_name": "my pool",
+                "metrics_config": "disabled"
+            }"#,
+        )
+        .expect("database should deserialize");
+
+        assert_eq!(response.database_id, "");
+        assert_eq!(response.pool_id, "");
+    }
 }
