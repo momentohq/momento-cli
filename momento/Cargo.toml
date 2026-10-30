@@ -46,10 +46,10 @@ features = [ "macros",]
 path = "../momento-cli-opts"
 
 [dependencies.momento]
-version = "0.69.0"
+version = "0.70.0"
 
 [dependencies.momento-protos]
-version = "0.138.1"
+version = "0.139.1"
 
 [dependencies.futures]
 version = "0.3.28"

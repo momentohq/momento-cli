@@ -32,7 +32,7 @@ pub fn initialize_temp_momento_config_dir(test_run_id: &str) -> TempDir {
 }
 
 pub fn cache_list_output_contains_cache_predicate(cache_name: &str) -> RegexPredicate {
-    predicates::str::is_match(format!("(?m)^{cache_name}$"))
+    predicates::str::is_match(format!("(?m)^Name: {cache_name}(, ID: \\S+)?$"))
         .expect("Unable to create predicate from cache name")
 }
 
