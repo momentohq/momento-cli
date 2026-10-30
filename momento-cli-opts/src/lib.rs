@@ -487,8 +487,10 @@ pub enum FunctionCommand {
 }
 
 // For help text over in `momento` validation:
-pub const CLUSTER_POOL_ARGS_TEXT: &str =
-    "--instance-type\n--shard-count\n--replicas-per-shard\n--zones";
+pub const CLUSTER_POOL_CREATE_ARGS_TEXT: &str =
+    "--instance-type\n--shard-count\n--replicas-per-shard\n--zones\n(optionally:) --reserved-memory-percent";
+pub const CLUSTER_POOL_UPDATE_ARGS_TEXT: &str =
+    "--instance-type\n--shard-count\n--replicas-per-shard\n--zones\n--reserved-memory-percent or --default-reserved-memory";
 pub const FLEX_POOL_CREATE_ARGS_TEXT: &str =
     "--capacity-gib\n--replicas-per-shard\n--zones\n(optionally:) --family";
 pub const FLEX_POOL_UPDATE_ARGS_TEXT: &str =
@@ -518,6 +520,13 @@ pub enum CapacityPoolCommand {
             help = "Cluster mode: number of shards in the backing cluster"
         )]
         shard_count: Option<u32>,
+        #[arg(
+            long,
+            value_parser = value_parser!(u32).range(20..=99),
+            help = "Cluster mode: percent of each node's memory held back from data (20-99)",
+            value_name = "PERCENT"
+        )]
+        reserved_memory_percent: Option<u32>,
         #[arg(
             long,
             value_parser = parse_bounds,
@@ -623,6 +632,21 @@ pub enum CapacityPoolCommand {
             value_name = "NEW_SHARD_COUNT",
         )]
         shard_count: Option<u32>,
+        #[arg(
+            long,
+            value_parser = value_parser!(u32).range(20..=99),
+            help = "Cluster mode: new percent of each node's memory held back from data (20-99); \
+                    omit to leave unchanged",
+            value_name = "NEW_PERCENT",
+        )]
+        reserved_memory_percent: Option<u32>,
+        #[arg(
+            long,
+            help = "Cluster mode: return to the default reserved memory for the instance type",
+            default_value_t = false,
+            conflicts_with = "reserved_memory_percent"
+        )]
+        default_reserved_memory: bool,
         #[arg(
             long,
             value_parser = parse_bounds,

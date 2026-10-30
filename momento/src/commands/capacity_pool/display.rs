@@ -1,6 +1,7 @@
 use super::utils::{
     CapacityFamilyResponse, CapacityPoolDiagnosticEntry, CapacityPoolDiagnostics,
     CapacityPoolProvisioning, CapacityPoolResponse, FlexAllocation, FlexProvisioning,
+    ReservedMemoryPercent,
 };
 
 use chrono::prelude::DateTime;
@@ -47,6 +48,17 @@ fn format_flex_provisioning(
          - Availability Zones: {}",
         provisioning.zones.join(", ")
     )
+}
+
+/// Empty when the API predates the field, so older cells render as before.
+fn format_reserved_memory_line(reserved_memory_percent: Option<ReservedMemoryPercent>) -> String {
+    match reserved_memory_percent {
+        None => String::new(),
+        Some(ReservedMemoryPercent::Percent(percent)) => {
+            format!("- Reserved Memory: {percent}%\n")
+        }
+        Some(ReservedMemoryPercent::Default) => "- Reserved Memory: instance default\n".to_string(),
+    }
 }
 
 /// Fields worth reading first; everything else follows in the order the API sent it.
@@ -154,12 +166,15 @@ impl fmt::Display for CapacityPoolResponse {
                     shard_count,
                     replicas_per_shard,
                     zones,
+                    reserved_memory_percent,
                 } => format!(
                     "Cluster Provisioning:\n\
                      - EC2 Instance Type: {instance_type}\n\
                      - Shard Count: {shard_count}\n\
                      - Replicas: {replicas_per_shard} per shard\n\
+                     {}\
                      - Availability Zones: {}",
+                    format_reserved_memory_line(*reserved_memory_percent),
                     zones.join(", "),
                 ),
                 CapacityPoolProvisioning::Flex(provisioning) => format!(
@@ -550,6 +565,7 @@ mod tests {
     #[test]
     fn test_display_capacity_pool_with_all_fields_in_cluster_mode() {
         let provisioning = CapacityPoolProvisioning::Cluster {
+            reserved_memory_percent: Some(ReservedMemoryPercent::Percent(30)),
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
@@ -613,6 +629,7 @@ mod tests {
     #[test]
     fn test_display_capacity_pool_with_empty_diagnostics() {
         let provisioning = CapacityPoolProvisioning::Cluster {
+            reserved_memory_percent: None,
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
@@ -643,6 +660,7 @@ mod tests {
     #[test]
     fn test_display_capacity_pool_with_no_diagnostics() {
         let provisioning = CapacityPoolProvisioning::Cluster {
+            reserved_memory_percent: None,
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,
@@ -673,6 +691,7 @@ mod tests {
     #[test]
     fn test_display_capacity_pool_with_no_additional_fields() {
         let provisioning = CapacityPoolProvisioning::Cluster {
+            reserved_memory_percent: Some(ReservedMemoryPercent::Default),
             instance_type: "r7g.xlarge".to_string(),
             shard_count: 3,
             replicas_per_shard: 1,

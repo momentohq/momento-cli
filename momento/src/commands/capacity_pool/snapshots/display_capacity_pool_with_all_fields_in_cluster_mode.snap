@@ -8,6 +8,7 @@ Cluster Provisioning:
 - EC2 Instance Type: r7g.xlarge
 - Shard Count: 3
 - Replicas: 1 per shard
+- Reserved Memory: 30%
 - Availability Zones: use1-az3, use1-az4, use1-az5
 Metrics Config:
 - IAM Role: arn:aws:iam::123456789012:my_momento_metrics
