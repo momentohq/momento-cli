@@ -21,7 +21,7 @@ use crate::{
     commands::api_key::utils::determine_expiry,
     commands::capacity_pool::utils::{
         determine_family_update, determine_provisioning_create, determine_provisioning_update,
-        missing_pool_update_args,
+        determine_reserved_memory_update, missing_pool_update_args,
     },
     commands::custom_role::utils::{determine_role, determine_role_selector},
     commands::functions::utils::{
@@ -592,6 +592,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             name,
                             instance_type,
                             shard_count,
+                            reserved_memory_percent,
                             replicas_per_shard,
                             capacity_gib,
                             zones,
@@ -607,6 +608,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                 capacity_gib,
                                 family,
                                 zones,
+                                reserved_memory_percent,
                             )?;
                             let metrics_config = determine_metrics_config(
                                 metrics_iam_role,
@@ -642,6 +644,8 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                             name,
                             instance_type,
                             shard_count,
+                            reserved_memory_percent,
+                            default_reserved_memory,
                             replicas_per_shard,
                             capacity_gib,
                             zones,
@@ -661,8 +665,13 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                 remove_metrics_config,
                             )?;
                             let family = determine_family_update(family_name, default_family);
+                            let reserved_memory_percent = determine_reserved_memory_update(
+                                reserved_memory_percent,
+                                default_reserved_memory,
+                            );
                             if instance_type.is_none()
                                 && shard_count.is_none()
+                                && reserved_memory_percent.is_none()
                                 && replicas_per_shard.is_none()
                                 && capacity_gib.is_none()
                                 && zones.is_empty()
@@ -686,6 +695,7 @@ async fn run_momento_command(args: momento_cli_opts::Momento) -> Result<(), CliE
                                 capacity_gib,
                                 family,
                                 zones,
+                                reserved_memory_percent,
                             )?;
                             let metrics_config = determine_metrics_config_update_with_defaults(
                                 metrics_config_inputs,
